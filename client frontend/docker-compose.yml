@@ -1,0 +1,8 @@
+services:
+  frontend:
+    build: .
+    image: wanyungu/revision-access-point-main:latest
+    ports:
+      - "8080:80"
+    env_file:
+      - .env

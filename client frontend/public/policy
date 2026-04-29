@@ -1,0 +1,5 @@
+  (EXISTS ( SELECT 1
+   FROM subscriptions s
+  WHERE ((s.user_uuid = (auth.uid())::text) AND (s.end_date > now()) AND (EXISTS ( SELECT 1
+           FROM units u
+          WHERE ((u.id = resources.unit_id) AND (u.department_id = s.department_id) AND (u.year_of_study = s.year_of_study) AND (u.semester_of_study = s.semester_of_study)))))))

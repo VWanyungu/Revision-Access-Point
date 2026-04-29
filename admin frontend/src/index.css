@@ -1,0 +1,207 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Academic Blue Theme */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Navy Blue - Primary structural color */
+    --primary: 217 71% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Light blue-gray for secondary */
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Subtle blue accent */
+    --accent: 214 100% 97%;
+    --accent-foreground: 217 71% 33%;
+
+    /* Academic Red - Action color */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Action Red for primary CTAs */
+    --action: 0 72% 51%;
+    --action-foreground: 0 0% 100%;
+    --action-hover: 0 72% 45%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 71% 33%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-background: 217 71% 20%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 217 71% 20%;
+    --sidebar-accent: 217 71% 28%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 50% 30%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-muted: 217 40% 70%;
+
+    /* Success state */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning state */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Info state */
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Chart colors */
+    --chart-1: 217 71% 33%;
+    --chart-2: 0 72% 51%;
+    --chart-3: 142 76% 36%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 199 89% 48%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 217 50% 15%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 217 50% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 100% 70%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 32% 25%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 32% 20%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 32% 25%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --action: 0 62% 55%;
+    --action-foreground: 0 0% 100%;
+    --action-hover: 0 62% 60%;
+
+    --border: 217 32% 25%;
+    --input: 217 32% 25%;
+    --ring: 210 100% 70%;
+
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 100% 70%;
+    --sidebar-primary-foreground: 222 47% 8%;
+    --sidebar-accent: 217 32% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 32% 20%;
+    --sidebar-ring: 210 100% 70%;
+    --sidebar-muted: 215 20% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:border-primary/20;
+  }
+
+  .stat-card {
+    @apply bg-card rounded-lg border p-6 card-hover;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-muted transition-all duration-200;
+  }
+
+  .nav-link:hover {
+    @apply bg-sidebar-accent text-sidebar-foreground;
+  }
+
+  .nav-link.active {
+    @apply bg-sidebar-accent text-sidebar-foreground font-medium;
+  }
+
+  .table-row-hover {
+    @apply hover:bg-muted/50 transition-colors;
+  }
+
+  .action-button {
+    @apply bg-action text-action-foreground hover:bg-action-hover transition-colors;
+  }
+
+  .context-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-accent text-accent-foreground;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.25s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
