@@ -32,7 +32,7 @@ const ResourceCard = ({ resource, onGenerateQuiz, onGenerateAnswers, docViewTogg
   const showAnswersButton = resourceType === "cats" || resourceType === "exams";
   const resourceTypeColourMatrix = {
     "notes":"primary",
-    "cats": "secondary",
+    "cats": "warning",
     "exams": "destructive",
     "tutorials":"success"
   }
@@ -49,7 +49,7 @@ const ResourceCard = ({ resource, onGenerateQuiz, onGenerateAnswers, docViewTogg
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             {/* Icon */}
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-${resourceTypeColourMatrix[resourceType]}/10`}>
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center bg-${resourceTypeColourMatrix[resourceType]}/10 `}>
               <Icon className={`h-6 w-6 text-${resourceTypeColourMatrix[resourceType]}`} />
             </div>
 
@@ -107,12 +107,12 @@ const ResourceCard = ({ resource, onGenerateQuiz, onGenerateAnswers, docViewTogg
         </CardContent>
 
         {/* Hover indicator */}
-        <motion.div
+        {/* <motion.div
           className="absolute left-0 top-0 h-full w-1 bg-primary"
           initial={{ scaleY: 0 }}
           animate={{ scaleY: isHovered ? 1 : 0 }}
           transition={{ duration: 0.2 }}
-        />
+        /> */}
       </Card>
     </motion.div>
   );
@@ -193,19 +193,19 @@ const TutorialResourceCard = ({ resource, onGenerateQuiz, docViewToggleFn }) => 
           </div>
 
           {/* Hover indicator */}
-          <motion.div
+          {/* <motion.div
             className="absolute left-0 top-0 h-full w-1 bg-primary"
             initial={{ scaleY: 0 }}
             animate={{ scaleY: isHovered ? 1 : 0 }}
             transition={{ duration: 0.2 }}
-          />
+          /> */}
         </CardContent>
       </Card>
     </motion.div>
   );
 };
 
-const ResourceTabs = ({ onGenerateQuiz, onGenerateAnswers, onViewResource, resources }: ResourceTabsProps) => {
+export const ResourceTabs = ({ onGenerateQuiz, onGenerateAnswers, onViewResource, resources }: ResourceTabsProps) => {
   const [activeTab, setActiveTab] = useState<ResourceType>("notes");
   const [pageByTab, setPageByTab] = useState<Record<string, number>>({});
   const itemsPerPage = 6;
@@ -406,6 +406,209 @@ export const ResourceDiv = ({ onGenerateQuiz, onGenerateAnswers, onViewResource,
                 onGenerateAnswers={() => onGenerateAnswers(resource.public_access_url, resource.name)}
                 docViewToggleFn={() =>
                   toggleDocView(resource.public_access_url)
+                }
+              />
+            )
+          )}
+        </div>
+
+        {resources.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            No resources found
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center mt-6 gap-2">
+            <span className="text-xs text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <div className="flex gap-2 items-center">
+              <Button
+                variant="pagination"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage("0", currentPage - 1)}
+              >
+                Prev
+              </Button>
+              <Button
+                variant="pagination"
+                size="sm"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage("0", currentPage + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const DisplayResourceTabs = ({ resources }) => {
+  const [activeTab, setActiveTab] = useState<ResourceType>("notes");
+  const [pageByTab, setPageByTab] = useState<Record<string, number>>({});
+  const itemsPerPage = 6;
+
+  const getCurrentPage = (tabId: string) => pageByTab[tabId] ?? 1;
+
+  const setCurrentPage = (tabId: string, page: number) => {
+    setPageByTab(prev => ({
+      ...prev,
+      [tabId]: page,
+    }));
+  };
+
+  return (
+    <div className="px-6 md:px-0">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ResourceType)}>
+        <TabsList className="grid grid-cols-4 h-auto">
+          {tabConfig.map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              className="m-1 flex items-center gap-2 py-3 data-[state=active]:shadow-sm"
+            >
+              <tab.icon className={`h-4 w-4 hidden md:block${activeTab === tab.id ? tab.color : ""}`} />
+              <span className="">{tab.label}</span>
+              <Badge variant="secondary" className="ml-1 text-xs hidden md:block">
+                {resources.filter((r) => r.resource_types.name === tab.id).length}
+              </Badge>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {tabConfig.map((tab) => {
+          const tabResources = resources.filter(
+            (r) => r.resource_types.name === tab.id
+          );
+
+          const currentPage = getCurrentPage(tab.id);
+          const totalPages = Math.ceil(tabResources.length / itemsPerPage);
+
+          const paginatedResources = tabResources.slice(
+            (currentPage - 1) * itemsPerPage,
+            currentPage * itemsPerPage
+          );
+
+          return (
+            <TabsContent
+              key={tab.id}
+              value={tab.id}
+              className="mt-6"
+            >
+              <div className="grid gap-4 grid-cols-1">
+                {paginatedResources.map((resource) =>
+                  tab.id === "tutorials" ? (
+                    <TutorialResourceCard
+                      key={resource.id}
+                      resource={resource}
+                      onGenerateQuiz={() => {}}
+                      docViewToggleFn={() => {}
+                      }
+                    />
+                  ) : (
+                    <ResourceCard
+                      key={resource.id}
+                      resource={resource}
+                      resourceType={tab.id}
+                      onGenerateQuiz={() => {}}
+                      onGenerateAnswers={() => {}}
+                      docViewToggleFn={() => {}
+                      }
+                    />
+                  )
+                )}
+              </div>
+
+              {tabResources.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  No {tab.label.toLowerCase()} available yet.
+                </div>
+              )}
+
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-6 gap-2">
+                  <span className="text-xs text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <div className="flex gap-2 items-center">
+                    <Button
+                      variant="pagination"
+                      size="sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(tab.id, currentPage - 1)}
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="pagination"
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(tab.id, currentPage + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          );
+        })}
+
+      </Tabs>
+    </div>
+  );
+};
+
+export const DisplayResourceDiv = ({ resources }) => {
+  const [activeTab, setActiveTab] = useState<ResourceType>("notes");
+  const [page, setPage] = useState<Record<string, number>>({});
+  const itemsPerPage = 6;
+
+  const getCurrentPage = (tabId: string) => page["0"] ?? 1;
+
+  const setCurrentPage = (tabId: string, page: number) => {
+    setPage(prev => ({
+      ...prev,
+      ["0"]: page,
+    }));
+  };
+
+  const currentPage = getCurrentPage("0");
+  const totalPages = Math.ceil(resources.length / itemsPerPage);
+
+  const paginatedResources = resources.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  return (
+    <div className="px-6 md:px-0">
+      <div>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+          {paginatedResources.map((resource) =>
+            resource.resource_types.name === "tutorials" ? (
+              <TutorialResourceCard
+                key={resource.id}
+                resource={resource}
+                onGenerateQuiz={() => {}}
+                docViewToggleFn={() => {}
+                }
+              />
+            ) : (
+              <ResourceCard
+                key={resource.id}
+                resource={resource}
+                resourceType={resource.resource_types.name}
+                onGenerateQuiz={() => {}}
+                onGenerateAnswers={() => {}}
+                docViewToggleFn={() => {}
                 }
               />
             )

@@ -1,73 +1,91 @@
-# Welcome to your Lovable project
+# Client Frontend
 
-## Project info
+The client frontend is the consumer-facing React application for RAP. It manages user authentication, subscription gating, resource browsing, quiz/answer generation, and PDF viewing.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Functional Overview
 
-## How can I edit this code?
+### App architecture
 
-There are several ways of editing your application.
+- `src/App.tsx` is the entry point. It wraps the app in:
+  - `ThemeProvider` for theme persistence
+  - `QueryClientProvider` for React Query caching
+  - `BrowserRouter` for route handling
+- The main screen state is handled in `src/pages/Index.tsx`, which switches between:
+  - landing page
+  - login/signup
+  - pricing gate
+  - study dashboard
+  - PDF viewer
+  - quiz and answers workflows
 
-**Use Lovable**
+### Authentication and subscription gating
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- Authentication uses Supabase auth from `src/database/supabase.ts`.
+- `Index.tsx` checks `supabase.auth.getUser()` and then verifies subscription records in the `subscriptions` table.
+- If the user is unsubscribed, the app sends them to `PricingGate`.
+- If the user has a valid subscription, the app loads the selected academic context from `localStorage.resourceSelection` or falls back to the first eligible unit.
+- The app uses Supabase session tokens stored in local storage for server calls that require authorization.
 
-Changes made via Lovable will be committed automatically to this repo.
+### Database access and React Query
 
-**Use your preferred IDE**
+- `src/database/utils.ts` contains Supabase query helpers for the client app.
+- Key functions include:
+  - `getResources(unitId, filter)`
+  - `getSchools()`
+  - `getDepartments()`
+  - `getDepartmentsBySchoolId(schoolId)`
+  - `getUnits()`
+  - `getUnitsByDepartmentIdYearSemester(departmentId, year, semester)`
+- Most screens use `useQuery` to fetch and cache server data, including:
+  - `PricingGate.tsx` for school/department/unit selection
+  - `ResourceSearch.tsx` and `ResourceSearchModal.tsx` for selecting a study context
+  - `StudyDashboard.tsx` for resource lists and filters
+  - `SubscriptionsPage.tsx` for the user subscription history
+- React Query is responsible for keeping data fresh and reducing duplicate network calls.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Custom backend functions and direct fetch calls
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- The client uses native `fetch()` for two server-side operations that are not handled by Supabase table helpers:
+  - `generate-answers` via `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-answers`
+  - quiz generation in `src/components/study/QuizSystem.tsx`
+- These requests include the Supabase auth bearer token and send JSON payloads.
+- The answers workflow in `Index.tsx` switches the UI into an `answers` page state while the Edge Function processes the request.
 
-Follow these steps:
+### Math and code rendering
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- Study content is rendered by `src/components/study/MixedContentRenderer.tsx`.
+- It parses text and renders:
+  - inline math with `react-katex` using `$...$`
+  - block math using `$$...$$`
+  - code fences using triple backticks
+- Code blocks are highlighted with `PrismJS`, with support for Python and JavaScript.
+- The renderer detects explicit language markers and falls back to a heuristic language detector.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### PDF viewing
 
-# Step 3: Install the necessary dependencies.
-npm i
+- `src/pages/PdfViewerPage.tsx` handles PDF display using `react-pdf` and `pdfjs-dist`.
+- `pdfjs.GlobalWorkerOptions.workerSrc` points to a CDN-hosted worker for browser compatibility.
+- The viewer provides:
+  - continuous scrolling through all PDF pages
+  - current-page tracking by scroll position
+  - navigation buttons for previous/next pages
+  - zoom controls
+  - page rotation
+- The page components render to a width constrained by the viewport and current zoom level.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## Important implementation files
 
-**Edit a file directly in GitHub**
+- `src/App.tsx` — provider setup, React Query, routing, and theme provider.
+- `src/database/supabase.ts` — Supabase client initialization.
+- `src/database/utils.ts` — client-side data helpers for Supabase table queries.
+- `src/pages/Index.tsx` — app state manager, auth/subscription checks, and main workflow routing.
+- `src/pages/PricingGate.tsx` — subscription gating and initial academic selection.
+- `src/components/study/StudyDashboard.tsx` — resource list view and study UI.
+- `src/components/study/MixedContentRenderer.tsx` — math and code block rendering.
+- `src/pages/PdfViewerPage.tsx` — interactive PDF viewer.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Notes
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- The app is a React Single Page Application that uses local storage for selected academic context and session persistence.
+- Supabase is both the auth provider and the database/query layer for the client.
+- React Query is used for most application data, while `fetch()` is reserved for custom Edge Function calls.

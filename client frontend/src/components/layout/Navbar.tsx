@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/database/supabase";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ModeToggle } from "@/components/mode-toggle";
 
 interface NavbarProps {
   studyContext?: {
@@ -91,7 +92,9 @@ const Navbar = ({ studyContext, onMenuClick, onLogout, onNavigate }: NavbarProps
           </Button> */}
 
           {/* Theme Toggle */}
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
+
+          <ModeToggle />
 
           {/* User dropdown */}
           <DropdownMenu>
@@ -122,21 +125,19 @@ const Navbar = ({ studyContext, onMenuClick, onLogout, onNavigate }: NavbarProps
                 Progress
               </DropdownMenuItem>
               <DropdownMenuSeparator /> */}
-              <DropdownMenuItem className="gap-2 px-4 py-2 rounded-none cursor-pointer border-b border-border" onClick={() => onNavigate("resources")}>
+              <DropdownMenuItem className="gap-2 px-4 py-4 rounded-none cursor-pointer border-b border-border" onClick={() => onNavigate("resources")}>
                 <BookOpen className="h-4 w-4" />
                 Resources
               </DropdownMenuItem>
 
-
-
-              <DropdownMenuItem className="gap-2 px-4 py-2 rounded-none cursor-pointer border-b border-border" onClick={() => onNavigate("subscriptions")}>
+              <DropdownMenuItem className="gap-2 px-4 py-4 rounded-none cursor-pointer border-b border-border" onClick={() => onNavigate("subscriptions")}>
                 <CreditCard className="h-4 w-4" />
                 Subscriptions
               </DropdownMenuItem>
 
               {/* <DropdownMenuSeparator /> */}
 
-              <DropdownMenuItem className="gap-2 px-4 py-2 rounded-none cursor-pointer border-b border-border text-destructive focus:text-destructive" onClick={handleLogout}>
+              <DropdownMenuItem className="gap-2 px-4 py-4 rounded-none cursor-pointer border-b border-border text-destructive focus:text-destructive" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
                 Logout
               </DropdownMenuItem>

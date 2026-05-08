@@ -1,10 +1,13 @@
 /* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:wght@400;500;600&display=swap'); */
 @import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Birthstone&display=swap');
 @import "katex/dist/katex.min.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
 
 /* Hide scrollbar but allow scrolling */
 .no-scrollbar {
@@ -18,6 +21,22 @@
   display: none;
   /* Chrome, Safari */
 }
+
+.accent-text {
+  color: lightgray;
+  font-size: small;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  margin-bottom: 1em;
+  margin-top: 1em;
+}
+
+.birthstone-regular {
+  font-family: "Birthstone", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
 
 
 @layer base {

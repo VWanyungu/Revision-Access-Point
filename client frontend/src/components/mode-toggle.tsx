@@ -10,7 +10,7 @@ export function ModeToggle() {
     <Button
       variant="outline"
       size="icon"
-      className="relative rounded-full border-border/50 bg-background/50 backdrop-blur-md overflow-hidden"
+      className="relative border-border/50 bg-background/50 backdrop-blur-md overflow-hidden"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
     >
       <motion.div

@@ -1,355 +1,569 @@
-import { motion } from "framer-motion";
-import { BookOpen, Brain, Timer, FileText, ArrowRight, Check, PlayCircle } from "lucide-react";
+import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-motion";
+import {
+  BookOpen, Brain, Timer, FileText, ArrowRight, Check,
+  PlayCircle, GraduationCap, Play, ChevronLeft, ChevronRight,
+  Database, Banknote, Sparkles, Shield, ArrowUpRight, Linkedin, Twitter
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
-import MpesaPaymentDialog from "@/components/payment/MpesaPaymentDialog";
+import { useState, useRef } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Input } from "@/components/ui/input";
+import { DisplayStudyDashboard } from "@/components/study/StudyDashboard";
 
 interface LandingPageProps {
   onNavigateLogin: () => void;
   onNavigateSignUp: () => void;
 }
 
-const semesters = [
-  { id: 2, name: "Semester Pass", range: "4 month access", price: "KSH 150", recommended: true },
+// ─── Animation variants ──────────────────────────────────────────────────────
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: (delay = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.1, delayChildren: 0.05 },
+  },
+};
+
+const staggerItem = {
+  hidden: { opacity: 0, y: 32 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+// ─── Reusable scroll-triggered wrapper ───────────────────────────────────────
+
+interface FadeInProps {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+  direction?: "up" | "left" | "right" | "none";
+}
+
+const FadeIn: React.FC<FadeInProps> = ({
+  children,
+  delay = 0,
+  className = "",
+  direction = "up",
+}) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const shouldReduce = useReducedMotion();
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const initial = shouldReduce
+    ? { opacity: 0 }
+    : direction === "up"
+      ? { opacity: 0, y: 40 }
+      : direction === "left"
+        ? { opacity: 0, x: -40 }
+        : direction === "right"
+          ? { opacity: 0, x: 40 }
+          : { opacity: 0 };
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={initial}
+      animate={inView ? { opacity: 1, x: 0, y: 0 } : initial}
+      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const pillars = [
+  {
+    icon: FileText,
+    title: "Notes",
+    tagline: "Smart notes, smarter study.",
+    description:
+      "Access clean, structured lecture notes for every unit on your course. Annotate, bookmark, and organise them your way. Then go further — generate AI-powered quizzes directly from any note to test your understanding and lock in what you've learned.",
+    accent: "primary",
+    badge: "Quiz Generator",
+  },
+  {
+    icon: BookOpen,
+    title: "CATs",
+    tagline: "Practice. Predict. Pass.",
+    description:
+      "Browse a curated library of Continuous Assessment Tests from previous semesters. Study the patterns, understand what lecturers value, and use our AI answer generator to produce model answers that guide your own revision.",
+    accent: "primary-foreground",
+    badge: "AI Answers",
+  },
+  {
+    icon: GraduationCap,
+    title: "Exams",
+    tagline: "Past papers. Perfect prep.",
+    description:
+      "Every past exam paper, sorted by unit and year. Go deep into question trends, simulate exam conditions, and generate comprehensive model answers with step-by-step reasoning — so you know not just the what, but the why.",
+    accent: "primary",
+    badge: "AI Answers",
+  },
+  {
+    icon: Play,
+    title: "Tutorials",
+    tagline: "Learn at your own pace.",
+    description:
+      "Video and written tutorials curated for your specific course units. Whether you're covering a concept for the first time or revisiting before an exam, tutorials give you the guided explanation notes alone can't always provide.",
+    accent: "primary-foreground",
+    badge: "Guided Learning",
+  },
 ];
 
-const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) => {
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [selectedSemester, setSelectedSemester] = useState<typeof semesters[0] | null>(null);
-  const [email, setEmail] = useState("");
-  const [stepCounter, setStepCounter] = useState<1 | 2>(1);
+const whyCards = [
+  {
+    icon: Database,
+    title: "Everything in One Place",
+    body: "No more hunting across WhatsApp groups, random drives and scattered PDFs. RAP centralises every resource you need: notes, CATs, exams, and tutorials, for your exact units, in one clean, searchable platform.",
+    featured: false,
+  },
+  {
+    icon: Banknote,
+    title: "Priced for Students",
+    body: "We built RAP for university students. Our pricing reflects that. Access a full semester's worth of resources for the cost of a matatu ride. Premium knowledge, genuinely affordable.",
+    featured: false,
+  },
+  {
+    icon: Sparkles,
+    title: "AI That Actually Helps You Study",
+    body: "Generate quizzes from your own notes. Get model answers for past papers.",
+    featured: true,
+  },
+  {
+    icon: Shield,
+    title: "Always Current",
+    body: "Stale resources are worse than no resources. We maintain an up-to-date library refreshed each semester, with contributions verified by students who've sat the very papers you're preparing for.",
+    featured: false,
+  },
+];
 
-  const handleNextStep = () => {
-    if (email) {
-      setStepCounter(2);
-    }
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) => {
+  const shouldReduce = useReducedMotion();
+
+  // Hero entrance animation — runs on load, not scroll
+  const heroVariants = {
+    hidden: { opacity: 0, filter: shouldReduce ? "blur(0px)" : "blur(8px)", y: shouldReduce ? 0 : 24 },
+    visible: {
+      opacity: 1,
+      filter: "blur(0px)",
+      y: 0,
+      transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] },
+    },
   };
 
-  const handleGetStarted = (sem: typeof semesters[0]) => {
-    setSelectedSemester(sem);
-    setPaymentOpen(true);
+  const heroMockupVariants = {
+    hidden: { opacity: 0, scale: 0.92, y: shouldReduce ? 0 : 30 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      transition: { duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] },
+    },
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-sans">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 w-full">
+
+      {/* ── Navbar ────────────────────────────────────────────────────────── */}
+      <header className="py-2 sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 w-full">
         <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-6 md:px-8">
-          <div className="flex items-center gap-3">
-            {/* <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-sm">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div> */}
-            {/* <span className="font-semibold text-lg tracking-tight">Revision Access Point</span> */}
-          </div>
-          <div className="flex items-center gap-2 md:gap-4">
+          <h1 className="hidden md:block font-extrabold text-base md:text-lg tracking-tight">Revision Access Point</h1>
+          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-end">
             <ModeToggle />
             <div className="sm:flex items-center gap-2">
-              <Button variant="ghost" onClick={onNavigateLogin} className="text-muted-foreground hover:text-foreground">Log In</Button>
-              <Button onClick={onNavigateSignUp} className="shadow-sm hidden md:block ">Sign Up</Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onNavigateLogin}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Login
+              </Button>
+              <Button size="sm" onClick={onNavigateSignUp} className="shadow-sm hidden md:block">
+                Sign Up
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative h-[calc(100vh-4rem)] flex flex-col justify-center item-center overflow-hidden pt-24 pb-32 md:pt-36 md:pb-48">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
-        <div className="relative max-w-7xl mx-auto px-6 md:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, filter: "blur(10px)", y: 20 }}
-            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+      {/* ── Hero — full viewport height ───────────────────────────────────── */}
+      <section className="h-[calc(100vh-100px)] md:min-h-screen flex items-start md:items-center max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 px-6 md:px-8 py-20">
+
+        {/* Left — text */}
+        <motion.div
+          id="heroText"
+          className="flex flex-col"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.p
+            variants={staggerItem}
+            id="heroFaintAccentText"
+            className="accent-text text-xs md:text-sm"
           >
-            <Badge className="mb-8 bg-primary/10 text-primary border-primary/20 backdrop-blur-md text-xs md:text-sm px-4 py-1.5 font-medium">
-              Revision Access Point
-            </Badge>
-            <h1 className="text-4xl md:text-7xl font-bold mb-8 tracking-tight leading-[1.1] text-balance">
-              Your Unfair <br className="hidden md:block" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-dark dark:from-primary dark:to-primary-light">
-                Competitive Advantage
-              </span>
+            REVISION ACCESS POINT
+          </motion.p>
+
+          <motion.div variants={staggerItem} className="flex flex-col">
+            <h1 className="text-5xl md:text-6xl font-extralight leading-tight">
+              Your<span className="font-extrabold ml-3">revision</span>
             </h1>
-            <p className="md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 text-balance leading-relaxed">
-              Master your coursework with precision. Elite access to structured notes, rigorous CATs, past exams, and curated video tutorials designed for top-tier performance.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              {/* <Button
-                size="xl"
-                onClick={() => document.getElementById('conversion-path')?.scrollIntoView({ behavior: 'smooth' })}
-                className="w-full sm:w-auto px-8 gap-2 shadow-sm text-base h-14"
-              >
-                Get started
-                <ArrowRight className="h-4 w-4" />
-              </Button> */}
-              <Button
-                size="xl"
-                onClick={onNavigateSignUp}
-                className="w-full sm:w-auto px-4 md:px-8 gap-2 shadow-sm text-sm md:text-base h-10 md:h-14"
-              >
-                Get started
-                <ArrowRight className="h-4 w-4" />
+            <h1 className="text-6xl md:text-8xl birthstone-regular text-primary leading-none">
+              Reimagined
+            </h1>
+          </motion.div>
+
+          <motion.p
+            variants={staggerItem}
+            className="text-base md:text-lg text-muted-foreground w-full md:w-3/4 mt-6 mb-8 leading-relaxed"
+          >
+            Notes, CATs, past exams and tutorials, all organised around your units, not against
+            them. One quiet, focused place to actually get the work done.
+          </motion.p>
+
+          <motion.div variants={staggerItem} className="flex items-center gap-3 flex-wrap">
+            <Button
+              size="lg"
+              onClick={onNavigateSignUp}
+              className="shadow-sm h-12 px-6 text-base"
+            >
+              Get started
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+            {/* <Button
+              size="lg"
+              variant="outline"
+              className="hover:text-foreground border-destructive text-destructive h-12 px-6 text-base"
+            >
+              <a href="#preview">See how it works</a>
+            </Button> */}
+          </motion.div>
+        </motion.div>
+
+        {/* Right — app mockup */}
+        <motion.div
+          variants={heroMockupVariants}
+          initial="hidden"
+          animate="visible"
+          className="relative hidden md:block"
+        >
+          <motion.div
+            animate={shouldReduce ? {} : { y: [-6, 6, -6] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <AppMockup />
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* ── Feature Showcase / Pillars ────────────────────────────────────── */}
+      <section id="features" className="border-t py-6 md:py-16 max-w-7xl mx-auto px-6 md:px-8">
+        <FadeIn>
+          <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">What we offer</p>
+          <div className="flex flex-col mb-8">
+            <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
+              Our four <span className="text-primary font-bold">pillars</span>
+            </h2>
+          </div>
+        </FadeIn>
+
+        <PillarsSection />
+      </section>
+
+      {/* ── Product Preview ───────────────────────────────────────────────── */}
+      <section id="preview" className="py-12 md:py-16" />
+
+      {/* ── Why Us ────────────────────────────────────────────────────────── */}
+      <section className="border-t pt-6 pb-12 md:py-16 max-w-7xl mx-auto px-6 md:px-8">
+        <FadeIn>
+          <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">Why choose us</p>
+          <div className="flex flex-col mb-8">
+            <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
+              Why <span className="text-primary font-bold">us</span>
+            </h2>
+          </div>
+        </FadeIn>
+
+        <WhySection />
+      </section>
+
+      {/* ── Contact — full viewport height ────────────────────────────────── */}
+      <section
+        id="contact"
+        className="relative min-h-screen w-full overflow-hidden flex items-center"
+      >
+        {/* Map background */}
+        <img
+          src="/world.svg"
+          alt="World map"
+          className="absolute inset-0 w-full h-full object-cover z-0 select-none pointer-events-none"
+        />
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-background dark:via-background/80 z-10" />
+
+        {/* Content */}
+        <motion.div
+          className="relative z-20 max-w-7xl mx-auto px-8 md:px-8 w-full"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+        >
+          <motion.p
+            variants={staggerItem}
+            id="heroFaintAccentText"
+            className="accent-text text-xs md:text-sm"
+          >
+            contact us
+          </motion.p>
+
+          <motion.div variants={staggerItem} className="mb-8">
+            <h2 className="text-5xl md:text-6xl font-extralight leading-tight">
+              <span className="text-primary font-bold">Hello!</span>
+            </h2>
+          </motion.div>
+
+          <motion.div variants={staggerItem} className="mb-2">
+            <p className="accent-text text-xs md:text-sm">email</p>
+            <p className="text-base md:text-lg font-semibold mt-1">vwanyungu254@gmail.com</p>
+          </motion.div>
+
+          <motion.div variants={staggerItem} className="mt-6">
+            <p className="accent-text text-xs md:text-sm mb-3">social</p>
+            <div className="flex justify-start gap-4">
+              <Button size="icon" variant="outline">
+                <Twitter className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="outline">
+                <Linkedin className="h-4 w-4" />
               </Button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* Feature Showcase ("Bento Grid") */}
-      <section className="py-12 md:py-24 relative bg-secondary/50">
+      {/* ── Footer ────────────────────────────────────────────────────────── */}
+      <footer className="relative border-t border-border/40 bg-background/50 backdrop-blur py-4">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-2xl md:text-4xl font-bold mb-4 tracking-tight">Engineered for Mastery</h2>
-            <p className="text-sm text-muted-foreground md:text-lg max-w-xl mx-auto">
-              Everything required to dominate your exams, meticulously organized.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 ">
-            {/* Notes Section - Minimalist document previews */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.6 }}
-              className="md:col-span-2 glass-card rounded-3xl p-8 relative overflow-hidden group"
-            >
-              <div className="relative z-10 w-full md:w-1/2">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2.5 rounded-xl bg-primary/10">
-                    <FileText className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-lg md:text-xl font-bold">Structured Notes</h3>
-                </div>
-                <p className="text-sm md:text-base text-muted-foreground mb-6">
-                  No fluff, just the core concepts you need to succeed.
-                </p>
-                <Button variant="secondary" onClick={onNavigateSignUp} className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  Explore Library
-                </Button>
-              </div>
-              {/* Decorative document previews */}
-              <div className="absolute right-0 top-0 bottom-0 w-1/2 hidden md:block select-none pointer-events-none">
-                <div className="absolute right-10 top-10 w-64 h-80 bg-background rounded-xl border border-border/50 shadow-lg transform rotate-6 scale-90 opacity-90 transition-transform group-hover:rotate-12 group-hover:scale-95 duration-500 ease-out p-6 flex flex-col gap-3">
-                  <div className="w-1/2 h-4 bg-muted/50 rounded" />
-                  <div className="w-full h-3 bg-muted/30 rounded mt-4" />
-                  <div className="w-5/6 h-3 bg-muted/30 rounded" />
-                  <div className="w-4/5 h-3 bg-muted/30 rounded" />
-                </div>
-                <div className="absolute right-24 top-20 w-64 h-80 bg-background rounded-xl border border-border/50 shadow-xl transform -rotate-3 transition-transform group-hover:-rotate-6 group-hover:scale-105 duration-500 ease-out p-6 flex flex-col gap-3">
-                  <div className="w-2/3 h-5 bg-primary/20 rounded" />
-                  <div className="w-full h-3 bg-muted/40 rounded mt-4" />
-                  <div className="w-11/12 h-3 bg-muted/40 rounded" />
-                  <div className="w-full h-3 bg-muted/40 rounded" />
-                  <div className="w-4/5 h-3 bg-muted/40 rounded" />
-                </div>
-              </div>
-            </motion.div>
-
-            {/* CATs & Exams Section - Pulse effect */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="glass-card rounded-3xl p-8 relative overflow-hidden flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2.5 rounded-xl bg-accent-dark/10 relative">
-                    <Timer className="h-6 w-6 text-accent-dark dark:text-accent-light" />
-                    <motion.div
-                      className="absolute inset-0 rounded-xl border border-accent-dark/30 dark:border-accent-light/30"
-                      animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0, 0.8] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                  </div>
-                  <h3 className="text-lg md:text-xl font-bold">CATs & Exams</h3>
-                </div>
-                <p className="text-sm md:text-base text-muted-foreground">
-                  Get access to past papers and assessment tests.
-                </p>
-              </div>
-              <div className="mt-8 flex justify-end">
-                <Brain className="h-24 w-24 text-primary/5 translate-x-4 translate-y-4" />
-              </div>
-            </motion.div>
-
-            {/* Tutorials Section - Blurred video player UI */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="md:col-span-3 h-[400px] glass-card rounded-3xl p-8 relative overflow-hidden flex items-center justify-center group"
-            >
-              {/* Background abstract imagery */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 backdrop-blur-3xl" />
-
-              <div className="relative z-20 text-center max-w-lg">
-                <Badge className="mb-4 bg-background/50 backdrop-blur text-foreground border-border/50">Exclusive Tutorials</Badge>
-                <h3 className="text-xl md:text-3xl font-bold mb-4">Visual Learning, Distilled.</h3>
-                <p className="text-sm md:text-base text-muted-foreground mb-8 text-balance">
-                  Complex topics broken down by top students and lecturers in high-definition video breakdowns.
-                </p>
-                <Button size="lg" className="rounded-full w-16 h-16 p-0 group-hover:scale-110 transition-transform shadow-lg shadow-primary/20">
-                  <PlayCircle className="h-8 w-8 ml-1" />
-                </Button>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Conversion Path - 2-Step Flow */}
-      {/* <section id="conversion-path" className="py-32 bg-background relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-primary/5 via-background to-background" />
-        <div className="max-w-4xl mx-auto px-6 md:px-8 relative z-10">
-          
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight">Secure Your Access</h2>
-            <p className="text-muted-foreground text-lg mb-8">
-              Join the elite tier of students today. Choose your path.
-            </p>
-            
-            
-            <div className="flex items-center justify-center gap-4 mb-12">
-              <div className={`flex items-center gap-2 ${stepCounter === 1 ? 'text-primary' : 'text-muted-foreground'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${stepCounter === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>1</div>
-                <span className="font-medium hidden sm:inline">Account Creation</span>
-              </div>
-              <div className="w-16 h-px bg-border/50" />
-              <div className={`flex items-center gap-2 ${stepCounter === 2 ? 'text-primary' : 'text-muted-foreground'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${stepCounter === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>2</div>
-                <span className="font-medium hidden sm:inline">Choose Pass</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative min-h-[400px]">
-            
-            <motion.div
-              initial={false}
-              animate={{ opacity: stepCounter === 1 ? 1 : 0, scale: stepCounter === 1 ? 1 : 0.95, pointerEvents: stepCounter === 1 ? "auto" : "none" }}
-              transition={{ duration: 0.4 }}
-              className={`absolute inset-0 glass-card rounded-3xl p-8 md:p-12 shadow-lg flex flex-col items-center justify-center text-center max-w-lg mx-auto w-full`}
-            >
-              <h3 className="text-2xl font-bold mb-2">Create Your Profile</h3>
-              <p className="text-muted-foreground mb-8">Enter your student email to begin.</p>
-              
-              <form className="w-full max-w-sm" onSubmit={(e) => { e.preventDefault(); handleNextStep(); }}>
-                <div className="space-y-4 mb-6">
-                  <Input 
-                    type="email" 
-                    placeholder="student@university.edu" 
-                    className="h-12 bg-background/50 text-center"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button size="xl" type="submit" className="w-full h-12 text-base shadow-md group">
-                  Continue Form
-                  <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </form>
-            </motion.div>
-
-            
-            <motion.div
-              initial={false}
-              animate={{ opacity: stepCounter === 2 ? 1 : 0, scale: stepCounter === 2 ? 1 : 0.95, pointerEvents: stepCounter === 2 ? "auto" : "none" }}
-              transition={{ duration: 0.4 }}
-              className="absolute inset-0 w-full"
-            >
-              <div className="grid sm:grid-cols-3 gap-6">
-                {semesters.map((sem, i) => (
-                  <motion.div
-                    key={sem.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: stepCounter === 2 ? 1 : 0, y: stepCounter === 2 ? 0 : 20 }}
-                    transition={{ duration: 0.5, delay: i * 0.1 }}
-                  >
-                    <Card
-                      className={`relative h-full flex flex-col text-center transition-all duration-300 hover:shadow-xl bg-card/60 backdrop-blur-md ${
-                        sem.recommended
-                          ? "border-primary/50 shadow-lg scale-105 shadow-primary/10"
-                          : "border-border/40 hover:border-primary/30"
-                      }`}
-                    >
-                      {sem.recommended && (
-                        <div className="absolute -top-3 inset-x-0 flex justify-center">
-                          <Badge className="bg-primary hover:bg-primary shadow-sm text-primary-foreground font-medium px-3 tracking-wide">
-                            Platinum Level
-                          </Badge>
-                        </div>
-                      )}
-                      
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none" />
-
-                      <CardHeader className="pb-4 pt-8">
-                        <CardTitle className="text-xl font-bold">{sem.name}</CardTitle>
-                        <CardDescription className="text-muted-foreground font-medium">{sem.range}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-6 flex-grow flex flex-col">
-                        <div className="py-2">
-                          <span className="text-4xl font-extrabold tracking-tight">{sem.price}</span>
-                        </div>
-                        <ul className="text-sm space-y-3 text-left flex-grow font-medium text-foreground/80">
-                          <li className="flex items-start gap-3"><Check className="h-5 w-5 text-primary shrink-0" /> Full Library Access</li>
-                          <li className="flex items-start gap-3"><Check className="h-5 w-5 text-primary shrink-0" /> Exclusive Video Tutorials</li>
-                          <li className="flex items-start gap-3"><Check className="h-5 w-5 text-primary shrink-0" /> Priority Support</li>
-                        </ul>
-                        <Button
-                          className="w-full mt-4 h-12 shadow-sm font-semibold"
-                          variant={sem.recommended ? "default" : "secondary"}
-                          onClick={() => handleGetStarted(sem)}
-                        >
-                          Unlock Pass
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section> */}
-
-      {/* Footer */}
-      <footer className="relative border-t border-border/40 bg-background/50 backdrop-blur py-12">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <BookOpen className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-semibold tracking-tight">Revision Access Point</span>
-            </div>
-            <div className="flex items-center gap-6 text-sm text-muted-foreground font-medium">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Contact</a>
-            </div>
-            <p className="text-sm text-muted-foreground font-medium">
-              © {new Date().getFullYear()} Revision Access Point. All rights reserved.
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground font-medium text-center w-full">
+            © {new Date().getFullYear()} All rights reserved.
+          </p>
         </div>
       </footer>
+    </div>
+  );
+};
 
-      {selectedSemester && (
-        <MpesaPaymentDialog
-          open={paymentOpen}
-          onOpenChange={setPaymentOpen}
-          semesterName={selectedSemester.name}
-          price={selectedSemester.price}
-        />
-      )}
+// ─── App Mockup ───────────────────────────────────────────────────────────────
+
+const AppMockup = () => (
+  <div className="p-8 border border-dashed border-primary/30 rounded-2xl">
+    <div
+      className="rounded-2xl overflow-hidden shadow-2xl border bg-white"
+      style={{ boxShadow: "0 32px 80px rgba(13,27,42,0.18)" }}
+    >
+      <div className="px-5 py-3 flex items-center justify-between border-b bg-primary">
+        <div className="flex gap-1.5">
+          {["#ff5f57", "#ffbd2e", "#28ca42"].map((c) => (
+            <div key={c} className="w-3 h-3 rounded-full" style={{ background: c }} />
+          ))}
+        </div>
+        <div className="text-xs font-medium text-white opacity-70">Revision Access Point</div>
+        <div />
+      </div>
+      <DisplayStudyDashboard />
+    </div>
+  </div>
+);
+
+// ─── Pillars Section ──────────────────────────────────────────────────────────
+
+const PillarsSection = () => {
+  const [active, setActive] = useState(0);
+  const shouldReduce = useReducedMotion();
+
+  const next = () => setActive((p) => (p + 1) % pillars.length);
+  const prev = () => setActive((p) => (p - 1 + pillars.length) % pillars.length);
+  const p = pillars[active];
+
+  return (
+    <div className="grid md:grid-cols-2 gap-12 items-center">
+      {/* Left — content */}
+      <div>
+        <div className="flex gap-3 mb-10 flex-wrap">
+          {pillars.map((pillar, index) => (
+            <motion.button
+              key={pillar.title}
+              onClick={() => setActive(index)}
+              className={`text-sm font-medium px-5 py-2 border transition-all 
+                ${index === active ? "border-primary bg-primary text-white" : "border-border text-foreground"}`}
+              whileHover={{ scale: shouldReduce ? 1 : 1.03 }}
+              whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
+            >
+              {pillar.title}
+            </motion.button>
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: shouldReduce ? 0 : -20 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-xs font-semibold px-3 py-1 rounded-full border border-border text-foreground">
+                {p.badge}
+              </span>
+            </div>
+
+            <h3 className="text-3xl md:text-4xl font-black mb-2 text-primary">{p.title}</h3>
+
+            <p className="text-base italic mb-4 text-muted-foreground">{p.tagline}</p>
+
+            <p className="text-base leading-relaxed text-foreground/50">{p.description}</p>
+
+            <div className="flex gap-3 mt-8">
+              <motion.button
+                onClick={prev}
+                className="w-11 h-11 border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
+                whileTap={{ scale: shouldReduce ? 1 : 0.95 }}
+              >
+                <ChevronLeft size={18} />
+              </motion.button>
+              <motion.button
+                onClick={next}
+                className="w-11 h-11 border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
+                whileTap={{ scale: shouldReduce ? 1 : 0.95 }}
+              >
+                <ChevronRight size={18} />
+              </motion.button>
+              <div className="flex items-center gap-2 ml-2">
+                {pillars.map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className={`h-1.5 transition-all rounded-full ${i === active ? "bg-primary" : "bg-muted/30"}`}
+                    animate={{ width: i === active ? 20 : 6 }}
+                    transition={{ duration: 0.3 }}
+                  />
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Right — visual card */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={active}
+          initial={{ opacity: 0, scale: shouldReduce ? 1 : 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: shouldReduce ? 1 : 0.95 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded overflow-hidden aspect-[4/3] flex flex-col justify-end p-8 bg-primary/10"
+          style={{ boxShadow: `0 24px 60px rgba(var(--primary), 0.15)` }}
+        >
+          <div className="absolute top-8 right-8 w-32 h-32 rounded-full border-2 opacity-20 border-primary" />
+          <div className="absolute top-4 right-4 w-48 h-48 rounded-full border opacity-10 border-primary" />
+          <p.icon size={80} className="absolute top-14 right-14 opacity-20 text-primary" />
+
+          <div>
+            <div className="text-xs uppercase tracking-widest mb-2 text-muted-foreground">
+              Pillar {active + 1} of 4
+            </div>
+            <div className="text-3xl font-black mb-1 text-primary">{p.title}</div>
+            <div className="text-base italic text-muted-foreground">{p.tagline}</div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ─── Why Section ──────────────────────────────────────────────────────────────
+
+const WhySection = () => {
+  const shouldReduce = useReducedMotion();
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      {whyCards.map((card, i) => (
+        <FadeIn key={card.title} delay={i * 0.1}>
+          <motion.div
+            className={`rounded p-8 h-full border flex flex-col gap-5 transition-all
+              ${card.featured ? "bg-primary border-primary" : "bg-background light:border-border/80 dark:border-white/20"}`}
+            style={{
+              boxShadow: card.featured ? "0 20px 60px rgba(13,27,42,0.25)" : "none",
+            }}
+            whileHover={
+              shouldReduce
+                ? {}
+                : {
+                  y: -4,
+                  boxShadow: card.featured
+                    ? "0 28px 70px rgba(13,27,42,0.3)"
+                    : "0 12px 40px rgba(13,27,42,0.1)",
+                }
+            }
+            transition={{ duration: 0.25 }}
+          >
+            <div
+              className={`w-12 h-12 flex items-center justify-center bg-${card.featured ? "white/10" : "primary/20"}`}
+            // style={{
+            //   background: card.featured ? "rgba(255,255,255,0.12)" : "rgba(13,27,42,0.06)",
+            // }}
+            >
+              <card.icon
+                size={22}
+                className={card.featured ? "text-white" : "text-primary"}
+              />
+            </div>
+
+            <div>
+              <h3 className={`text-xl md:text-2xl font-bold mb-3 ${card.featured ? "text-white" : "text-primary"}`}>
+                {card.title}
+              </h3>
+              <p className={`text-sm md:text-base leading-relaxed ${card.featured ? "text-white/70" : "text-muted-foreground"}`}>
+                {card.body}
+              </p>
+            </div>
+
+            {card.featured && (
+              <motion.a
+                href="#signup"
+                className="border mt-auto inline-flex items-center justify-start gap-2 text-sm font-semibold py-3 px-6 text-white bg-primary hover:bg-primary-foreground hover:text-primary transition-colors w-max"
+                whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
+              >
+                Sign Up Free <ArrowUpRight size={14} />
+              </motion.a>
+            )}
+          </motion.div>
+        </FadeIn>
+      ))}
     </div>
   );
 };
