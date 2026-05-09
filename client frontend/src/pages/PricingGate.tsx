@@ -31,13 +31,18 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
   const [year, setYear] = useState("");
   const [semester, setSemester] = useState("");
   const [openDept, setOpenDept] = useState(false);
+  const [openSchool, setOpenSchool] = useState(false);
 
   const years = ["1", "2", "3", "4", "5", "6"];
   const semestersList = ["1", "2", "3"];
 
   const { data: schools = [] } = useQuery({
     queryKey: ['schools'],
-    queryFn: async () => await getSchools(),
+    queryFn: async () => {
+      const fetchedSchools = await getSchools()
+      setSchool(String(fetchedSchools[0].id))
+      return fetchedSchools
+    },
   });
 
   const { data: departments = [] } = useQuery({
@@ -102,17 +107,46 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
         </motion.div>
 
         {/* Selection Form */}
-        <div className="max-w-md mx-auto mb-6 space-y-4 bg-card p-6 rounded-xl border border-border bg-opacity-50">
+        <div className="max-w-md mx-auto mb-6 space-y-4 bg-card p-6 border border-border bg-opacity-50">
           <h2 className="font-semibold mb-2 text-center text-lg">Select academic details</h2>
 
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col">
             <label className="text-sm font-medium">School</label>
-            <Select value={school} onValueChange={(val) => { setSchool(val); setDepartment(""); }}>
+            {/* <Select value={school} onValueChange={(val) => { setSchool(val); setDepartment(""); }}>
               <SelectTrigger><SelectValue placeholder="Select your school" /></SelectTrigger>
               <SelectContent>
                 {schools.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
               </SelectContent>
-            </Select>
+            </Select> */}
+
+            <Popover open={openSchool} onOpenChange={setOpenSchool}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={openSchool} className="justify-between" disabled={!school}>
+                  {schools.length > 0 ? schools[0].name : "Search school..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search schools..." />
+                  <CommandList>
+                    <CommandEmpty>No schools found.</CommandEmpty>
+                    <CommandGroup>
+                      {schools.map((s: any) => (
+                        <CommandItem key={s.id} value={String(s.id)} onSelect={(val) => {
+                          setSchool(val); 
+                          setDepartment("");
+                          setOpenSchool(false);
+                        }}>
+                          <Check className={`mr-2 h-4 w-4 ${school === String(s.id) ? "opacity-100" : "opacity-0"}`} />
+                          {s.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2 flex flex-col">
@@ -176,15 +210,16 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
             >
               <Card
                 className={`relative h-full text-center transition-all hover:shadow-lg ${sem.recommended
-                  ? "border-2 border-primary shadow-lg scale-[1.03]"
+                  // scale-[1.03] - add this for recommended option
+                  ? "border border-primary shadow-lg"
                   : "border-border/50"
                   }`}
               >
-                {sem.recommended && (
+                {/* {sem.recommended && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground">One time offer</Badge>
                   </div>
-                )}
+                )} */}
                 <CardHeader className="pb-4 pt-8">
                   <CardTitle className="text-xl">{sem.name}</CardTitle>
                   <CardDescription>{sem.range}</CardDescription>
@@ -194,11 +229,11 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
                     <span className="text-4xl font-bold">{sem.price}</span>
                     {/* <span className="text-muted-foreground ml-1">/semester</span> */}
                   </div>
-                  <ul className="text-sm text-muted-foreground space-y-2 flex flex-col items-center">
+                  {/* <ul className="text-sm text-muted-foreground space-y-2 flex flex-col items-center">
                     <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> All past papers & notes</li>
                     <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> AI quiz generation</li>
                     <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Pomodoro timer</li>
-                  </ul>
+                  </ul> */}
                   <Button
                     className="w-full"
                     variant={sem.recommended ? "default" : "outline"}
@@ -206,19 +241,26 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
                     disabled={!department || !year || !semester}
                     onClick={() => handleGetStarted(sem)}
                   >
-                    Get Started
+                    Proceed to payment
                   </Button>
+                  {onCancel && (
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      size="lg"
+                      onClick={onCancel}
+                    >
+                      Cancel
+                    </Button>
+                    // <div className="flex justify-center mt-6 max-w-md mx-auto">
+                    //   <Button variant="outline" onClick={onCancel} className="w-full border border-red-500">Cancel</Button>
+                    // </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
           ))}
         </div>
-
-        {onCancel && (
-          <div className="flex justify-center mt-6 max-w-md mx-auto">
-            <Button variant="outline" onClick={onCancel} className="w-full border border-red-500">Cancel</Button>
-          </div>
-        )}
       </div>
 
       {selectedSemester && (

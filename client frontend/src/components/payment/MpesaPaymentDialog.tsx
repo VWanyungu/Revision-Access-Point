@@ -105,7 +105,7 @@ const MpesaPaymentDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[calc(100%-2rem)] rounded-lg md:max-w-2xl max-h-[90vh] overflow-auto">
+      <DialogContent className="w-[calc(100%-2rem)] md:max-w-2xl max-h-[90vh] overflow-auto">
         <AnimatePresence mode="wait">
           {/* Step 1: Phone number entry */}
           {step === "phone" && (
@@ -146,7 +146,7 @@ const MpesaPaymentDialog = ({
                   )}
                 </div>
 
-                <div className="rounded-lg bg-secondary/50 p-3 text-sm text-muted-foreground">
+                <div className="bg-secondary/50 p-3 text-sm text-muted-foreground">
                   An STK prompt will be sent to your phone. Enter your M-Pesa PIN to complete the payment.
                 </div>
 
@@ -171,7 +171,7 @@ const MpesaPaymentDialog = ({
             >
               <div className="flex flex-col items-center gap-4">
                 <div className="relative">
-                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="h-16 w-16 bg-primary/10 flex items-center justify-center">
                     <Loader2 className="h-8 w-8 text-primary animate-spin" />
                   </div>
                 </div>
@@ -188,7 +188,7 @@ const MpesaPaymentDialog = ({
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="h-2 w-2 rounded-full bg-primary"
+                      className="h-2 w-2 bg-primary"
                       animate={{ opacity: [0.3, 1, 0.3] }}
                       transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
                     />

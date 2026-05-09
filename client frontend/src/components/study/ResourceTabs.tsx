@@ -19,10 +19,10 @@ interface ResourceTabsProps {
 type ResourceType = "notes" | "cats" | "exams" | "tutorials";
 
 const tabConfig = [
-  { id: "notes", label: "Notes", icon: FileText, color: "text-primary" },
-  { id: "cats", label: "CATs", icon: FileText, color: "text-warning" },
-  { id: "exams", label: "Exams", icon: FileText, color: "text-accent" },
-  { id: "tutorials", label: "Tutorials", icon: Video, color: "text-success" },
+  { id: "notes", label: "Notes" ,color: "text-primary" },
+  { id: "cats", label: "CATs" ,color: "text-warning" },
+  { id: "exams", label: "Exams" ,color: "text-accent" },
+  { id: "tutorials", label: "Tutorials", color: "text-success" },
 ];
 
 const ResourceCard = ({ resource, onGenerateQuiz, onGenerateAnswers, docViewToggleFn, resourceType }) => {
@@ -234,7 +234,7 @@ export const ResourceTabs = ({ onGenerateQuiz, onGenerateAnswers, onViewResource
               value={tab.id}
               className="m-1 flex items-center gap-2 py-3 data-[state=active]:shadow-sm"
             >
-              <tab.icon className={`h-4 w-4 hidden md:block${activeTab === tab.id ? tab.color : ""}`} />
+              {/* <tab.icon className={`h-4 w-4 hidden md:block${activeTab === tab.id ? tab.color : ""}`} /> */}
               <span className="">{tab.label}</span>
               <Badge variant="secondary" className="ml-1 text-xs hidden md:block">
                 {resources.filter((r) => r.resource_types.name === tab.id).length}
@@ -474,7 +474,7 @@ export const DisplayResourceTabs = ({ resources }) => {
               value={tab.id}
               className="m-1 flex items-center gap-2 py-3 data-[state=active]:shadow-sm"
             >
-              <tab.icon className={`h-4 w-4 hidden md:block${activeTab === tab.id ? tab.color : ""}`} />
+              {/* <tab.icon className={`h-4 w-4 hidden md:block${activeTab === tab.id ? tab.color : ""}`} /> */}
               <span className="">{tab.label}</span>
               <Badge variant="secondary" className="ml-1 text-xs hidden md:block">
                 {resources.filter((r) => r.resource_types.name === tab.id).length}
