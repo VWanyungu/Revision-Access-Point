@@ -1,13 +1,12 @@
 import { useState, useRef, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Loader } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-import { Button } from "@/components/ui/button";
-import { FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
-
-// Set up the PDF.js worker - using jsDelivr for better CORS support
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 interface PdfViewerPageProps {
   url: string;
@@ -110,15 +109,15 @@ export default function PdfViewerPage({ url, onBack }: PdfViewerPageProps) {
           {/* PDF Viewer - Continuous Scroll */}
           <div 
             ref={containerRef}
-            className="flex-1 overflow-auto bg-muted/10 flex flex-col items-center py-4"
+            className="flex-1 overflow-auto bg-muted/10 flex flex-col items-center py-4 h-full"
             onScroll={handleScroll}
           >
             <Document
               file={url}
               onLoadSuccess={onDocumentLoadSuccess}
               loading={
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-muted-foreground">Loading PDF...</div>
+                <div className="flex items-center justify-center h-full text-primary">
+                  <Loader className="h-5 w-5 animate-spin" />
                 </div>
               }
               error={
