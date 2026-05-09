@@ -3,18 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
     <title>Revision Access Point</title>
-    <meta name="description" content="Revision Access Point" />
-    <meta name="author" content="Calibre Internet and Software Solutions" />
     <link rel="icon" type="image/x-icon" href="logo.svg">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json" />
+    
+    <meta name="description" content="Revision Access Point" />
+    <meta name="author" content="Calibre Internet and Software Solutions" />
     <meta name="theme-color" content="#f8fafc" id="theme-color-meta">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-    <!-- TODO: Update og:title to match your application name -->
     <meta property="og:title" content="Revision Access Point" />
     <meta property="og:description" content="One stop shop for all notes, cats, exams and tutorials. Quizes and Pomodor included" />
     <meta property="og:type" content="website" />
@@ -32,7 +31,7 @@
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('SW registered: ', registration);
+            // console.log('SW registered: ', registration);
           }).catch(registrationError => {
             console.log('SW registration failed: ', registrationError);
           });

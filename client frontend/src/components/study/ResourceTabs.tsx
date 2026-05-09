@@ -50,6 +50,7 @@ const ResourceCard = ({ resource, onGenerateQuiz, onGenerateAnswers, docViewTogg
           <div className="flex items-start gap-4">
             {/* Icon */}
             <div className={`flex h-12 w-12 shrink-0 items-center justify-center bg-${resourceTypeColourMatrix[resourceType]}/10 `}>
+            {/* <div className={`flex h-12 w-12 shrink-0 items-center justify-center bg-warning/10 `}> */}
               <Icon className={`h-6 w-6 text-${resourceTypeColourMatrix[resourceType]}`} />
             </div>
 
@@ -100,9 +101,9 @@ const ResourceCard = ({ resource, onGenerateQuiz, onGenerateAnswers, docViewTogg
                 Generate Quiz
               </Button>
             )}
-            <Button variant="ghost" size="icon-sm">
+            {/* <Button variant="ghost" size="icon-sm">
               <Bookmark className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </div>
         </CardContent>
 
@@ -144,13 +145,13 @@ const TutorialResourceCard = ({ resource, onGenerateQuiz, docViewToggleFn }) => 
       <Card className="group relative overflow-hidden transition-shadow hover:shadow-elevated">
         <CardContent className="p-0">
           {/* Video */}
-          <div className="relative w-full pt-[56.25%] overflow-hidden rounded-t-lg">
+          <div className="relative w-full pt-[56.25%] overflow-hidden">
             <iframe
               className="absolute top-0 left-0 w-full h-full"
               src={iframeAttributes.src} // example: "https://www.youtube.com/embed/yCf2lZoRrEE"
               title={iframeAttributes.title}
               frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture;"
               allowFullScreen
             />
           </div>
@@ -159,8 +160,8 @@ const TutorialResourceCard = ({ resource, onGenerateQuiz, docViewToggleFn }) => 
           <div className="p-4">
             {/* Header */}
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <Video className="h-6 w-6 text-primary" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-success/10">
+                <Video className="h-6 w-6 text-success" />
               </div>
               <div className="flex-1 min-w-0">
                 <TruncatedText as="h3" className="block font-semibold text-base mb-1" text={resource.name} />
