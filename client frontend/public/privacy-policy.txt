@@ -1,0 +1,29 @@
+At Revision Access Point ("we," "our," or "us"), we respect your privacy and are committed to protecting your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you use our web application.
+
+1. Information We Collect
+Account Data: When you sign up via standard email/password or Google Authentication, we collect your name, email address, and profile picture (if using Google Auth).
+
+Payment Data: We process payments via the Safaricom Daraja API (M-Pesa). We collect transaction data required to verify payment (such as your phone number, transaction amount, and M-Pesa transaction code). We do not store your raw mobile money PINs or sensitive credentials.
+
+Usage Data: We may collect basic information about how you interact with our platform, such as the resources you view and access timestamps.
+
+2. How We Use Your Information
+We use the collected data to:
+
+Authenticate your identity and provide access to your account.
+
+Process and verify M-Pesa payments via the Daraja API to unlock premium resources.
+
+Provide data to the ChatPDF API strictly to enable interactive features with the notes you are viewing (your account credentials are never shared with this API).
+
+Ensure compliance with our Terms of Use and prevent unauthorized sharing or scraping of content.
+
+3. Data Storage & Security
+Cloud Storage: The resources and notes are hosted securely on cloud object storage.
+
+Third-Party Processing: We utilize trusted third-party authentication and API providers to handle login mechanics and document interactions securely.
+
+Data Retention: We retain your account and subscription history for as long as your account is active or as needed to provide you services and comply with statutory financial record-keeping laws.
+
+4. Your Rights
+Depending on your location (including under the Kenya Data Protection Act), you have the right to access the personal data we hold about you, request corrections, or ask for the deletion of your account data. To exercise these rights, please contact us at [Your Support Email].

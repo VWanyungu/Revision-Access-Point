@@ -1,0 +1,40 @@
+Welcome to Revision Access Point. By accessing or using our web application, you agree to be bound by these Terms of Use. If you do not agree, please do not use the service.
+
+1. Description of Service
+Revision Access Point provides a platform for users to view curated, watermarked educational or professional notes and resources.
+
+View-Only Access: Users are granted a limited, non-exclusive, non-transferable right to view content. Users cannot upload their own notes to the platform.
+
+Admin-Generated Content: All content is uploaded and managed exclusively by the platform administrators.
+
+2. Subscriptions, Paywalls, and Payments
+Paywall Requirements: Access to specific resources requires payment of a fee before access is granted.
+
+Access Duration: Payments grant access to the specified resources for a strict, set period of time (e.g., daily, monthly, or semester-based access) as indicated at the time of purchase.
+
+Payment Processor: All local payments are processed securely through Safaricom M-Pesa (Daraja API). You agree to provide accurate phone and transaction details.
+
+Refund Policy: Due to the digital nature of the content, all purchases are final and non-refundable once access to the resources has been granted.
+
+3. Intellectual Property & Acceptable Use
+
+Prohibited Activities: You explicitly agree NOT to:
+
+Attempt to download, scrape, screenshot, print, or extract text from the resources unless an explicit download feature is provided by the admin.
+
+Share your account credentials with third parties to bypass the paywall.
+
+Remove, alter, or obscure any watermarks visible on the content.
+
+Use automated scripts, bots, or browser extensions to scrape or systematically view the content.
+
+Termination: We reserve the right to suspend or terminate your account immediately, without a refund, if we detect suspicious activity, account sharing, or attempts to circumvent our content security measures.
+
+4. Limitation of Liability
+The resources provided on this platform are for informational and educational purposes. While we strive for accuracy, Revision Access Point and its admins are not liable for any errors, omissions, or outcomes resulting from the use of these notes. The service is provided on an "as-is" and "as-available" basis.
+
+5. Governing Law
+These Terms are governed by and construed in accordance with the laws of Kenya, without regard to its conflict of law principles.
+
+6. Changes to Terms
+We may update these terms from time to time. Continued use of the platform after updates indicates your acceptance of the revised Terms.

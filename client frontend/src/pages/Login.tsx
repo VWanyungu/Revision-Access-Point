@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, BookOpen, ArrowRight, GraduationCap, Brain, Timer, PersonStanding, User, User2, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +6,21 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/database/supabase";
 import { toast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface LoginProps {
   onLogin: () => void;
   defaultSignUp?: boolean;
 }
+
+type Policy = 'privacy-policy' | 'terms-of-use' | ''
 
 const features = [
   { icon: GraduationCap, title: "Structured Learning", description: "Access notes, CATs, and exams organized by unit" },
@@ -25,6 +34,7 @@ const Login = ({ onLogin, defaultSignUp = false }: LoginProps) => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSignUp, setShowSignUp] = useState(defaultSignUp);
+  const [showPolicy, setShowPolicy] = useState<Policy>('')
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -394,12 +404,136 @@ const Login = ({ onLogin, defaultSignUp = false }: LoginProps) => {
                   Sign in
                 </a>
               </p>
+
+              <p className="mt-6 text-center text-sm text-muted-foreground">
+                By signing up, you agree to our{" "}
+                <a href="#" className="text-primary font-medium hover:underline" onClick={() => { setShowPolicy('privacy-policy') }}>
+                  Privacy policy
+                </a>
+                {" "} and {""}
+                <a href="#" className="text-primary font-medium hover:underline" onClick={() => { setShowPolicy('terms-of-use') }}>
+                  Terms of use
+                </a>
+              </p>
+
             </CardContent>
           </Card>
         </motion.div>
       </div>)}
+
+      
+      <Dialog open={showPolicy != '' ? true : false} onOpenChange={() => setShowPolicy('')}>
+        <DialogContent className="w-[calc(100%-2rem)] md:max-w-2xl max-h-[90vh] overflow-auto">
+          <AnimatePresence mode="wait">
+            
+            <motion.div
+              key="phone"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DialogHeader className="mb-6">
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  {showPolicy == 'privacy-policy' ? 'Privacy Policy' : 'Terms of use'}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="bg-secondary/50 p-3 text-sm text-muted-foreground">
+                  {showPolicy == 'privacy-policy' ? <PrivacyPolicy/> : <TermsOfUse/>}
+                </div>
+              </div>
+            </motion.div>
+
+          </AnimatePresence>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
+
+const PrivacyPolicy = () => {
+  return (
+    <p>
+      At Revision Access Point ("we," "our," or "us"), we respect your privacy and are committed to protecting your personal data. This Privacy Policy explains how we collect, use, and safeguard your information when you use our web application.
+
+      <br/><br/>1. Information We Collect
+      Account Data: When you sign up via standard email/password or Google Authentication, we collect your name, email address, and profile picture (if using Google Auth).
+
+      Payment Data: We process payments via the Safaricom Daraja API (M-Pesa). We collect transaction data required to verify payment (such as your phone number, transaction amount, and M-Pesa transaction code). We do not store your raw mobile money PINs or sensitive credentials.
+
+      Usage Data: We may collect basic information about how you interact with our platform, such as the resources you view and access timestamps.
+
+      <br/><br/>2. How We Use Your Information
+      We use the collected data to:
+
+      Authenticate your identity and provide access to your account.
+
+      Process and verify M-Pesa payments via the Daraja API to unlock premium resources.
+
+      Provide data to the ChatPDF API strictly to enable interactive features with the notes you are viewing (your account credentials are never shared with this API).
+
+      Ensure compliance with our Terms of Use and prevent unauthorized sharing or scraping of content.
+
+      <br/><br/>3. Data Storage & Security
+      Cloud Storage: The resources and notes are hosted securely on cloud object storage.
+
+      Third-Party Processing: We utilize trusted third-party authentication and API providers to handle login mechanics and document interactions securely.
+
+      Data Retention: We retain your account and subscription history for as long as your account is active or as needed to provide you services and comply with statutory financial record-keeping laws.
+
+      <br/><br/>4. Your Rights
+      Depending on your location (including under the Kenya Data Protection Act), you have the right to access the personal data we hold about you, request corrections, or ask for the deletion of your account data. To exercise these rights, please contact us at vwanyungu254@gmail.com.
+    </p>
+  )
+}
+
+const TermsOfUse = () => {
+  return (
+    <p>
+      Welcome to Revision Access Point. By accessing or using our web application, you agree to be bound by these Terms of Use. If you do not agree, please do not use the service.
+
+      <br/><br/>1. Description of Service
+      Revision Access Point provides a platform for users to view curated, watermarked educational or professional notes and resources.
+
+      View-Only Access: Users are granted a limited, non-exclusive, non-transferable right to view content. Users cannot upload their own notes to the platform.
+
+      Admin-Generated Content: All content is uploaded and managed exclusively by the platform administrators.
+
+      <br/><br/>2. Subscriptions, Paywalls, and Payments
+      Paywall Requirements: Access to specific resources requires payment of a fee before access is granted.
+
+      Access Duration: Payments grant access to the specified resources for a strict, set period of time (e.g., daily, monthly, or semester-based access) as indicated at the time of purchase.
+
+      Payment Processor: All local payments are processed securely through Safaricom M-Pesa (Daraja API). You agree to provide accurate phone and transaction details.
+
+      Refund Policy: Due to the digital nature of the content, all purchases are final and non-refundable once access to the resources has been granted.
+
+      <br/><br/>3. Intellectual Property & Acceptable Use
+
+      Prohibited Activities: You explicitly agree NOT to:
+
+      Attempt to download, scrape, screenshot, print, or extract text from the resources unless an explicit download feature is provided by the admin.
+
+      Share your account credentials with third parties to bypass the paywall.
+
+      Remove, alter, or obscure any watermarks visible on the content.
+
+      Use automated scripts, bots, or browser extensions to scrape or systematically view the content.
+
+      Termination: We reserve the right to suspend or terminate your account immediately, without a refund, if we detect suspicious activity, account sharing, or attempts to circumvent our content security measures.
+
+      <br/><br/>4. Limitation of Liability
+      The resources provided on this platform are for informational and educational purposes. While we strive for accuracy, Revision Access Point and its admins are not liable for any errors, omissions, or outcomes resulting from the use of these notes. The service is provided on an "as-is" and "as-available" basis.
+
+      <br/><br/>5. Governing Law
+      These Terms are governed by and construed in accordance with the laws of Kenya, without regard to its conflict of law principles.
+
+      <br/><br/>6. Changes to Terms
+      We may update these terms from time to time. Continued use of the platform after updates indicates your acceptance of the revised Terms.
+    </p>
+  )
+}
 
 export default Login;
