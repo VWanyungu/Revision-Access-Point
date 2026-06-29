@@ -2,7 +2,7 @@ import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-mot
 import {
   BookOpen, Brain, Timer, FileText, ArrowRight, Check,
   PlayCircle, GraduationCap, Play, ChevronLeft, ChevronRight,
-  Database, Banknote, Sparkles, Shield, ArrowUpRight, Linkedin, Twitter
+  Database, Banknote, Sparkles, Shield, ArrowUpRight, Linkedin, Twitter, Quote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -152,6 +152,30 @@ const whyCards = [
     featured: false,
   },
 ];
+
+const testimonialCards = [
+  {
+    name: "Elon Ogonji",
+    role: "Student",
+    org: "Masinde Muliro University of Science and Technology",
+    title: "Student at Masinde Muliro University of Science and Technology",
+    quote: "This app has made studying much easier. I no longer spend hours looking for notes or past papers because everything is organized in one place. The AI quizzes are also a great way to test my understanding before exams."
+  },
+  {
+    name: "Sarah Sofia",
+    role: "Student",
+    org: "Masinde Muliro University of Science and Technology",
+    title: "Student at Masinde Muliro University of Science and Technology",
+    quote: "The collection of notes, CATs, tutorials, and past exams has been incredibly helpful throughout the semester. I especially like the AI-generated answers because they help me understand how to approach different types of questions."
+  },
+  {
+    name: "Emmanuel Sila",
+    role: "Student",
+    org: "Masinde Muliro University of Science and Technology",
+    title: "Student at Masinde Muliro University of Science and Technology",
+    quote: "What stands out for me is how much time this app saves. Instead of searching through different groups for study materials, I can access everything in one platform. The AI quizzes make revision more engaging and help me identify topics I need to improve."
+  }
+]
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -305,6 +329,20 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
         </FadeIn>
 
         <WhySection />
+      </section>
+
+      {/* testimonials */}
+      <section className="border-t pt-6 pb-12 md:py-16 max-w-7xl mx-auto px-6 md:px-8">
+        <FadeIn>
+          <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">testimonials</p>
+          <div className="flex flex-col mb-8">
+            <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
+              What our <span className="text-primary font-bold">users</span> say
+            </h2>
+          </div>
+        </FadeIn>
+
+        <TestimonialsSection />
       </section>
 
       {/* ── Contact — full viewport height ────────────────────────────────── */}
@@ -562,6 +600,37 @@ const WhySection = () => {
               </motion.a>
             )}
           </motion.div>
+        </FadeIn>
+      ))}
+    </div>
+  );
+};
+
+const TestimonialsSection = () => {
+  const shouldReduce = useReducedMotion();
+
+  return (
+    <div className="grid md:grid-cols-3 gap-6">
+      {testimonialCards.map((card, i) => (
+        <FadeIn key={i} delay={i * 0.1}>
+         <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.7 + i * 0.15 }}
+              className="bg-background p-8 flex flex-col justify-between group hover:bg-card transition-all duration-400"
+            >
+              <div>
+                <Quote size={28} className="text-primary/30 mb-4" />
+                <p className="text-sm md:text-base text-muted-foreground leading-relaxed mb-6 font-editorial">
+                  "{card.quote}"
+                </p>
+              </div>
+              <div className="border-t border-border pt-4">
+                <p className="text-sm font-semibold text-muted-foreground">{card.name}</p>
+                <p className="text-xs text-muted-foreground">{card.role}, {card.org}</p>
+              </div>
+            </motion.div>
         </FadeIn>
       ))}
     </div>
