@@ -14,6 +14,12 @@ services:
     # env_file:
     #   - .env
 
+  rap_admin_frontend:
+      image: wanyungu/revision-access-point-admin:latest
+      restart: unless-stopped
+      networks:
+        - internet-facing
+
 networks:
   internet-facing:
     external: true

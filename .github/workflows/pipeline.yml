@@ -21,6 +21,10 @@ jobs:
           - context: ./clientFrontend
             dockerfile: ./clientFrontend/Dockerfile
             image: revision-access-point-main
+
+          - context: ./adminFrontend
+            dockerfile: ./adminFrontend/Dockerfile
+            image: revision-access-point-admin
   
     steps:
       - name: Checkout code
