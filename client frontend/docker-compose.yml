@@ -1,5 +1,5 @@
 services:
-  frontend:
+  rap-client-frontend:
     build: .
     image: wanyungu/revision-access-point-main:latest
     ports:
