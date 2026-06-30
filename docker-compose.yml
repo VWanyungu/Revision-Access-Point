@@ -1,6 +1,8 @@
 services:
   rap-client-frontend:
-    build: .
+    # build:
+    #   context: ./clientFrontend
+    #   dockerfile: Dockerfile
     image: wanyungu/revision-access-point-main:latest
     networks:
       - internet-facing
