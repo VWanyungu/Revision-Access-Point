@@ -21,6 +21,10 @@ jobs:
           - context: ./clientFrontend
             dockerfile: ./clientFrontend/Dockerfile
             image: revision-access-point-main
+
+          - context: ./adminFrontend
+            dockerfile: ./adminFrontend/Dockerfile
+            image: revision-access-point-admin
   
     steps:
       - name: Checkout code
@@ -49,6 +53,18 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Deploy project over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+           cd projects/rap
+           docker compose down
+           docker compose up -d
 
       # - name: Extract metadata for Docker
       #   id: meta
