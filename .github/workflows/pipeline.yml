@@ -57,7 +57,7 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,,scope=${{ matrix.image }}, mode=min
+          cache-to: type=gha,scope=${{ matrix.image }}, mode=min
 
       - name: Deploy project over SSH
         uses: appleboy/ssh-action@v1
