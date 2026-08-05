@@ -27,10 +27,10 @@ jobs:
             dockerfile: ./clientFrontend/Dockerfile
             image: revision-access-point-main
 
-          - context: ./adminFrontend
-            dockerfile: ./adminFrontend/Dockerfile
-            image: revision-access-point-admin
-  
+          # - context: ./adminFrontend
+          #   dockerfile: ./adminFrontend/Dockerfile
+          #   image: revision-access-point-admin
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -53,6 +53,11 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
+          build-args: |
+            VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+            VITE_FRONTEND_URL=${{ secrets.VITE_FRONTEND_URL }}
+            VITE_SEMESTER_PRICE=${{ secrets.VITE_SEMESTER_PRICE }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
@@ -67,9 +72,9 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-           cd projects/rap
-           docker compose down
-           docker compose up -d
+            cd projects/rap
+            docker compose down
+            docker compose up -d
 
       # - name: Extract metadata for Docker
       #   id: meta
@@ -89,22 +94,22 @@ jobs:
       #      # Get the first service name
       #       SERVICE_NAME=$(docker-compose config --services | head -n1)
       #       echo "Service name: $SERVICE_NAME"
-            
+
       #       # Get the first tag safely
       #       FIRST_TAG=$(echo '${{ steps.meta.outputs.tags }}' | cut -d',' -f1 | tr -d '\n')
       #       echo "First tag: $FIRST_TAG"
-            
+
       #       if [ -z "$FIRST_TAG" ]; then
       #         echo "Error: FIRST_TAG is empty"
       #         exit 1
       #       fi
-            
+
       #       # Check if docker-compose.yml exists
       #       if [ ! -f "docker-compose.yml" ]; then
       #         echo "Error: docker-compose.yml not found"
       #         exit 1
       #       fi
-            
+
       #       # Update docker-compose.yml with the new tag
       #       sed -i "s|image:.*|image: ${FIRST_TAG}|g" docker-compose.yml
       #       echo "Updated docker-compose.yml:"
