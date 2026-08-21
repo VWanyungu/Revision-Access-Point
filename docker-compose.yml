@@ -1,24 +1,25 @@
 services:
   rap_client_frontend:
-    image: wanyungu/revision-access-point-main:latest
-    #container_name: rap_frontend_app
     restart: unless-stopped
     networks:
       - internet-facing
-    # build:
-    #   context: ./clientFrontend
-    #   dockerfile: Dockerfile
+    build:
+      context: ./clientFrontend
+      dockerfile: Dockerfile
 
-    # ports:
-    #   - "8080:8080"
-    # env_file:
-    #   - .env
+    ports:
+      - "8080:8080"
 
   rap_admin_frontend:
-      image: wanyungu/revision-access-point-admin:latest
-      restart: unless-stopped
-      networks:
-        - internet-facing
+    restart: unless-stopped
+    networks:
+      - internet-facing
+    build:
+      context: ./adminFrontend
+      dockerfile: Dockerfile
+
+    ports:
+      - "8080:8080"
 
 networks:
   internet-facing:
