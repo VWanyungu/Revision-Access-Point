@@ -1,26 +1,26 @@
 services:
   rap_client_frontend:
     restart: unless-stopped
-    networks:
-      - internet-facing
+    # networks:
+    #   - internet-facing
     build:
       context: ./clientFrontend
       dockerfile: Dockerfile
 
     ports:
-      - "8080:8080"
+      - "8081:80"
 
   rap_admin_frontend:
     restart: unless-stopped
-    networks:
-      - internet-facing
+    # networks:
+    #   - internet-facing
     build:
       context: ./adminFrontend
       dockerfile: Dockerfile
 
     ports:
-      - "8080:8080"
+      - "8080:80"
 
-networks:
-  internet-facing:
-    external: true
+# networks:
+#   internet-facing:
+#     external: true
