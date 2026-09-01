@@ -1,0 +1,17 @@
+project: "Wanyungu's project"
+project_id: 80c5ac3f-2269-4951-9577-0fbc9f4c33ff
+deployment:
+  - container_name: vector-rap-client
+    image: wanyungu/vector-rap-client
+    port: 8081
+    path: .
+    strategy: rolling
+    replicas: 1
+    service: app
+    resources:
+      cpu: 1
+      memory: 512
+host:
+  name: rap-contabo-host
+  machine_id: srv_f2faba923e6032c3
+  docker_user: wanyungu
