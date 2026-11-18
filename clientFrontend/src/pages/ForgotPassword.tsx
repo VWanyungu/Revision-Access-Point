@@ -1,90 +1,77 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Mail, ArrowRight, ArrowLeft, Loader } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { EnvelopeSimple } from "@phosphor-icons/react";
 import { supabase } from "@/database/supabase";
-import { toast } from "@/hooks/use-toast";
+import {
+  AuthPage, Heading, Field, AuthButton, SwitchLine, TextLink, IconBadge, Tip, Spacer, useCooldown,
+} from "@/components/auth/AuthKit";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const cooldown = useCooldown(60);
+  const navigate = useNavigate();
+  const toSignIn = () => navigate("/login");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const sendLink = async () => {
+    setError("");
     setIsLoading(true);
-
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${import.meta.env.VITE_FRONTEND_URL}/reset-password`,
     });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message || "An error occurred. Please try again.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    toast({
-      title: "Check your email",
-      description: "We have sent you a password reset link.",
-    });
-
     setIsLoading(false);
+    if (error) {
+      setError("We couldn’t send the link. Check the address and try again.");
+      return false;
+    }
+    cooldown.restart();
+    return true;
   };
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <Link to="/" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to login
-        </Link>
-        <Card className="shadow-elevated border-border/50">
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
-            <CardDescription>
-              Enter your email address and we'll send you a link to reset your password.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="student@university.edu"
-                    className="pl-10"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await sendLink()) setSent(true);
+  };
 
-              <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                {isLoading ? (
-                  <Loader className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    Send reset link
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+  if (sent) {
+    return (
+      <AuthPage back={{ label: "Sign in", onClick: toSignIn }} topGap="md">
+        <IconBadge><EnvelopeSimple size={28} /></IconBadge>
+        <Heading title="Check your email">
+          If there is an account for {email}, a reset link is on its way. It works once, for 1 hour.
+        </Heading>
+        <Tip title="Can’t find it?">
+          Check Spam and Promotions. If you signed up with Google, use Continue with Google instead; there is no password to reset.
+        </Tip>
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        <Spacer />
+        <AuthButton type="button" variant="outline" disabled={cooldown.left > 0 || isLoading} onClick={sendLink}>
+          {cooldown.left > 0 ? `Resend link in ${cooldown.label}` : "Resend link"}
+        </AuthButton>
+        <TextLink onClick={() => setSent(false)}>Use a different email</TextLink>
+      </AuthPage>
+    );
+  }
+
+  return (
+    <AuthPage back={{ label: "Sign in", onClick: toSignIn }}>
+      <Heading title="Reset your password">
+        Enter the email you signed up with. We will send a link to choose a new password.
+      </Heading>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Field
+          id="email" label="Email" type="email" autoComplete="email" required
+          placeholder="student@university.edu"
+          value={email} onChange={setEmail} error={error}
+        />
+        <AuthButton type="submit" disabled={isLoading}>
+          {isLoading ? "Please wait…" : "Send reset link"}
+        </AuthButton>
+      </form>
+      <SwitchLine text="Remembered it?" action="Sign in" onClick={toSignIn} />
+    </AuthPage>
   );
 };
 

@@ -1,25 +1,12 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
-  ArrowLeft,
-  BookOpen,
-  Calculator,
-  FileText,
-  Lightbulb,
-  PenLine,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  Hash,
-  Star,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+  ArrowRight, ArrowsClockwise, ArrowUpRight, CaretDown, CircleHalf, DownloadSimple, Info, ListChecks,
+} from "@phosphor-icons/react";
 import { StepRenderer } from "@/components/study/StepRenderer";
 import { MixedContentRenderer } from "@/components/study/MixedContentRenderer";
-
-// ─── Types ──────────────────────────────────────────────────────────────────
+import PageCrumbs from "@/components/layout/PageCrumbs";
+import { EASE, QuietButton, formatDate } from "@/components/pay/PayKit";
 
 interface MarksBreakdown {
   step: string;
@@ -55,273 +42,281 @@ export interface AnswerQuestion {
 
 export interface AnswersData {
   document_title: string;
+  /** ISO time the answers were generated and saved on this device. */
+  savedAt?: string;
   questions: AnswerQuestion[];
 }
 
 interface AnswersPageProps {
-  data: AnswersData;
+  data: AnswersData | null;
+  generating?: boolean;
+  /** The paper's title, e.g. "CAT 2, 2025/26". */
+  title: string;
   onBack: () => void;
+  onOpenPaper?: () => void;
+  onRegenerate?: () => void;
+  onQuiz?: () => void;
+  downloadUrl?: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+/*
+ * Flat, warm-monochrome page: hairline #EAEAEA borders, charcoal text, muted #787774 for secondary text,
+ * no shadows. Rank comes from size and weight: title 56 / question 28 / answer 18 / body 15 / labels 12.
+ */
+const label = "text-xs font-medium uppercase tracking-[0.08em] text-ink-muted";
+const badge = "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium";
+const outline = "inline-flex items-center gap-2 rounded-full border border-line-soft bg-surface px-4 text-sm font-medium text-ink transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-field-soft active:scale-[0.98]";
 
-const answerTypeConfig: Record<
-  AnswerQuestion["answer_type"],
-  { label: string; icon: React.ElementType; color: string; bg: string }
-> = {
-  calculation: {
-    label: "Calculation",
-    icon: Calculator,
-    color: "text-blue-500",
-    bg: "bg-blue-500/10",
-  },
-  theory: {
-    label: "Theory",
-    icon: BookOpen,
-    color: "text-purple-500",
-    bg: "bg-purple-500/10",
-  },
-  definition: {
-    label: "Definition",
-    icon: FileText,
-    color: "text-green-500",
-    bg: "bg-green-500/10",
-  },
-  essay: {
-    label: "Essay",
-    icon: PenLine,
-    color: "text-orange-500",
-    bg: "bg-orange-500/10",
-  },
-};
+const Generating = ({ title, onBack }: { title: string; onBack: () => void }) => (
+  <div className="mx-auto max-w-[560px] px-5 pb-24 pt-10 font-geist text-ink md:pt-20">
+    <h1 className="text-2xl font-medium">Writing model answers</h1>
+    <p className="mt-3 text-base text-ink-muted">
+      {title ? `${title}. ` : ""}This usually takes under a minute. You can go back to the paper; we will keep working and save the answers for next time.
+    </p>
+    <div className="mt-8 flex items-start gap-3" role="status">
+      <CircleHalf size={20} weight="fill" className="mt-0.5 shrink-0 animate-pulse text-info-fg" />
+      <p className="text-base font-medium">Writing answers</p>
+    </div>
+    <div className="mt-8 flex flex-col gap-3 pt-8" aria-hidden>
+      {[35, 100, 92, 100, 70].map((w, i) => (
+        <div key={i} style={{ width: `${w}%` }} className="h-2.5 animate-pulse rounded-full bg-field-soft" />
+      ))}
+    </div>
+    <QuietButton tone="soft" className="mt-8" onClick={onBack}>Back to the paper</QuietButton>
+  </div>
+);
 
-// ─── Question Card ───────────────────────────────────────────────────────────
-
-const QuestionCard = ({
-  question,
-  index,
-}: {
-  question: AnswerQuestion;
-  index: number;
+const QuestionSection = ({ q, index, last, onNext, onQuiz }: {
+  q: AnswerQuestion; index: number; last: boolean; onNext: () => void; onQuiz?: () => void;
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  const typeConfig = answerTypeConfig[question.answer_type] ?? answerTypeConfig.theory;
-  const TypeIcon = typeConfig.icon;
-
+  const reduce = useReducedMotion();
+  const breakdown = q.marks_allocation?.breakdown ?? [];
+  const steps = q.answer.working_steps ?? [];
+  const keyPoints = q.key_points ?? [];
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+    <motion.section
+      id={`q-${index}`}
+      data-index={index}
+      initial={reduce ? false : { opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-8% 0px" }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className="scroll-mt-28 rounded-xl border border-line-soft bg-surface p-6 md:p-10"
     >
-      <Card className="overflow-hidden transition-shadow hover:shadow-md">
-        {/* Question Header */}
-        <CardHeader
-          className="cursor-pointer select-none p-4 pb-3"
-          onClick={() => setExpanded((p) => !p)}
-        >
-          <div className="flex items-start gap-3">
-            {/* Number badge */}
-            <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-sm ${typeConfig.bg} ${typeConfig.color}`}
-            >
-              {question.question_number}
+      {/* Where you are */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`${badge} bg-field-soft text-ink-soft`}>Q{q.question_number}</span>
+        <span className={`${badge} bg-info-bg text-info-fg`}>{q.marks_allocation?.total_marks} marks</span>
+        {q.answer_type && <span className={`${badge} bg-field-soft capitalize text-ink-muted`}>{q.answer_type}</span>}
+      </div>
+
+      {/* The question: largest text in the card */}
+      <h2 className="mt-5 text-balance text-xl font-medium text-ink md:text-2xl">{q.question_text}</h2>
+
+      {/* The answer: set apart on a flat warm panel */}
+      <div className="mt-8 rounded-lg bg-field-soft p-5 md:p-7">
+        <p className={label}>Model answer</p>
+        <div className="mt-3 text-lg text-ink-soft md:text-lg [&_p:last-child]:mb-0 [&_p]:mb-4">
+          <MixedContentRenderer text={q.answer.final_answer} />
+        </div>
+      </div>
+
+      {/* Supporting detail, quieter */}
+      {steps.length > 0 && (
+        <div className="mt-8">
+          <p className={label}>Working</p>
+          <ol className="mt-3 flex flex-col gap-3 text-base text-ink-soft">
+            {steps.map((step, i) => (
+              <li key={i} className="flex gap-4">
+                <span className="w-5 shrink-0 text-sm text-ink-muted">{i + 1}.</span>
+                <div className="min-w-0 flex-1"><StepRenderer step={step} /></div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {q.answer.explanation && (
+        <div className="mt-8">
+          <p className={label}>Explanation</p>
+          <p className="mt-3 max-w-[62ch] text-base text-ink-muted">{q.answer.explanation}</p>
+        </div>
+      )}
+
+      {(keyPoints.length > 0 || breakdown.length > 0) && (
+        <div className="mt-8 grid gap-8 border-t border-line-soft pt-8 md:grid-cols-2 md:gap-12">
+          {keyPoints.length > 0 && (
+            <div>
+              <p className={label}>How to answer it</p>
+              <ol className="mt-3 flex flex-col gap-2.5 text-base text-ink-soft">
+                {keyPoints.map((p, i) => (
+                  <li key={i} className="flex gap-3"><span className="w-5 shrink-0 text-sm text-ink-muted">{i + 1}.</span>{p}</li>
+                ))}
+              </ol>
             </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <Badge
-                  variant="secondary"
-                  className={`text-xs gap-1 ${typeConfig.color} ${typeConfig.bg} border-0`}
-                >
-                  <TypeIcon className="h-3 w-3" />
-                  {typeConfig.label}
-                </Badge>
-                <Badge variant="outline" className="text-xs gap-1">
-                  {/* <Star className="h-3 w-3 text-yellow-500" /> */}
-                  {question.marks_allocation.total_marks} marks
-                </Badge>
-              </div>
-
-              <CardTitle className="text-sm font-normal">
-                {question.question_text}
-                {/* <p className="text-sm">{question.question_text}</p> */}
-              </CardTitle>
-            </div>
-
-            <button className="shrink-0 text-muted-foreground ml-1 mt-1">
-              {expanded ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </CardHeader>
-
-        {/* Expanded Answer Content */}
-        <AnimatePresence initial={false}>
-          {expanded && (
-            <motion.div
-              key="content"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="overflow-hidden"
-            >
-              <CardContent className="pt-0 px-4 pb-4 space-y-4">
-                <div className="border-t border-border pt-4 space-y-4">
-
-                  {/* Final Answer */}
-                  <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
-                    <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">
-                      Final Answer
-                    </p>
-                    {/* <p className="text-sm">{question.answer.final_answer}</p> */}
-                    <MixedContentRenderer text={question.answer.final_answer} />
-                  </div>
-
-                  {/* Working Steps */}
-                  {question.answer.working_steps?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                        <Hash className="h-3 w-3" />
-                        Working / Steps
-                      </p>
-                      <ol className="space-y-2">
-                        {question.answer.working_steps.map((step, i) => (
-                          <li key={i} className="flex gap-2 text-sm">
-                            <span className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-semibold">
-                              {i + 1}
-                            </span>
-                            {/* <span className="leading-snug">{step}</span> */}
-                              <StepRenderer key={i} step={step} />
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-
-                  {/* Explanation */}
-                  {question.answer.explanation && (
-                    <div className="rounded-lg bg-muted/50 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                        <Lightbulb className="h-3 w-3" />
-                        Explanation
-                      </p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {question.answer.explanation}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Key Points */}
-                  {question.key_points?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                        Key Points
-                      </p>
-                      <ul className="space-y-1">
-                        {question.key_points.map((point, i) => (
-                          <li key={i} className="flex gap-2 text-sm">
-                            <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 mt-0.5" />
-                            <span>{point}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Marks Breakdown */}
-                  {question.marks_allocation.breakdown?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                        Marks Breakdown
-                      </p>
-                      <div className="space-y-1">
-                        {question.marks_allocation.breakdown.map((item, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center justify-between text-sm rounded-md px-3 py-1.5 bg-muted/40"
-                          >
-                            <span className="text-muted-foreground">{item.step}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {item.marks} mark{Number(item.marks) !== 1 ? "s" : ""}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              </CardContent>
-            </motion.div>
           )}
-        </AnimatePresence>
-      </Card>
-    </motion.div>
+          {breakdown.length > 0 && (
+            <div>
+              <p className={label}>How the marks are awarded</p>
+              <ul className="mt-3 flex flex-col text-base text-ink-soft">
+                {breakdown.map((b, i) => (
+                  <li key={i} className="flex items-start justify-between gap-4 border-b border-line-soft py-2.5 first:pt-0 last:border-b-0">
+                    <span>{b.step}</span>
+                    <span className="shrink-0 tabular-nums text-ink-muted">{b.marks}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(!last || onQuiz) && (
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          {onQuiz && (
+            <button onClick={onQuiz} className={`${badge} h-10 gap-2 bg-info-bg px-4 text-sm text-info-fg transition-[opacity,transform] duration-300 hover:opacity-80 active:scale-[0.98]`}>
+              Quiz yourself <ArrowRight size={14} />
+            </button>
+          )}
+          {!last && (
+            <button onClick={onNext} className={`${outline} h-10`}>
+              Next: Question {index + 2} <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+      )}
+    </motion.section>
   );
 };
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+export default function AnswersPage({ data, generating, title, onBack, onOpenPaper, onRegenerate, onQuiz, downloadUrl }: AnswersPageProps) {
+  const [active, setActive] = useState(0);
+  const [sheet, setSheet] = useState(false);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const trayRef = useRef<HTMLDivElement>(null);
 
-export default function AnswersPage({ data, onBack }: AnswersPageProps) {
-  const totalMarks = data.questions.reduce(
-    (sum, q) => sum + (Number(q.marks_allocation.total_marks) || 0),
-    0
+  useEffect(() => {
+    if (!data || !mainRef.current) return;
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && setActive(Number((e.target as HTMLElement).dataset.index))),
+      { rootMargin: "-30% 0px -60% 0px" },
+    );
+    mainRef.current.querySelectorAll("section[data-index]").forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [data]);
+
+  // Keep the current question in view inside the index without moving the page.
+  useEffect(() => {
+    const tray = trayRef.current;
+    const el = tray?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!tray || !el) return;
+    if (el.offsetTop < tray.scrollTop || el.offsetTop + el.offsetHeight > tray.scrollTop + tray.clientHeight) {
+      tray.scrollTo({ top: el.offsetTop - tray.clientHeight / 2, behavior: "smooth" });
+    }
+  }, [active]);
+
+  if (generating) return <Generating title={title} onBack={onBack} />;
+
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-[560px] px-5 pb-24 pt-16 font-geist text-ink">
+        <h1 className="text-2xl font-medium">No answers yet</h1>
+        <p className="mt-3 text-base text-ink-muted">Open a past paper and choose Model answers.</p>
+        <QuietButton tone="soft" className="mt-6" onClick={onBack}>Back</QuietButton>
+      </div>
+    );
+  }
+
+  const count = data.questions.length;
+  const jump = (i: number) => { setSheet(false); document.getElementById(`q-${i}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  const heading = title || data.document_title;
+
+  const list = (
+    <ul className="flex flex-col gap-0.5">
+      {data.questions.map((q, i) => (
+        <li key={i}>
+          <button
+            onClick={() => jump(i)}
+            aria-current={active === i ? "true" : undefined}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-300 ${active === i ? "bg-field-soft font-medium text-ink" : "text-ink-muted hover:bg-field-soft/70 hover:text-ink"}`}
+          >
+            <span className="w-9 shrink-0 text-sm text-ink-muted">{q.question_number}</span>
+            <span className="min-w-0 flex-1 truncate">{q.question_text}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 
+  // Number of questions and when they were written; nothing else.
+  const stats = [
+    { n: count, l: count === 1 ? "question" : "questions" },
+    ...(data.savedAt ? [{ n: formatDate(new Date(data.savedAt)), l: "uploaded" }] : []),
+  ];
+
   return (
-    <div className="space-y-6 w-full md:px-6 lg:px-72 py-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="px-6 md:px-0"
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="mb-4 gap-2 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Resources
-        </Button>
+    <div className="font-geist text-ink">
+      <PageCrumbs onHome={onBack} trail={[{ label: heading, onClick: onOpenPaper }]} current="Model answers" />
 
-        <Card className="gradient-primary text-primary-foreground overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex flex-col gap-2">
-              <p className="text-primary-foreground/70 text-sm">Generated Answers</p>
-              <h1 className="text-2xl font-bold leading-snug">{data.document_title}</h1>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <Badge
-                  variant="default"
-                  className="font-light border border-primary-foreground/20"
-                >
-                  {data.questions.length} question{data.questions.length !== 1 ? "s" : ""}
-                </Badge>
-                {totalMarks > 0 && (
-                  <Badge
-                    variant="default"
-                    className="font-light border border-primary-foreground/20"
-                  >
-                    {totalMarks} total marks
-                  </Badge>
-                )}
+      <div className="mx-auto max-w-[1200px] px-4 pb-28 pt-10 md:px-8 md:pb-32 md:pt-16">
+        <header>
+          <h1 className="max-w-[18ch] text-balance text-3xl font-medium md:text-4xl">{heading}</h1>
+
+          <dl className="mt-7 flex flex-wrap gap-x-10 gap-y-4">
+            {stats.map((s) => (
+              <div key={s.l}>
+                <dd className="text-xl font-medium tabular-nums">{s.n}</dd>
+                <dt className="mt-0.5 text-sm text-ink-muted">{s.l}</dt>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+            ))}
+          </dl>
 
-      {/* Questions */}
-      <div className="px-6 md:px-0 space-y-3">
-        {data.questions.map((q, i) => (
-          <QuestionCard key={q.question_number ?? i} question={q} index={i} />
-        ))}
+          <div className="mt-7 flex flex-wrap items-center gap-2">
+            {onOpenPaper && (
+              <button onClick={onOpenPaper} className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-ink-fg transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-ink-hover active:scale-[0.98]">
+                Open the paper <ArrowUpRight size={14} />
+              </button>
+            )}
+            {downloadUrl && <a href={downloadUrl} target="_blank" rel="noreferrer" className={`${outline} hidden h-10 md:inline-flex`}>Download <DownloadSimple size={14} /></a>}
+            {onRegenerate && <button onClick={onRegenerate} className={`${outline} h-10 text-ink-muted`}>Regenerate <ArrowsClockwise size={14} /></button>}
+          </div>
+
+          <p className="mt-6 flex max-w-[60ch] items-start gap-2 text-sm text-ink-muted">
+            <Info size={16} className="mt-0.5 shrink-0" />
+            Written by AI from the paper. Use these to check your method, then confirm facts against your lecture notes.
+          </p>
+        </header>
+
+        {/* Phones: the question list opens inline, in the page flow */}
+        <div className="mt-10 md:hidden">
+          <button
+            onClick={() => setSheet((v) => !v)} aria-expanded={sheet}
+            className="flex h-12 w-full items-center gap-2 rounded-full border border-line-soft bg-surface px-5 text-base font-medium"
+          >
+            <ListChecks size={18} /> Questions
+            <span className="ml-auto text-sm font-normal text-ink-muted">{count}</span>
+            <CaretDown size={16} className={`transition-transform duration-300 ${sheet ? "rotate-180" : ""}`} />
+          </button>
+          {sheet && <div className="mt-2 rounded-xl border border-line-soft bg-surface p-2">{list}</div>}
+        </div>
+
+        {/* Split: a sticky index on the left, the cards on the right */}
+        <div className="mt-10 grid gap-0 md:mt-16 md:grid-cols-[280px_minmax(0,1fr)] md:gap-12 lg:gap-16">
+          <aside className="hidden md:block">
+            <div className="sticky top-28">
+              <div className="flex items-center justify-between px-3 pb-3">
+                <p className={label}>Questions</p>
+                <span className="text-sm tabular-nums text-ink-muted">{active + 1} / {count}</span>
+              </div>
+              <div ref={trayRef} className="relative max-h-[calc(100dvh-14rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{list}</div>
+            </div>
+          </aside>
+          <div ref={mainRef} className="flex max-w-[780px] flex-col gap-5 md:gap-6">
+            {data.questions.map((q, i) => (
+              <QuestionSection key={i} q={q} index={i} last={i === count - 1} onQuiz={onQuiz} onNext={() => jump(i + 1)} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

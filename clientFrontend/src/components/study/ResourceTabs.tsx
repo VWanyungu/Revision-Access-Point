@@ -12,7 +12,7 @@ import { TruncatedText } from "@/components/ui/truncated-text";
 interface ResourceTabsProps {
   onGenerateQuiz: (resourceUrl: string, resourceTitle: string) => void;
   onGenerateAnswers: (resourceUrl: string, resourceTitle: string) => void;
-  onViewResource: (url: string) => void;
+  onViewResource: (url: string, title?: string) => void;
   resources: any[];
 }
 
@@ -220,8 +220,8 @@ export const ResourceTabs = ({ onGenerateQuiz, onGenerateAnswers, onViewResource
     }));
   };
 
-  const toggleDocView = (url: string) => {
-    onViewResource(url);
+  const toggleDocView = (url: string, title?: string) => {
+    onViewResource(url, title);
   };
 
   return (
@@ -254,14 +254,14 @@ export const ResourceTabs = ({ onGenerateQuiz, onGenerateAnswers, onViewResource
                       key={resource.id}
                       resource={resource}
                       onGenerateQuiz={() => onGenerateQuiz(resource.id)}
-                      docViewToggleFn={() => {toggleDocView(resource.public_access_url)}}
+                      docViewToggleFn={() => {toggleDocView(resource.public_access_url, resource.name)}}
                     />
                   }
                   return <ResourceCard
                     key={resource.id}
                     resource={resource}
                     onGenerateQuiz={() => onGenerateQuiz(resource.id)}
-                    docViewToggleFn={() => {toggleDocView(resource.public_access_url)}}
+                    docViewToggleFn={() => {toggleDocView(resource.public_access_url, resource.name)}}
                   />
                 })}
             </div>
@@ -299,7 +299,7 @@ export const ResourceTabs = ({ onGenerateQuiz, onGenerateAnswers, onViewResource
                       resource={resource}
                       onGenerateQuiz={() => onGenerateQuiz(resource.public_access_url, resource.name)}
                       docViewToggleFn={() =>
-                        toggleDocView(resource.public_access_url)
+                        toggleDocView(resource.public_access_url, resource.name)
                       }
                     />
                   ) : (
@@ -310,7 +310,7 @@ export const ResourceTabs = ({ onGenerateQuiz, onGenerateAnswers, onViewResource
                       onGenerateQuiz={() => onGenerateQuiz(resource.public_access_url, resource.name)}
                       onGenerateAnswers={() => onGenerateAnswers(resource.public_access_url, resource.name)}
                       docViewToggleFn={() =>
-                        toggleDocView(resource.public_access_url)
+                        toggleDocView(resource.public_access_url, resource.name)
                       }
                     />
                   )
@@ -372,8 +372,8 @@ export const ResourceDiv = ({ onGenerateQuiz, onGenerateAnswers, onViewResource,
     }));
   };
 
-  const toggleDocView = (url: string) => {
-    onViewResource(url);
+  const toggleDocView = (url: string, title?: string) => {
+    onViewResource(url, title);
   };
 
   const currentPage = getCurrentPage("0");
@@ -395,7 +395,7 @@ export const ResourceDiv = ({ onGenerateQuiz, onGenerateAnswers, onViewResource,
                 resource={resource}
                 onGenerateQuiz={() => onGenerateQuiz(resource.public_access_url, resource.name)}
                 docViewToggleFn={() =>
-                  toggleDocView(resource.public_access_url)
+                  toggleDocView(resource.public_access_url, resource.name)
                 }
               />
             ) : (
@@ -406,7 +406,7 @@ export const ResourceDiv = ({ onGenerateQuiz, onGenerateAnswers, onViewResource,
                 onGenerateQuiz={() => onGenerateQuiz(resource.public_access_url, resource.name)}
                 onGenerateAnswers={() => onGenerateAnswers(resource.public_access_url, resource.name)}
                 docViewToggleFn={() =>
-                  toggleDocView(resource.public_access_url)
+                  toggleDocView(resource.public_access_url, resource.name)
                 }
               />
             )

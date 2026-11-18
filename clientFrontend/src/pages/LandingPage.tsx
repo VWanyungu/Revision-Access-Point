@@ -249,10 +249,10 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
           </motion.p>
 
           <motion.div variants={staggerItem} className="flex flex-col">
-            <h1 className="text-5xl md:text-6xl font-extralight leading-tight">
+            <h1 className="text-3xl md:text-4xl font-extralight leading-tight">
               Your<span className="font-extrabold ml-3">revision</span>
             </h1>
-            <h1 className="text-6xl md:text-8xl birthstone-regular text-primary leading-none">
+            <h1 className="text-4xl md:text-5xl birthstone-regular text-primary leading-none">
               Reimagined
             </h1>
           </motion.div>
@@ -305,7 +305,7 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
         <FadeIn>
           <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">What we offer</p>
           <div className="flex flex-col mb-8">
-            <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
+            <h2 className="text-2xl md:text-3xl font-extralight leading-tight">
               Our four <span className="text-primary font-bold">pillars</span>
             </h2>
           </div>
@@ -322,7 +322,7 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
         <FadeIn>
           <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">Why choose us</p>
           <div className="flex flex-col mb-8">
-            <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
+            <h2 className="text-2xl md:text-3xl font-extralight leading-tight">
               Why <span className="text-primary font-bold">us</span>
             </h2>
           </div>
@@ -336,7 +336,7 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
         <FadeIn>
           <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">testimonials</p>
           <div className="flex flex-col mb-8">
-            <h2 className="text-4xl md:text-5xl font-extralight leading-tight">
+            <h2 className="text-2xl md:text-3xl font-extralight leading-tight">
               What our <span className="text-primary font-bold">users</span> say
             </h2>
           </div>
@@ -358,7 +358,7 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
         />
 
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-background dark:via-background/80 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent dark:from-background dark:via-background/80 z-10" />
 
         {/* Content */}
         <motion.div
@@ -377,7 +377,7 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
           </motion.p>
 
           <motion.div variants={staggerItem} className="mb-8">
-            <h2 className="text-5xl md:text-6xl font-extralight leading-tight">
+            <h2 className="text-3xl md:text-4xl font-extralight leading-tight">
               <span className="text-primary font-bold">Hello!</span>
             </h2>
           </motion.div>
@@ -418,7 +418,7 @@ const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) =>
 const AppMockup = () => (
   <div className="p-8 border border-dashed border-primary/30 rounded-2xl">
     <div
-      className="rounded-2xl overflow-hidden shadow-2xl border bg-white"
+      className="rounded-2xl overflow-hidden shadow-2xl border bg-surface"
       style={{ boxShadow: "0 32px 80px rgba(13,27,42,0.18)" }}
     >
       <div className="px-5 py-3 flex items-center justify-between border-b bg-primary">
@@ -478,7 +478,7 @@ const PillarsSection = () => {
               </span>
             </div>
 
-            <h3 className="text-3xl md:text-4xl font-black mb-2 text-primary">{p.title}</h3>
+            <h3 className="text-2xl font-black mb-2 text-primary">{p.title}</h3>
 
             <p className="text-base italic mb-4 text-muted-foreground">{p.tagline}</p>
 
@@ -487,14 +487,14 @@ const PillarsSection = () => {
             <div className="flex gap-3 mt-8">
               <motion.button
                 onClick={prev}
-                className="w-11 h-11 border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
+                className="w-11 h-11 border rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
                 whileTap={{ scale: shouldReduce ? 1 : 0.95 }}
               >
                 <ChevronLeft size={18} />
               </motion.button>
               <motion.button
                 onClick={next}
-                className="w-11 h-11 border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
+                className="w-11 h-11 border rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
                 whileTap={{ scale: shouldReduce ? 1 : 0.95 }}
               >
                 <ChevronRight size={18} />
@@ -533,7 +533,7 @@ const PillarsSection = () => {
             <div className="text-xs uppercase tracking-widest mb-2 text-muted-foreground">
               Pillar {active + 1} of 4
             </div>
-            <div className="text-3xl font-black mb-1 text-primary">{p.title}</div>
+            <div className="text-2xl font-black mb-1 text-primary">{p.title}</div>
             <div className="text-base italic text-muted-foreground">{p.tagline}</div>
           </div>
         </motion.div>
@@ -553,7 +553,7 @@ const WhySection = () => {
         <FadeIn key={card.title} delay={i * 0.1}>
           <motion.div
             className={`rounded p-8 h-full border flex flex-col gap-5 transition-all
-              ${card.featured ? "bg-primary border-primary" : "bg-background light:border-border/80 dark:border-white/20"}`}
+              ${card.featured ? "bg-primary border-primary" : "bg-background light:border-border/80"}`}
             style={{
               boxShadow: card.featured ? "0 20px 60px rgba(13,27,42,0.25)" : "none",
             }}
@@ -582,7 +582,7 @@ const WhySection = () => {
             </div>
 
             <div>
-              <h3 className={`text-xl md:text-2xl font-bold mb-3 ${card.featured ? "text-white" : "text-primary"}`}>
+              <h3 className={`text-lg md:text-xl font-bold mb-3 ${card.featured ? "text-white" : "text-primary"}`}>
                 {card.title}
               </h3>
               <p className={`text-sm md:text-base leading-relaxed ${card.featured ? "text-white/70" : "text-muted-foreground"}`}>
@@ -593,7 +593,7 @@ const WhySection = () => {
             {card.featured && (
               <motion.a
                 href="#signup"
-                className="border mt-auto inline-flex items-center justify-start gap-2 text-sm font-semibold py-3 px-6 text-white bg-primary hover:bg-primary-foreground hover:text-primary transition-colors w-max"
+                className="border rounded-full mt-auto inline-flex items-center justify-start gap-2 text-sm font-semibold py-3 px-6 text-white bg-primary hover:bg-primary-foreground hover:text-primary transition-colors w-max"
                 whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
               >
                 Sign Up Free <ArrowUpRight size={14} />

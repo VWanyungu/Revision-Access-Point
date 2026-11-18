@@ -69,7 +69,7 @@ const PomodoroTimer = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-xl font-bold flex items-center gap-2">
             <Timer className="h-6 w-6 text-primary" />
             Pomodoro Timer
           </h2>
@@ -87,21 +87,21 @@ const PomodoroTimer = () => {
         <Card>
           <CardContent className="p-4 text-center">
             <Brain className="h-5 w-5 mx-auto text-primary mb-2" />
-            <p className="text-2xl font-bold">{sessionsCompleted}</p>
+            <p className="text-xl font-bold">{sessionsCompleted}</p>
             <p className="text-xs text-muted-foreground">Sessions Today</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Timer className="h-5 w-5 mx-auto text-primary mb-2" />
-            <p className="text-2xl font-bold">{sessionsCompleted * 25}</p>
+            <p className="text-xl font-bold">{sessionsCompleted * 25}</p>
             <p className="text-xs text-muted-foreground">Focus Minutes</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <Coffee className="h-5 w-5 mx-auto text-primary mb-2" />
-            <p className="text-2xl font-bold">{Math.floor(sessionsCompleted / 4)}</p>
+            <p className="text-xl font-bold">{Math.floor(sessionsCompleted / 4)}</p>
             <p className="text-xs text-muted-foreground">Long Breaks</p>
           </CardContent>
         </Card>
@@ -149,7 +149,7 @@ const PomodoroTimer = () => {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-6xl font-bold font-mono tracking-tight">
+              <span className="text-4xl font-bold font-mono tracking-tight">
                 {formatTime(timeRemaining)}
               </span>
               <span className="text-sm text-muted-foreground mt-2 capitalize">

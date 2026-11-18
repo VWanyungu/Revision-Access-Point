@@ -54,7 +54,7 @@ const ProgressDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold flex items-center gap-2">
+        <h2 className="text-xl font-bold flex items-center gap-2">
           <TrendingUp className="h-6 w-6 text-primary" />
           Progress Dashboard
         </h2>
@@ -83,7 +83,7 @@ const ProgressDashboard = () => {
                     {stat.change}
                   </span>
                 </div>
-                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-xl font-bold">{stat.value}</p>
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
               </CardContent>
             </Card>

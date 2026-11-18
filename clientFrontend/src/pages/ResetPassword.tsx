@@ -1,135 +1,107 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, Eye, EyeOff, ArrowRight, Loader } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import { supabase } from "@/database/supabase";
-import { toast } from "@/hooks/use-toast";
+import { AuthPage, Heading, Field, AuthButton, IconBadge, Spacer } from "@/components/auth/AuthKit";
+
+type Stage = "checking" | "form" | "expired" | "done";
+const MIN_PASSWORD = 8;
 
 const ResetPassword = () => {
+  const [stage, setStage] = useState<Stage>("checking");
+  const [accountEmail, setAccountEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // Check the link as soon as the page loads, so an expired link never reaches the form.
   useEffect(() => {
-    // The link might contain the token_hash in the query params or fragment
-    // If auth state changes to PASSWORD_RECOVERY, supabase might handle it
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        toast({
-          title: "Recovery Mode",
-          description: "Please enter your new password below.",
-        });
+    const check = async () => {
+      const token_hash = searchParams.get("token_hash");
+      if (token_hash && searchParams.get("type") === "recovery") {
+        const { error } = await supabase.auth.verifyOtp({ token_hash, type: "recovery" });
+        if (error) return setStage("expired");
       }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return setStage("expired");
+      setAccountEmail(data.session.user.email ?? "");
+      setStage("form");
     };
-  }, []);
+    check();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < MIN_PASSWORD) {
+      return setErrors({ password: `Use at least ${MIN_PASSWORD} characters. You have ${password.length}.` });
+    }
+    if (password !== confirm) return setErrors({ confirm: "The passwords don’t match." });
+
+    setErrors({});
     setIsLoading(true);
-
-    let errorToReport = null;
-
-    // Check if we have a token_hash in the URL (PKCE flow)
-    const token_hash = searchParams.get("token_hash");
-    const type = searchParams.get("type");
-
-    if (token_hash && type === "recovery") {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        token_hash,
-        type: "recovery",
-      });
-      if (verifyError) {
-        errorToReport = verifyError;
-      }
-    }
-
-    if (!errorToReport) {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
-      if (updateError) {
-        errorToReport = updateError;
-      }
-    }
-
-    if (errorToReport) {
-      toast({
-        title: "Error resetting password",
-        description: errorToReport.message || "An error occurred.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    toast({
-      title: "Password reset successful",
-      description: "You have successfully reset your password. You can now log in.",
-    });
-
+    const { error } = await supabase.auth.updateUser({ password });
     setIsLoading(false);
-    navigate("/");
+    if (error) {
+      return setErrors({
+        password:
+          error.code === "same_password"
+            ? "Choose a password you haven’t used before."
+            : "We couldn’t save your password. Please try again.",
+      });
+    }
+    setStage("done");
   };
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <Card className="shadow-elevated border-border/50">
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold">Set New Password</CardTitle>
-            <CardDescription>
-              Please enter your new secure password below to complete the reset process.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">New Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    className="pl-10 pr-10"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+  if (stage === "checking") return <AuthPage><span className="sr-only" role="status">Checking your link</span></AuthPage>;
 
-              <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                {isLoading ? (
-                  <Loader className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    Update password
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+  if (stage === "expired") {
+    return (
+      <AuthPage back={{ label: "Sign in", onClick: () => navigate("/login") }} topGap="md">
+        <IconBadge><WarningCircle size={28} /></IconBadge>
+        <Heading title="This reset link has expired">
+          Reset links work once and for 1 hour. If you asked more than once, only the newest email works.
+        </Heading>
+        <Spacer />
+        <AuthButton type="button" onClick={() => navigate("/forgot-password")}>Send a new link</AuthButton>
+        <AuthButton type="button" variant="ghost" onClick={() => navigate("/login")}>Back to sign in</AuthButton>
+      </AuthPage>
+    );
+  }
+
+  if (stage === "done") {
+    return (
+      <AuthPage topGap="lg">
+        <CheckCircle size={40} />
+        <Heading title="Password updated">
+          You are signed in on this device. Use the new password next time you sign in elsewhere.
+        </Heading>
+        <Spacer />
+        <AuthButton type="button" onClick={() => navigate("/app")}>Continue to your units</AuthButton>
+      </AuthPage>
+    );
+  }
+
+  return (
+    <AuthPage>
+      <Heading title="Choose a new password">{accountEmail && `For ${accountEmail}`}</Heading>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Field
+          id="password" label="New password" type="password" autoComplete="new-password" required
+          value={password} onChange={setPassword} error={errors.password}
+          helper={`At least ${MIN_PASSWORD} characters.`}
+        />
+        <Field
+          id="confirm" label="Confirm new password" type="password" autoComplete="new-password" required
+          value={confirm} onChange={setConfirm} error={errors.confirm}
+        />
+        <AuthButton type="submit" disabled={isLoading}>
+          {isLoading ? "Please wait…" : "Save new password"}
+        </AuthButton>
+      </form>
+    </AuthPage>
   );
 };
 

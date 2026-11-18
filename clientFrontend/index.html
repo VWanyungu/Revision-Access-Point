@@ -25,6 +25,14 @@
   </head>
 
   <body>
+    <!-- Set the theme class before the app renders, so dark mode never flashes light first. Keep the key in sync with App.tsx. -->
+    <script>
+      try {
+        var t = localStorage.getItem("rap-theme") || "light";
+        if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.classList.add(t);
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>

@@ -48,7 +48,7 @@ export function ThemeProvider({
     const metaThemeColor = document.getElementById("theme-color-meta")
     if (metaThemeColor) {
       if (activeTheme === "dark") {
-        metaThemeColor.setAttribute("content", "#020617") 
+        metaThemeColor.setAttribute("content", "#101114") 
       } else {
         metaThemeColor.setAttribute("content", "#f8fafc") 
       }
@@ -70,7 +70,7 @@ export function ThemeProvider({
       // Update meta theme-color
       const metaThemeColor = document.getElementById("theme-color-meta");
       if (metaThemeColor) {
-        metaThemeColor.setAttribute("content", systemTheme === "dark" ? "#020617" : "#f8fafc");
+        metaThemeColor.setAttribute("content", systemTheme === "dark" ? "#101114" : "#f8fafc");
       }
     };
 

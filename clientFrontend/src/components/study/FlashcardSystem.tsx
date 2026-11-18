@@ -78,7 +78,7 @@ const FlashcardSystem = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-xl font-bold flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-primary" />
             Flashcards
           </h2>
@@ -141,7 +141,7 @@ const FlashcardSystem = () => {
                   <Badge variant="secondary" className="mb-4">
                     {currentCard?.topic}
                   </Badge>
-                  <p className="text-xl font-medium text-center leading-relaxed">
+                  <p className="text-lg font-medium text-center leading-relaxed">
                     {currentCard?.front}
                   </p>
                   <p className="absolute bottom-4 text-xs text-muted-foreground">

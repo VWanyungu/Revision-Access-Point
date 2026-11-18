@@ -20,6 +20,7 @@ const AppLayout = ({ children, currentPage, onNavigate, onLogout, studyContext }
     <div className="w-screen min-h-screen bg-background">
       <Navbar
         studyContext={studyContext}
+        currentPage={currentPage}
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         onLogout={onLogout}
         onNavigate={onNavigate}

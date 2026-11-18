@@ -1,0 +1,559 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowRight, ArrowUpRight, BookOpenText, CaretDown, Check, FileText, ListChecks, MagnifyingGlass, PlayCircle, SquaresFour, Timer, X,
+} from "@phosphor-icons/react";
+import { getResources } from "@/database/utils";
+import { supabase } from "@/database/supabase";
+import { useAuth } from "@/context/AuthContext";
+import { EASE, formatDate } from "@/components/pay/PayKit";
+import PomodoroTimerCondensed from "./PomodoroTimerCondensed";
+import unitHero from "@/assets/study/unit-hero.png";
+import { getProgress, getTopics, recordOpen, type Progress } from "@/database/progress";
+import { toast } from "sonner";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
+import ResourceSearch from "./ResourceSearch";
+
+/** Paper-like plate with grey text lines, as in the Figma covers (real first-page renders need a thumbnail cache on upload). */
+const Cover = ({ kind, left, right }: { kind: string; left: string; right: string }) => (
+  <div className="relative h-[240px] overflow-hidden bg-field md:h-[320px]">
+    <div className="absolute left-1/2 top-8 w-[76%] max-w-[440px] -translate-x-1/2 rounded-xl border border-line bg-surface p-7 shadow-sm md:top-10">
+      <p className="font-geist-mono text-xs text-ink-muted">{kind}</p>
+      <div className="mt-5 space-y-[12px]">
+        {[316, 346, 233, 316, 346, 233, 316].map((w, i) => <div key={i} className="h-1.5 rounded-full bg-line" style={{ width: `${(w / 380) * 100}%` }} />)}
+      </div>
+    </div>
+    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-surface/80 px-6 py-4 backdrop-blur-[16px]">
+      <div><p className="text-sm font-medium">{left}</p><p className="mt-0.5 text-sm text-ink-muted">{right}</p></div>
+    </div>
+  </div>
+);
+
+interface Props {
+  unitId: number;
+  onNavigate: (page: string) => void;
+  onGenerateQuiz: (resourceUrl: string, resourceTitle: string) => void;
+  onGenerateAnswers: (resourceUrl: string, resourceTitle: string) => void;
+  onViewResource: (url: string, title?: string) => void;
+  /** Called with the new selection from the inline unit panel. When missing, "Change unit" is hidden. */
+  onChangeUnit?: (selection: { school: string; department: string; year: number; semester: number; unit: string }) => void;
+}
+
+interface Resource {
+  id: number; name: string; description?: string; public_access_url: string;
+  resource_type_id: number; created_at: string; updated_at?: string;
+  /** The topic a note belongs to (topics table); null for notes outside any topic. */
+  topic_id?: number | null;
+}
+
+/** A group of notes. Complete once every note in it has been read. */
+interface Topic { id: string; title: string; description?: string; notes: Resource[] }
+
+const NOTES = 1, EXAMS = 2, CATS = 3, TUTORIALS = 4;
+type View = "all" | "syllabus" | "papers" | "library";
+const num = (i: number) => String(i + 1).padStart(2, "0");
+const link = "inline-flex items-center gap-1.5 text-sm font-medium transition-opacity duration-300 hover:opacity-60";
+
+/** "CAT 2, 2025/26" -> { year: "2025/26", slot: "cat2" }. Unparseable names land in the "Other" row. */
+const classify = (r: Resource) => {
+  const y = r.name.match(/(20\d{2})\s*[\/\-–]\s*(\d{2,4})/);
+  const year = y ? `${y[1]}/${y[2].slice(-2)}` : "Other";
+  const lower = r.name.toLowerCase();
+  const slot =
+    r.resource_type_id === EXAMS ? "exam"
+    : /cat\s*2|cat\s*two|second/.test(lower) ? "cat2"
+    : "cat1";
+  return { year, slot };
+};
+
+const youtubeId = (html: string) => html.match(/embed\/([\w-]{11})/)?.[1] ?? html.match(/(?:v=|youtu\.be\/)([\w-]{11})/)?.[1];
+const youtubeUrl = (html: string) => { const id = youtubeId(html); return id ? `https://www.youtube.com/watch?v=${id}` : null; };
+
+const StatusDot = ({ state }: { state: "done" | "current" | "todo" }) =>
+  state === "done" ? (
+    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-positive-solid text-white"><Check size={12} weight="bold" /></span>
+  ) : state === "current" ? (
+    <span className="relative size-5 shrink-0 rounded-full border-[1.5px] border-brand"><span className="absolute inset-y-0 left-0 w-1/2 rounded-l-full bg-brand-solid" /></span>
+  ) : (
+    <span className="size-5 shrink-0 rounded-full border-[1.5px] border-line-strong" />
+  );
+
+const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => {
+  const reduce = useReducedMotion();
+  return (
+    <motion.section
+      id={id}
+      initial={reduce ? false : { opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-8% 0px" }}
+      transition={{ duration: 0.8, ease: EASE }}
+      className="scroll-mt-32 py-16 md:py-24"
+    >
+      <div className="mx-auto max-w-[1200px] px-5 md:px-10">
+        <h2 className="mb-8 font-literata text-2xl md:mb-10">{title}</h2>
+        {children}
+      </div>
+    </motion.section>
+  );
+};
+
+const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, onViewResource, onChangeUnit }: Props) => {
+  const { user } = useAuth();
+  const reduce = useReducedMotion();
+  const selection = useMemo(() => { try { return JSON.parse(localStorage.getItem("resourceSelection") || "null"); } catch { return null; } }, []);
+
+  const { data: resources = [], isLoading } = useQuery({
+    queryKey: ["unit-resources", unitId],
+    queryFn: async () => ((await getResources(unitId)) ?? []) as any[],
+    enabled: !!unitId,
+  });
+
+  const { data: pass } = useQuery({
+    queryKey: ["pass", user?.id, selection?.department, selection?.year, selection?.semester],
+    queryFn: async () => {
+      const { data } = await supabase.from("subscriptions").select("end_date")
+        .eq("user_uuid", user!.id).eq("department_id", Number(selection.department))
+        .eq("year_of_study", Number(selection.year)).eq("semester_of_study", Number(selection.semester))
+        .order("end_date", { ascending: false }).limit(1).maybeSingle();
+      return data;
+    },
+    enabled: !!user && !!selection?.department,
+  });
+
+  const notes: Resource[] = useMemo(() => resources.filter((r) => r.resource_type_id === NOTES).sort((a, b) => a.id - b.id), [resources]);
+  const tutorials: Resource[] = useMemo(() => resources.filter((r) => r.resource_type_id === TUTORIALS), [resources]);
+  const papers: Resource[] = useMemo(() => resources.filter((r) => r.resource_type_id === EXAMS || r.resource_type_id === CATS), [resources]);
+  const unit = resources[0]?.units;
+  const departmentName = resources[0]?.departments?.name || selection?.departmentName;
+
+  // Read marks and the last opened note live in Supabase (resource_opens); topics group a unit's notes (topics, resources.topic_id).
+  const queryClient = useQueryClient();
+  const { data: progress, isError: progressFailed } = useQuery({ queryKey: ["progress", user?.id], queryFn: () => getProgress(user!.id), enabled: !!user, retry: false });
+  useEffect(() => { if (progressFailed) toast.error("Couldn't load your reading progress.", { id: "progress-load" }); }, [progressFailed]);
+  const { data: topicRows = [] } = useQuery({ queryKey: ["topics", unitId], queryFn: () => getTopics(unitId), enabled: !!unitId, retry: false });
+  const read = useMemo(() => Object.keys(progress?.opens ?? {}).map(Number), [progress]);
+  const [picked, setPicked] = useState<number | null>(null);
+  const [tab, setTab] = useState<"notes" | "tutorials" | "quiz">("notes");
+  const [sheet, setSheet] = useState(false);
+  const [query, setQuery] = useState("");
+  const [timerOn, setTimerOn] = useState(localStorage.getItem("showPomodoro") === "true");
+  const [view, setView] = useState<View>("syllabus");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  useOutsideClick(pickerRef, () => setPickerOpen(false));
+
+  // Topics come from the topics table. Notes outside any topic, or a unit with no topics yet, show one topic per note.
+  const topics: Topic[] = useMemo(() => {
+    const known = new Set(topicRows.map((t) => t.id));
+    const grouped: Topic[] = topicRows
+      .map((t) => ({ id: `t${t.id}`, title: t.title, description: t.description ?? undefined, notes: notes.filter((n) => n.topic_id === t.id) }))
+      .filter((t) => t.notes.length > 0);
+    const loose: Topic[] = notes
+      .filter((n) => !n.topic_id || !known.has(n.topic_id))
+      .map((n) => ({ id: `n${n.id}`, title: n.name, description: n.description, notes: [n] }));
+    return [...grouped, ...loose];
+  }, [topicRows, notes]);
+  const isRead = (n: Resource) => read.includes(n.id);
+  const isDone = (t: Topic) => t.notes.every(isRead);
+
+  const firstUnread = topics.findIndex((t) => !isDone(t));
+  const current = picked ?? (firstUnread === -1 ? 0 : firstUnread);
+  const topic = topics[current];
+  const doneCount = topics.filter(isDone).length;
+
+  // Opening a note marks it read. The mark shows at once, then is saved; a failed save is reported, not hidden.
+  const open = (r: Resource) => {
+    if (user) {
+      queryClient.setQueryData<Progress>(["progress", user.id], (p) => ({
+        scores: p?.scores ?? {},
+        opens: { ...(p?.opens ?? {}), [r.id]: new Date().toISOString() },
+      }));
+      recordOpen(user.id, r.id).catch((e) => {
+        console.error("Could not save progress", e);
+        toast.error("Couldn't save your progress, so it won't be remembered next time.", { id: "progress-save" });
+      });
+    }
+    onViewResource(r.public_access_url, r.name);
+  };
+
+  // Most recently opened note or paper (tutorials are videos, so they do not count).
+  const lastId = Object.entries(progress?.opens ?? {})
+    .filter(([id]) => resources.some((r) => r.id === Number(id) && r.resource_type_id !== TUTORIALS))
+    .sort((a, b) => b[1].localeCompare(a[1]))[0]?.[0];
+  const last = lastId ? { id: Number(lastId), at: progress!.opens[Number(lastId)] } : null;
+  // Where "Continue reading" goes: the note you last opened, else the first unread note, else the first note.
+  const resume = resources.find((r) => r.id === last?.id) ?? topics[firstUnread === -1 ? 0 : firstUnread]?.notes.find((n) => !isRead(n)) ?? notes[0];
+  const featuredPaper = papers.length ? [...papers].sort((a, b) => {
+    const ca = classify(a), cb = classify(b);
+    return cb.year.localeCompare(ca.year) || (cb.slot === "exam" ? 1 : 0) - (ca.slot === "exam" ? 1 : 0);
+  })[0] : undefined;
+
+  const show = (...v: View[]) => v.includes(view);
+
+  const results = query.trim()
+    ? resources.filter((r) => r.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : [];
+
+  const byYear = useMemo(() => {
+    const map = new Map<string, Record<string, Resource | undefined>>();
+    papers.forEach((p) => {
+      const { year, slot } = classify(p);
+      map.set(year, { ...(map.get(year) ?? {}), [slot]: p });
+    });
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [papers]);
+
+  const rise = (i: number) => reduce ? {} : ({
+    initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.6, ease: EASE, delay: Math.min(i, 8) * 0.04 },
+  });
+
+  const topicList = (onPick: (i: number) => void) => (
+    <ul className="flex flex-col">
+      {topics.map((t, i) => {
+        // Check once every note is read, half-filled once some are. The highlighted row is the one on screen.
+        const state = isDone(t) ? "done" : t.notes.some(isRead) ? "current" : "todo";
+        return (
+          <li key={t.id}>
+            <button
+              onClick={() => onPick(i)}
+              aria-current={i === current ? "true" : undefined}
+              className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-base transition-colors duration-300 ${
+                i === current ? "bg-field-strong font-medium" : state === "todo" ? "text-ink-muted hover:bg-field" : "hover:bg-field"
+              }`}
+            >
+              <StatusDot state={state} />
+              <span className="min-w-0 flex-1">{t.title}</span>
+              <span className="font-geist-mono text-sm text-ink-muted">{num(i)}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  const noteRow = (r: Resource, i: number) => (
+    <motion.article key={r.id} {...rise(i)} className="flex gap-5 border-b border-line py-6 first:pt-0 last:border-b-0 md:gap-6">
+      <div className="flex h-[84px] w-[60px] shrink-0 flex-col justify-between rounded-xl border border-line bg-field p-2 md:h-[92px] md:w-[72px]">
+        <span className="font-literata text-xs">Note {i + 1}</span>
+        <span className="font-geist-mono text-xs text-ink-muted">PDF</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="font-literata text-lg font-medium md:text-xl">{r.name}</h3>
+        <p className="mt-1 font-geist-mono text-sm text-ink-muted">Updated {formatDate(new Date(r.updated_at ?? r.created_at))}{isRead(r) ? " · Read" : ""}</p>
+        {r.description && <p className="mt-2 text-base">{r.description}</p>}
+        <div className="mt-3 flex items-center gap-5">
+          <button className={link} onClick={() => open(r)}>Read <ArrowUpRight size={14} /></button>
+          <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me <ArrowRight size={14} /></button>
+        </div>
+      </div>
+    </motion.article>
+  );
+
+  const tutorialCard = (t: Resource, i: number) => {
+    const id = youtubeId(t.public_access_url);
+    const url = youtubeUrl(t.public_access_url) ?? t.public_access_url;
+    return (
+      <motion.a key={t.id} {...rise(i)} href={url} target="_blank" rel="noreferrer" className="group block">
+        <div className="relative aspect-video overflow-hidden bg-field">
+          {id && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" className="size-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.03]" />}
+          <PlayCircle size={40} weight="fill" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow" />
+        </div>
+        <p className="mt-3 font-geist-mono text-sm text-ink-muted">Video</p>
+        <p className="mt-1 text-base font-medium">{t.name}</p>
+      </motion.a>
+    );
+  };
+
+  const tabs: { id: View; label: string; Icon: typeof ListChecks }[] = [
+    { id: "all", label: "All", Icon: SquaresFour },
+    { id: "syllabus", label: "Syllabus", Icon: ListChecks },
+    { id: "papers", label: "Past papers", Icon: FileText },
+    { id: "library", label: "Library", Icon: BookOpenText },
+  ];
+
+  const paperCell = (p: Resource | undefined, key: string) =>
+    p ? (
+      <div key={key} className="flex h-[76px] flex-col justify-between rounded-[10px] border border-line px-3.5 py-3">
+        <button className="flex items-center gap-2 text-left text-sm font-medium hover:opacity-60" onClick={() => open(p)}>
+          <FileText size={16} className="text-ink-muted" /> Paper
+          <span className="ml-auto truncate font-geist-mono text-xs font-normal text-ink-muted">{p.name}</span>
+        </button>
+        <button className="flex items-center gap-2 text-left text-sm font-medium text-brand hover:opacity-60" onClick={() => onGenerateAnswers(p.public_access_url, p.name)}>
+          <ListChecks size={16} /> Model answers
+        </button>
+      </div>
+    ) : (
+      <div key={key} className="flex h-[76px] items-center rounded-[10px] border border-dashed border-line-strong px-3.5 text-sm text-ink-muted">Not uploaded</div>
+    );
+
+  return (
+    <div className="font-geist text-ink">
+      {/* Hero */}
+      {/* Pulled up under the floating navbar (60px on phones, 64px from md) so the image fills all the height above the title. */}
+      <div className="relative -mt-[60px] border-b border-line md:-mt-16">
+        {/* Clipping lives on the image layer only, so the unit panel below can open past the hero's edge. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          {/* The paper-texture photo is light, so in dark mode it is inverted and dimmed into a faint line drawing. */}
+          <img src={unitHero} alt="" className="size-full object-cover dark:opacity-[0.14] dark:invert" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 via-[42%] to-background/20" />
+        </div>
+        <div className="relative mx-auto flex max-w-[1200px] flex-col gap-6 px-5 pb-12 pt-[116px] md:flex-row md:items-end md:justify-between md:px-10 md:pb-14 md:pt-[136px]">
+          <div ref={pickerRef} className="relative" onKeyDown={(e) => e.key === "Escape" && setPickerOpen(false)}>
+            <motion.h1 {...rise(0)} className="font-literata text-3xl md:text-4xl">
+              {unit?.name?.trim() || (isLoading ? " " : "Your unit")}
+            </motion.h1>
+            <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
+              {unit?.code && <span className="font-geist-mono text-ink">{unit.code}</span>}
+              {departmentName && <span>{departmentName}{selection?.year ? `, Year ${selection.year}, Semester ${selection.semester}` : ""}</span>}
+              {onChangeUnit && (
+                <button onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen} aria-haspopup="dialog" className="inline-flex items-center gap-1 font-medium text-brand hover:opacity-60">
+                  Change unit <CaretDown size={14} className={`transition-transform duration-300 ${pickerOpen ? "rotate-180" : ""}`} />
+                </button>
+              )}
+            </p>
+
+            {/* Opens in place under the link, like the navbar's dropdowns: no new page, no overlay. */}
+            <AnimatePresence>
+              {pickerOpen && onChangeUnit && (
+                <motion.div
+                  initial={reduce ? false : { opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduce ? undefined : { opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="absolute left-0 top-full z-30 mt-4 w-[min(520px,calc(100vw-2.5rem))] rounded-3xl bg-surface p-5 shadow-[0_16px_48px_-16px_rgba(14,21,37,0.18)] ring-1 ring-line md:p-6"
+                >
+                  <p className="mb-4 text-base font-medium">Change unit</p>
+                  <ResourceSearch inline onSearch={(s) => { setPickerOpen(false); onChangeUnit(s); }} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          {topics.length > 0 && (
+            <div className="max-w-[340px] text-base">
+              <p>{doneCount} of {topics.length} {topics.length === 1 ? "topic" : "topics"} complete.{resume ? (last ? " Pick up where you stopped." : " Start with the first note.") : ""}</p>
+              {resume && (
+                <button className={`${link} mt-2`} onClick={() => open(resume)}>Continue reading <ArrowUpRight size={14} /></button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs + search */}
+      <div className="mx-auto max-w-[1200px] px-5 pt-8 md:px-10">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {tabs.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              aria-current={view === id ? "true" : undefined}
+              className={`flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-base transition-colors duration-300 ${view === id ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+            >
+              <Icon size={18} /> {label}
+            </button>
+          ))}
+          <button
+            onClick={() => { const v = !timerOn; setTimerOn(v); localStorage.setItem("showPomodoro", String(v)); }}
+            aria-pressed={timerOn}
+            className={`ml-auto flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-base transition-colors duration-300 ${timerOn ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+          >
+            <Timer size={18} /> <span className="hidden sm:inline">Timer</span>
+          </button>
+        </div>
+
+        {timerOn && <div className="mt-4"><PomodoroTimerCondensed /></div>}
+
+        <form onSubmit={(e) => e.preventDefault()} className="mt-5 flex h-[52px] items-center rounded-full bg-field pl-5 pr-1.5 transition-shadow duration-300 focus-within:ring-2 focus-within:ring-brand-solid">
+          <input
+            value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search this unit’s notes, CATs and past papers" aria-label="Search this unit"
+            className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-muted"
+          />
+          {query ? (
+            <button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="flex size-10 items-center justify-center rounded-full text-ink-muted hover:bg-surface"><X size={18} /></button>
+          ) : (
+            <span className="flex size-10 items-center justify-center rounded-full bg-brand-solid text-white"><MagnifyingGlass size={18} /></span>
+          )}
+        </form>
+      </div>
+
+      {/* Search results replace the register while a query is typed */}
+      {query.trim() ? (
+        <div className="mx-auto max-w-[1200px] px-5 py-12 md:px-10">
+          <p className="mb-6 text-sm text-ink-muted">{results.length} {results.length === 1 ? "result" : "results"} for “{query.trim()}”</p>
+          <div>
+            {results.map((r, i) => (
+              <motion.div key={r.id} {...rise(i)} className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line py-4">
+                <span className="w-[72px] shrink-0 font-geist-mono text-xs uppercase text-ink-muted">{["", "Note", "Exam", "CAT", "Video"][r.resource_type_id]}</span>
+                <span className="min-w-0 flex-1 text-base font-medium">{r.name}</span>
+                {r.resource_type_id === TUTORIALS ? (
+                  <a className={link} href={youtubeUrl(r.public_access_url) ?? "#"} target="_blank" rel="noreferrer">Watch <ArrowUpRight size={14} /></a>
+                ) : (
+                  <>
+                    <button className={link} onClick={() => open(r)}>Read <ArrowUpRight size={14} /></button>
+                    <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me <ArrowRight size={14} /></button>
+                    {(r.resource_type_id === EXAMS || r.resource_type_id === CATS) && (
+                      <button className={`${link} text-brand`} onClick={() => onGenerateAnswers(r.public_access_url, r.name)}>Model answers <ArrowRight size={14} /></button>
+                    )}
+                  </>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      ) : isLoading ? (
+        <div className="mx-auto max-w-[1200px] px-5 py-16 md:px-10" role="status" aria-label="Loading">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="mb-3 h-12 animate-pulse rounded-[10px] bg-field" />)}
+        </div>
+      ) : (
+        <>
+          {/* Featured: what to pick up next */}
+          {(resume || featuredPaper) && show("all") && (
+            <section className="mx-auto grid max-w-[1200px] gap-10 px-5 pt-12 md:grid-cols-2 md:px-10 md:pt-14">
+              {resume && (
+                <article>
+                  <Cover kind={resume.name} left={resume.resource_type_id === NOTES ? "Lecture note" : "Past paper"} right={last?.id === resume.id ? `Opened ${formatDate(new Date(last.at))}` : "Start here"} />
+                  <h2 className="mt-6 text-xl font-light">{resume.name}</h2>
+                  <p className="mt-3 max-w-[560px] text-base text-ink-muted">{last?.id === resume.id ? "Pick up where you stopped." : resume.description || "The next note you have not opened yet."}</p>
+                  <button className={`${link} mt-4`} onClick={() => open(resume)}>Continue reading <ArrowUpRight size={14} /></button>
+                </article>
+              )}
+              {featuredPaper && (
+                <article>
+                  <Cover kind="Model answer" left="Model answers" right="Written by AI" />
+                  <h2 className="mt-6 text-xl font-light">Model answers for {featuredPaper.name}</h2>
+                  <p className="mt-3 max-w-[560px] text-base text-ink-muted">Worked answers for every question, made from the paper itself.</p>
+                  <button className={`${link} mt-4`} onClick={() => onGenerateAnswers(featuredPaper.public_access_url, featuredPaper.name)}>Read the answers <ArrowUpRight size={14} /></button>
+                </article>
+              )}
+            </section>
+          )}
+
+          {/* Syllabus */}
+          <section id="syllabus" hidden={!show("all", "syllabus")} className="scroll-mt-32">
+            <div className="mx-auto grid max-w-[1200px] px-5 py-12 md:grid-cols-[340px_minmax(0,1fr)] md:px-10 md:py-16">
+              <aside className="hidden md:block md:pr-8">
+                <div className="sticky top-24">{topics.length ? topicList((i) => { setPicked(i); setTab("notes"); }) : <p className="text-base text-ink-muted">No notes uploaded yet.</p>}</div>
+              </aside>
+              <div className="md:border-l md:border-line md:pl-12">
+                {/* Phones: the topic list opens inline, in the page flow */}
+                {topics.length > 0 && (
+                  <div className="mb-8 md:hidden">
+                    <button
+                      onClick={() => setSheet((v) => !v)} aria-expanded={sheet}
+                      className="flex h-12 w-full items-center gap-2 rounded-full bg-field px-5 text-base font-medium"
+                    >
+                      <ListChecks size={18} /> Topics
+                      <span className="ml-auto font-geist-mono text-sm font-normal text-ink-muted">{doneCount} of {topics.length} complete</span>
+                      <CaretDown size={16} className={`transition-transform duration-300 ${sheet ? "rotate-180" : ""}`} />
+                    </button>
+                    {sheet && <div className="mt-2">{topicList((i) => { setPicked(i); setTab("notes"); setSheet(false); })}</div>}
+                  </div>
+                )}
+                {topic ? (
+                  <>
+                    <h2 className="font-literata text-2xl">{topic.title}</h2>
+                    <p className="mt-3 max-w-[680px] text-base text-ink-muted">
+                      {topic.description || "Read the note, then use Quiz me to check what stuck."}
+                    </p>
+
+                    <div className="mt-8 flex gap-1" role="tablist">
+                      {([["notes", "Notes", topic.notes.length], ["tutorials", "Tutorials", tutorials.length], ["quiz", "Quiz", 0]] as const).map(([k, label, n]) => (
+                        <button
+                          key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+                          className={`h-10 rounded-full px-4 text-base transition-colors duration-300 ${tab === k ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+                        >
+                          {label}{n > 0 && <span className="ml-1.5 font-geist-mono text-sm text-ink-muted">{n}</span>}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-8">
+                      <AnimatePresence mode="wait">
+                        <motion.div key={`${topic.id}-${tab}`} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}>
+                          {tab === "notes" && topic.notes.map(noteRow)}
+                          {tab === "tutorials" && (tutorials.length
+                            ? <div className="grid gap-8 sm:grid-cols-2">{tutorials.map(tutorialCard)}</div>
+                            : <p className="text-base text-ink-muted">No tutorials for this unit yet.</p>)}
+                          {tab === "quiz" && (
+                            <div className="max-w-[480px]">
+                              <p className="text-base">Ten questions are made from a note by AI. You choose the length and difficulty first.</p>
+                              <div className="mt-4 flex flex-col items-start gap-2">
+                                {topic.notes.map((n) => (
+                                  <button
+                                    key={n.id}
+                                    onClick={() => onGenerateQuiz(n.public_access_url, n.name)}
+                                    className="flex h-11 items-center rounded-full bg-ink px-5 text-left text-base font-medium text-ink-fg transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-ink-hover active:scale-[0.98]"
+                                  >{topic.notes.length === 1 ? "Quiz me on this note" : `Quiz me on ${n.name}`}</button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+
+                    {tab === "notes" && (
+                      <p className="mt-8 flex items-center gap-3 rounded-[10px] bg-field px-4 py-3 text-base">
+                        <span className="flex shrink-0 gap-0.5" aria-hidden>
+                          {topic.notes.map((n) => <span key={n.id} className={`h-1 w-5 rounded-full ${isRead(n) ? "bg-positive-solid" : "bg-line-strong"}`} />)}
+                        </span>
+                        {isDone(topic)
+                          ? "Topic complete. You have read every note in it."
+                          : `This topic is marked complete once ${topic.notes.length === 1 ? "you open the note" : `all ${topic.notes.length} notes are read`}. ${topic.notes.filter((n) => !isRead(n)).length} left.`}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-base text-ink-muted">Nothing to show here until notes are uploaded for this unit.</p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Past papers */}
+          {show("all", "papers") && <Section id="papers" title="Past papers">
+            {byYear.length === 0 ? (
+              <p className="text-base text-ink-muted">No past papers uploaded for this unit yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[760px]">
+                  <div className="grid grid-cols-[140px_repeat(3,minmax(0,1fr))] gap-4 border-b border-line pb-3 text-sm text-ink-muted">
+                    <span>Academic year</span><span>CAT 1</span><span>CAT 2</span><span>Main exam</span>
+                  </div>
+                  {byYear.map(([year, cells]) => (
+                    <div key={year} className="grid grid-cols-[140px_repeat(3,minmax(0,1fr))] items-center gap-4 border-b border-line py-4">
+                      <span className="font-literata text-lg">{year}</span>
+                      {paperCell(cells.cat1, "c1")}{paperCell(cells.cat2, "c2")}{paperCell(cells.exam, "ex")}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Section>}
+
+          {/* Library (videos; the database has no other library items yet) */}
+          {show("all", "library") && <Section id="library" title="Library">
+            {tutorials.length === 0 ? (
+              <p className="text-base text-ink-muted">Nothing in the library for this unit yet.</p>
+            ) : (
+              <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">{tutorials.map(tutorialCard)}</div>
+            )}
+          </Section>}
+        </>
+      )}
+
+      {/* Closing line */}
+      <div className="border-t border-line">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-10 text-sm md:px-10">
+          <p className="text-ink-muted">{pass ? `Semester pass active until ${formatDate(new Date(pass.end_date))}` : "Semester pass"}</p>
+          <button className={link} onClick={() => onNavigate("subscriptions")}>Subscriptions <ArrowUpRight size={14} /></button>
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+export default UnitDashboard;

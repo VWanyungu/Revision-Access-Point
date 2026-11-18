@@ -1,23 +1,20 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Brain, Timer, Gauge, X, ChevronRight, ChevronLeft, CheckCircle2, XCircle, RotateCcw, BookOpen, PenBoxIcon, Loader } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { toast } from "@/hooks/use-toast";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Check, CaretDown, Info, X as XIcon } from "@phosphor-icons/react";
+import { useAuth } from "@/context/AuthContext";
+import { recordQuiz } from "@/database/progress";
+import PageCrumbs from "@/components/layout/PageCrumbs";
+import { EASE, InkButton, PayBottomBar, QuietButton } from "@/components/pay/PayKit";
 
+/** A page, not an overlay: it renders inside the app layout and `onClose` returns to where the quiz was started. */
 interface QuizSystemProps {
-  isOpen: boolean;
   onClose: () => void;
   resourcePublicAccessUrl: string;
   resourceTitle: string;
 }
 
-type QuizState = "setup" | "playing" | "results";
+type Stage = "setup" | "playing" | "results" | "error";
 
 interface Question {
   id: number;
@@ -25,447 +22,306 @@ interface Question {
   options: string[];
   correctAnswer: number;
   topic: string;
+  /** Needs adding to the generate-quiz function's output; shown on the results screen when present. */
+  explanation?: string;
 }
 
-const sampleQuestions: Question[] = [
-  {
-    id: 1,
-    question: "What is the time complexity of accessing an element in an array by index?",
-    options: ["O(1)", "O(n)", "O(log n)", "O(n²)"],
-    correctAnswer: 0,
-    topic: "Arrays",
-  },
-  {
-    id: 2,
-    question: "Which data structure uses LIFO (Last In First Out) principle?",
-    options: ["Queue", "Stack", "Linked List", "Tree"],
-    correctAnswer: 1,
-    topic: "Stacks",
-  },
-  {
-    id: 3,
-    question: "What is the worst-case time complexity of Quick Sort?",
-    options: ["O(n)", "O(n log n)", "O(n²)", "O(log n)"],
-    correctAnswer: 2,
-    topic: "Sorting",
-  },
-  {
-    id: 4,
-    question: "In a binary search tree, where is the smallest element located?",
-    options: ["Root node", "Leftmost leaf", "Rightmost leaf", "Any leaf node"],
-    correctAnswer: 1,
-    topic: "Trees",
-  },
-  {
-    id: 5,
-    question: "Which traversal visits the root node first?",
-    options: ["Inorder", "Preorder", "Postorder", "Level order"],
-    correctAnswer: 1,
-    topic: "Trees",
-  },
-];
+const COUNTS = [5, 10, 15];
+const LEVELS = ["easy", "medium", "hard"] as const;
+const EXAM_SECONDS = 90;
+const letter = (i: number) => String.fromCharCode(65 + i);
 
-const QuizSystem = ({ isOpen, onClose, resourcePublicAccessUrl, resourceTitle }: QuizSystemProps) => {
-  const [state, setState] = useState<QuizState>("setup");
-  const [questionCount, setQuestionCount] = useState(5);
-  const [difficulty, setDifficulty] = useState("medium");
-  const [timerEnabled, setTimerEnabled] = useState(true);
+const Chip = ({ active, children, ...rest }: { active: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+  <button
+    type="button"
+    aria-pressed={active}
+    className={`h-10 rounded-full px-5 text-base capitalize transition-[background-color,color,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${
+      active ? "bg-field font-medium text-ink" : "text-ink-muted hover:text-ink"
+    }`}
+    {...rest}
+  >
+    {children}
+  </button>
+);
 
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+const Switch = ({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) => (
+  <button
+    type="button" role="switch" aria-checked={on} aria-label={label}
+    onClick={() => onChange(!on)}
+    className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300 ${on ? "bg-brand-solid" : "bg-line-strong"}`}
+  >
+    <span className={`absolute left-1 top-1 size-5 rounded-full bg-surface transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${on ? "translate-x-5" : ""}`} />
+  </button>
+);
+
+const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle }: QuizSystemProps) => {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const reduce = useReducedMotion();
+  const [stage, setStage] = useState<Stage>("setup");
+  const [count, setCount] = useState(10);
+  const [level, setLevel] = useState<(typeof LEVELS)[number]>("medium");
+  const [examPace, setExamPace] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorText, setErrorText] = useState("");
+
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [left, setLeft] = useState(EXAM_SECONDS);
+  const [open, setOpen] = useState<number | null>(null);
 
-  // const questions = sampleQuestions.slice(0, questionCount);
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  // Exam pace: a real 90 second countdown per question. When it ends, an unanswered question counts as wrong.
+  useEffect(() => {
+    if (stage !== "playing" || !examPace) return;
+    if (left <= 0) { advance(); return; }
+    const t = setTimeout(() => setLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  });
 
-  const generateQuiz = async () => {
-    const response = await fetch(
-      "https://ptktlornnngqvzbbisaq.supabase.co/functions/v1/generate-quiz",
-      {
+  const title = `Quiz on ${resourceTitle || "this note"}`;
+
+  const generate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-quiz`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).access_token}`,
-        },
-        body: JSON.stringify({
-          fileUrl: resourcePublicAccessUrl,
-          numberOfQuestions: questionCount,
-          difficulty: difficulty,
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+        body: JSON.stringify({ fileUrl: resourcePublicAccessUrl, numberOfQuestions: count, difficulty: level }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error || !Array.isArray(data.data) || data.data.length === 0) {
+        setErrorText(typeof data.error === "string" ? data.error : "");
+        setStage("error");
+        return;
       }
-    ).then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          toast({
-            title: "Error",
-            description: `${data.error}`,
-          });
-          setIsLoading(false)
-          return
-        }
-
-        setQuestions(data.data)
-        setIsLoading(false)
-        return
-      })
-  }
-
-  const handleStartQuiz = async () => {
-    setIsLoading(true)
-    await generateQuiz()
-    setIsLoading(false)
-
-    setState("playing");
-    setCurrentQuestion(0);
-    setAnswers({});
-    setTimeRemaining(30);
-  };
-
-  const handleAnswer = (answerIndex: number) => {
-    setAnswers({ ...answers, [currentQuestion]: answerIndex });
-  };
-
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-      setTimeRemaining(30);
-    } else {
-      setState("results");
+      setQuestions(data.data);
+      setAnswers({}); setCurrent(0); setLeft(EXAM_SECONDS);
+      setStage("playing");
+    } catch {
+      setErrorText("");
+      setStage("error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
+  const advance = () => {
+    if (current < questions.length - 1) { setCurrent(current + 1); setLeft(EXAM_SECONDS); }
+    else { setOpen(null); setStage("results"); }
   };
 
-  const calculateScore = () => {
-    let correct = 0;
-    questions.forEach((q, idx) => {
-      if (answers[idx] === q.correctAnswer) correct++;
-    });
-    return { correct, total: questions.length, percentage: Math.round((correct / questions.length) * 100) };
+  const missed = useMemo(
+    () => questions.map((q, i) => ({ q, i })).filter(({ q, i }) => answers[i] !== q.correctAnswer),
+    [questions, answers],
+  );
+  const correct = questions.length - missed.length;
+  const weakTopics = useMemo(() => [...new Set(missed.map(({ q }) => q.topic).filter(Boolean))], [missed]);
+
+  // Save each finished quiz so the unit page can show best score and attempts.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (stage !== "results" || !questions.length || !userId) return;
+    recordQuiz(userId, resourcePublicAccessUrl, correct, questions.length)
+      .then(() => queryClient.invalidateQueries({ queryKey: ["progress"] }))
+      .catch((e) => console.error("Could not save quiz score", e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- record once per results screen
+  }, [stage]);
+
+  const retryMissed = () => {
+    setQuestions(missed.map(({ q }) => q));
+    setAnswers({}); setCurrent(0); setLeft(EXAM_SECONDS); setStage("playing");
   };
 
-  const getWeakTopics = () => {
-    const topicScores: Record<string, { correct: number; total: number }> = {};
-    questions.forEach((q, idx) => {
-      if (!topicScores[q.topic]) {
-        topicScores[q.topic] = { correct: 0, total: 0 };
-      }
-      topicScores[q.topic].total++;
-      if (answers[idx] === q.correctAnswer) {
-        topicScores[q.topic].correct++;
-      }
-    });
-    return Object.entries(topicScores)
-      .filter(([_, score]) => score.correct / score.total < 0.7)
-      .map(([topic]) => topic);
-  };
+  const q = questions[current];
 
-  const handleRestart = () => {
-    setState("setup");
-    setAnswers({});
-    setCurrentQuestion(0);
-  };
+  // Home > note / (Quiz /) current page. `quiz` adds the Quiz crumb; `toQuiz` makes it clickable (only where leaving is safe).
+  const bar = (page: string, opts: { quiz?: boolean; toQuiz?: () => void; right?: React.ReactNode } = {}) => (
+    <PageCrumbs
+      onHome={onClose}
+      current={page}
+      trail={[{ label: resourceTitle || "This note", onClick: onClose }, ...(opts.quiz ? [{ label: "Quiz", onClick: opts.toQuiz }] : [])]}
+      right={opts.right}
+    />
+  );
 
-  const handleRetry = () => {
-    setState("playing");
-    setAnswers({});
-    setCurrentQuestion(0);
-  };
+  const screens: Record<Stage, JSX.Element> = {
+    setup: (
+      <>
+        {bar("Quiz")}
+        <Frame>
+          <h1 className="font-literata text-xl md:text-2xl">{title}</h1>
+          <p className="mt-2 text-sm text-ink-muted">Made from this note by AI.</p>
 
-  const handleClose = () => {
-    handleRestart();
-    onClose();
+          <p className="mt-8 text-base font-medium">Questions</p>
+          <div className="mt-3 flex gap-1">{COUNTS.map((n) => <Chip key={n} active={count === n} onClick={() => setCount(n)}>{n}</Chip>)}</div>
+
+          <p className="mt-8 text-base font-medium">Difficulty</p>
+          <div className="mt-3 flex gap-1">{LEVELS.map((l) => <Chip key={l} active={level === l} onClick={() => setLevel(l)}>{l}</Chip>)}</div>
+
+          <div className="mt-8 flex items-start justify-between gap-4 border-t border-line pt-6">
+            <div>
+              <p className="text-base font-medium">Exam pace</p>
+              <p className="mt-1 text-sm text-ink-muted">{EXAM_SECONDS} seconds per question. Unanswered questions count as wrong when time runs out.</p>
+            </div>
+            <Switch on={examPace} onChange={setExamPace} label="Exam pace" />
+          </div>
+
+          <PayBottomBar>
+            <InkButton className="w-full" disabled={loading} onClick={generate}>
+              {loading ? "Making your quiz…" : `Generate ${count} questions`}
+            </InkButton>
+            <p className="text-sm text-ink-muted">Questions are AI-generated from this note.</p>
+          </PayBottomBar>
+        </Frame>
+      </>
+    ),
+
+    playing: q ? (
+      <>
+        {bar(`Question ${current + 1} of ${questions.length}`, {
+          quiz: true,
+          right: examPace && (
+            <span className={`shrink-0 font-geist-mono text-sm tabular-nums ${left <= 10 ? "text-danger" : "text-ink-muted"}`}>
+              {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
+            </span>
+          ),
+        })}
+        <div className="flex gap-1 px-5 pt-0 md:mx-auto md:max-w-[480px] md:px-0 md:pt-6" aria-hidden>
+          {questions.map((_, i) => (
+            <span key={i} className={`h-[3px] flex-1 rounded-full transition-colors duration-500 ${i < current ? "bg-ink" : i === current ? "bg-brand-solid" : "bg-line"}`} />
+          ))}
+        </div>
+        <Frame keyed={current}>
+          <h1 className="font-literata text-xl md:text-2xl">{q.question}</h1>
+          <div role="radiogroup" aria-label="Answers" className="mt-6 flex flex-col gap-1">
+            {q.options.map((opt, i) => {
+              const on = answers[current] === i;
+              return (
+                <button
+                  key={i} role="radio" aria-checked={on}
+                  onClick={() => setAnswers({ ...answers, [current]: i })}
+                  className={`flex items-center gap-4 rounded-[10px] px-3 py-3.5 text-left text-base transition-colors duration-300 ${on ? "bg-field-strong font-medium" : "hover:bg-field"}`}
+                >
+                  <span className={`flex size-8 shrink-0 items-center justify-center rounded-full border text-sm transition-colors duration-300 ${on ? "border-brand bg-brand-solid text-white" : "border-line-strong"}`}>{letter(i)}</span>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+          <PayBottomBar>
+            <div className="flex w-full items-center justify-between">
+              <QuietButton disabled={current === 0} onClick={() => setCurrent(current - 1)}>Previous</QuietButton>
+              <InkButton disabled={!examPace && answers[current] === undefined} onClick={advance}>
+                {current === questions.length - 1 ? "Finish" : "Next"}
+              </InkButton>
+            </div>
+          </PayBottomBar>
+        </Frame>
+      </>
+    ) : <></>,
+
+    results: (
+      <>
+        {bar("Results", { quiz: true, toQuiz: () => setStage("setup") })}
+        <Frame>
+          <h1 className="font-literata text-2xl md:text-3xl">{correct} of {questions.length} correct</h1>
+          <p className="mt-2 text-base text-ink-muted">
+            {missed.length ? `Review the ${missed.length} you missed, then retry just those.` : "You got every question right."}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {missed.length > 0 && <InkButton onClick={retryMissed}>Retry these {missed.length}</InkButton>}
+            <QuietButton tone="soft" onClick={() => setStage("setup")}>New quiz</QuietButton>
+          </div>
+
+          {weakTopics.length > 0 && (
+            <div className="mt-8">
+              <p className="text-base font-medium">Topics to review</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {weakTopics.map((t) => <span key={t} className="rounded-full bg-field px-4 py-2.5 text-base font-medium">{t}</span>)}
+              </div>
+            </div>
+          )}
+
+          {missed.length > 0 && (
+            <ul className="mt-10 border-t border-line">
+              {missed.map(({ q: mq, i }, n) => {
+                const isOpen = open === i || (open === null && n === 0);
+                const mine = answers[i];
+                return (
+                  <li key={i} className="border-b border-line py-5">
+                    <button className="flex w-full items-center justify-between font-geist-mono text-sm text-ink-muted" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? -1 : i)}>
+                      <span>Question {i + 1}</span>
+                      {isOpen ? <span className="font-geist text-sm font-medium text-danger">Missed</span> : <CaretDown size={16} />}
+                    </button>
+                    <p className={`mt-2 ${isOpen ? "font-literata text-xl" : "text-base font-medium"}`}>{mq.question}</p>
+                    {isOpen && (
+                      <div className="mt-4 flex flex-col gap-1">
+                        {mine !== undefined && <Answer label="Your answer" tone="wrong" i={mine} text={mq.options[mine]} />}
+                        {mine === undefined && <p className="text-sm text-ink-muted">You did not answer this one.</p>}
+                        <Answer label="Correct answer" tone="right" i={mq.correctAnswer} text={mq.options[mq.correctAnswer]} />
+                        {mq.explanation && <p className="mt-3 text-base text-ink-muted">{mq.explanation}</p>}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Frame>
+      </>
+    ),
+
+    error: (
+      <>
+        {bar("Couldn’t make a quiz", { quiz: true, toQuiz: () => setStage("setup") })}
+        <div className="px-5 pb-24 pt-24 md:mx-auto md:max-w-[480px] md:px-0">
+          <Info size={28} className="text-ink-muted" />
+          <h1 className="mt-4 font-literata text-xl md:text-2xl">We couldn’t make a quiz from this note</h1>
+          <p className="mt-3 text-base text-ink-muted">
+            {errorText || "Something went wrong while reading it. This can happen when a PDF is a scan with no text to read. Try another note from this unit, or the past papers."}
+          </p>
+          <div className="mt-6 flex items-center gap-2">
+            <InkButton onClick={onClose}>Choose another note</InkButton>
+            <QuietButton onClick={() => setStage("setup")}>Back</QuietButton>
+          </div>
+        </div>
+      </>
+    ),
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[calc(100%-2rem)] rounded-lg md:max-w-2xl md:h-auto md:max-h-[90vh] overflow-auto flex flex-col md:block justify-center">
-        <AnimatePresence mode="wait">
-          {/* Setup Screen */}
-          {state === "setup" && (
-            <motion.div
-              key="setup"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-            >
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 justify-center">
-                  Generate Quiz
-                </DialogTitle>
-                <DialogDescription className="text-center">
-                  {resourceTitle && `${resourceTitle}`}
-                </DialogDescription>
-              </DialogHeader>
+    <div className="min-h-[calc(100dvh-4rem)] bg-surface font-geist text-ink">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={stage}
+          initial={reduce ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduce ? undefined : { opacity: 0 }}
+          transition={{ duration: 0.4, ease: EASE }}
+        >
+          {screens[stage]}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
 
-              <div className="space-y-6 mt-6">
-                {/* Question count */}
-                <div className="space-y-3">
-                  <Label className="flex items-center justify-between">
-                    Number of Questions
-                    <span className="font-bold text-primary">{questionCount}</span>
-                  </Label>
-                  <Slider
-                    value={[questionCount]}
-                    onValueChange={([v]) => setQuestionCount(v)}
-                    min={5}
-                    max={20}
-                    step={5}
-                    className="py-2"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>5</span>
-                    <span>10</span>
-                    <span>15</span>
-                    <span>20</span>
-                  </div>
-                </div>
+const Frame = ({ children, keyed }: { children: React.ReactNode; keyed?: number }) => (
+  <div key={keyed} className="px-5 pb-44 pt-8 md:mx-auto md:max-w-[480px] md:px-0 md:pb-24 md:pt-12">{children}</div>
+);
 
-                {/* Difficulty */}
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
-                    <Gauge className="h-4 w-4" />
-                    Difficulty
-                  </Label>
-                  <RadioGroup
-                    value={difficulty}
-                    onValueChange={setDifficulty}
-                    className="grid grid-cols-3 gap-2"
-                  >
-                    {["easy", "medium", "hard"].map((level) => (
-                      <div key={level}>
-                        <RadioGroupItem value={level} id={level} className="peer sr-only" />
-                        <Label
-                          htmlFor={level}
-                          className="flex items-center justify-center rounded-lg border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 capitalize cursor-pointer transition-colors"
-                        >
-                          {level}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-
-                {/* Cominf soon */}
-                <div className="relative">
-
-                  {/* Timer toggle */}
-                  <div className="flex items-center justify-between p-4 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <Timer className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Timer</p>
-                        <p className="text-sm text-muted-foreground">30 seconds per question</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant={timerEnabled ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setTimerEnabled(!timerEnabled)}
-                    >
-                      {timerEnabled ? "On" : "Off"}
-                    </Button>
-                  </div>
-
-                  <div className="absolute inset-0 z-10 flex items-center justify-center
-                                  bg-black/20 backdrop-blur-sm rounded-xl">
-                    <span className="text-white font-semibold tracking-wide">
-                      Question timer coming soon
-                    </span>
-                  </div>
-                </div>
-
-                <Button variant="accent" size="xl" className="w-full" disabled={isLoading} onClick={handleStartQuiz}>
-                  {isLoading ? (
-                    <Loader className="h-5 w-5 animate-spin" />
-                  ) : (<> Generate Quiz</>)}
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Playing Screen */}
-          {state === "playing" && (
-            <motion.div
-              key="playing"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-            >
-              <DialogHeader className="border-b pb-4">
-                <div className="flex items-center justify-between">
-                  <DialogTitle className="text-base">
-                    Question {currentQuestion + 1} of {questions.length}
-                  </DialogTitle>
-                  {timerEnabled && (
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Timer className="h-4 w-4 text-muted-foreground" />
-                      <span className={timeRemaining <= 10 ? "text-accent" : ""}>{timeRemaining}s</span>
-                    </div>
-                  )}
-                </div>
-                <Progress value={progress} className="h-2 mt-3" />
-              </DialogHeader>
-
-              <div className="py-6">
-                <motion.div
-                  key={currentQuestion}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <p className="text-lg font-medium mb-6">
-                    {questions[currentQuestion]?.question}
-                  </p>
-
-                  <RadioGroup
-                    value={answers[currentQuestion]?.toString()}
-                    onValueChange={(v) => handleAnswer(parseInt(v))}
-                    className="space-y-3"
-                  >
-                    {questions[currentQuestion]?.options.map((option, idx) => (
-                      <div key={idx}>
-                        <RadioGroupItem value={idx.toString()} id={`option-${idx}`} className="peer sr-only" />
-                        <Label
-                          htmlFor={`option-${idx}`}
-                          className="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all hover:bg-secondary peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
-                        >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-sm font-medium peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary">
-                            {String.fromCharCode(65 + idx)}
-                          </span>
-                          {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </motion.div>
-              </div>
-
-              <div className="flex items-center justify-between border-t pt-4">
-                <Button
-                  variant="ghost"
-                  onClick={handlePrevious}
-                  disabled={currentQuestion === 0}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <Button
-                  variant={currentQuestion === questions.length - 1 ? "accent" : "default"}
-                  onClick={handleNext}
-                  disabled={answers[currentQuestion] === undefined}
-                >
-                  {currentQuestion === questions.length - 1 ? "Finish" : "Next"}
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Results Screen */}
-          {state === "results" && (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center"
-            >
-              <DialogHeader>
-                <DialogTitle>Quiz Complete!</DialogTitle>
-              </DialogHeader>
-
-              <div className="py-8">
-                {/* Score circle */}
-                <div className="relative mx-auto w-40 h-40 mb-6">
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle
-                      cx="80"
-                      cy="80"
-                      r="70"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      fill="none"
-                      className="text-muted"
-                    />
-                    <motion.circle
-                      cx="80"
-                      cy="80"
-                      r="70"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      fill="none"
-                      strokeLinecap="round"
-                      className={calculateScore().percentage >= 70 ? "text-success" : "text-accent"}
-                      initial={{ strokeDasharray: "0 440" }}
-                      animate={{
-                        strokeDasharray: `${(calculateScore().percentage / 100) * 440} 440`,
-                      }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold">{calculateScore().percentage}%</span>
-                    <span className="text-sm text-muted-foreground">
-                      {calculateScore().correct}/{calculateScore().total} correct
-                    </span>
-                  </div>
-                </div>
-
-                {/* Weak topics */}
-                {getWeakTopics().length > 0 && (
-                  <Card className="text-left mb-6">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <XCircle className="h-4 w-4 text-accent" />
-                        Topics to Review
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2">
-                        {getWeakTopics().map((topic) => (
-                          <span key={topic} className="px-3 py-1 rounded-full bg-accent/10 text-accent text-sm font-medium">
-                            {topic}
-                          </span>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Button variant="outline" onClick={handleRetry}>
-                    <RotateCcw className="h-4 w-4" />
-                    Retry Quiz
-                  </Button>
-                  <Button variant="outline" onClick={handleRestart}>
-                    <PenBoxIcon className="h-4 w-4" />
-                    Generate New Quiz
-                  </Button>
-                  <div className="relative">
-                    <Button variant="accent" className="w-full md:w-auto">
-                      <BookOpen className="h-4 w-4" />
-                      Create Flashcards
-                    </Button>
-
-                    <div className="absolute inset-0 z-10 flex items-center justify-center
-                                    bg-black/10 backdrop-blur-sm rounded-xl">
-                      <span className="text-white font-semibold tracking-wide">
-                        Flashcards Coming Soon
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </DialogContent>
-    </Dialog>
+const Answer = ({ label, tone, i, text }: { label: string; tone: "right" | "wrong"; i: number; text: string }) => {
+  const c = tone === "right" ? "hsl(var(--positive))" : "hsl(var(--danger))";
+  return (
+    <>
+      <p className="mt-2 text-sm text-ink-muted">{label}</p>
+      <div className="flex items-center gap-4 px-3 py-2.5 text-base">
+        <span style={{ borderColor: c, color: c }} className="flex size-8 shrink-0 items-center justify-center rounded-full border text-sm">{letter(i)}</span>
+        <span className="flex-1">{text}</span>
+        {tone === "right" ? <Check size={16} style={{ color: c }} /> : <XIcon size={16} style={{ color: c }} />}
+      </div>
+    </>
   );
 };
 

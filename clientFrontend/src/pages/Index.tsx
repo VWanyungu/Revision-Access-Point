@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import Login from "./Login";
-import LandingPage from "./LandingPage";
 import PricingGate from "./PricingGate";
 import AppLayout from "@/components/layout/AppLayout";
 import ResourceSearch from "@/components/study/ResourceSearch";
@@ -10,26 +8,27 @@ import PomodoroTimer from "@/components/study/PomodoroTimer";
 import ProgressDashboard from "@/components/study/ProgressDashboard";
 import StudyCalendar from "@/components/study/StudyCalendar";
 import QuizSystem from "@/components/study/QuizSystem";
-import ResourceSearchModal from "@/components/study/ResourceSearchModal";
 import SubscriptionsPage from "@/components/study/SubscriptionsPage";
 import PdfViewerPage from "./PdfViewerPage";
 import AnswersPage, { type AnswersData } from "./AnswersPage";
 import { supabase } from "@/database/supabase";
 import { toast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { cleanAndParseText } from "@/lib/utils";
 import { Loader } from "lucide-react";
 
-type AppState = "landing" | "login" | "signup" | "pricing-gate" | "search" | "main";
+type AppState = "loading" | "pricing-gate" | "search" | "main";
 
 const Index = () => {
-  const [appState, setAppState] = useState<AppState>("landing");
+  const [appState, setAppState] = useState<AppState>("loading");
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [studyContext, setStudyContext] = useState({ year: 1, unit: 0 });
-  const [quizOpen, setQuizOpen] = useState(false);
-  const [resourcesSearchOpen, setResourcesSearchOpen] = useState(false);
+  const [quizReturnPage, setQuizReturnPage] = useState("dashboard");
   const [selectedResourceUrl, setSelectedResourceUrl] = useState<string>();
   const [selectedResourceTitle, setSelectedResourceTitle] = useState<string>();
   const [selectedPdfUrl, setSelectedPdfUrl] = useState<string>("");
+  const [selectedPdfTitle, setSelectedPdfTitle] = useState<string>("");
+  const [answersSource, setAnswersSource] = useState<{ url: string; title: string } | null>(null);
   const [currentUser, setCurrentUser] = useState<Record<string, any>>({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [answersData, setAnswersData] = useState<AnswersData | null>(null);
@@ -110,18 +109,16 @@ const Index = () => {
     checkUser();
   }, []);
 
-  const handleLogin = () => {
-    // Simply reload or re-run check logic
-    window.location.reload();
-  };
+  // Pages are swapped in place, so the window keeps its scroll position; start each page at the top
+  // or its first content slides under the floating navbar.
+  useEffect(() => { window.scrollTo(0, 0); }, [currentPage]);
 
   const handleLogout = () => {
-    setAppState("landing");
     setStudyContext({ year: 1, unit: 0 });
     setCurrentPage("dashboard");
   };
 
-  const handleSearch = async (selection: { school: string; department: string; year: string; semester: string; unit: string }) => {
+  const handleSearch = async (selection: { school: string; department: string; year: number; semester: number; unit: string }) => {
     const { data: { user } } = await supabase.auth.getUser();
 
     const sbTokenStr = localStorage.getItem("sb-ptktlornnngqvzbbisaq-auth-token");
@@ -160,34 +157,51 @@ const Index = () => {
     // because ResourceSearch components have already set it with full names!
     setStudyContext({ year: Number(selection.year), unit: Number(selection.unit) });
     setAppState("main");
-    setResourcesSearchOpen(false);
+    setCurrentPage("dashboard");
+  };
+
+  const openPaper = (url: string, title?: string) => {
+    setSelectedPdfUrl(url);
+    setSelectedPdfTitle(title ?? "");
+    setCurrentPage("pdf");
   };
 
   const handleGenerateQuiz = (publicAccessUrl: string, title: string) => {
     setSelectedResourceUrl(publicAccessUrl);
     setSelectedResourceTitle(title);
-    setQuizOpen(true);
+    setQuizReturnPage(currentPage);
+    setCurrentPage("quiz");
   };
 
-  const handleGenerateAnswers = async (fileUrl: string, title: string) => {
-    setIsGeneratingAnswers(true);
+  const answersKey = (url: string) => `rap-answers:${url}`;
+
+  /** Shows the saved copy if there is one; `force` regenerates. */
+  const handleGenerateAnswers = async (fileUrl: string, title: string, force = false) => {
+    setAnswersSource({ url: fileUrl, title });
     setCurrentPage("answers");
+
+    if (!force) {
+      try {
+        const saved = localStorage.getItem(answersKey(fileUrl));
+        if (saved) {
+          const { data, savedAt } = JSON.parse(saved);
+          setAnswersData({ ...data, savedAt });
+          return;
+        }
+      } catch { /* fall through and generate */ }
+    }
+
+    setAnswersData(null);
+    setIsGeneratingAnswers(true);
     try {
       const tokenStr = localStorage.getItem("sb-ptktlornnngqvzbbisaq-auth-token");
       const accessToken = tokenStr ? JSON.parse(tokenStr).access_token : "";
 
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-answers`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ fileUrl, title }),
-        }
-      );
-
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-answers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ fileUrl, title }),
+      });
       const raw = await res.json();
 
       if (!res.ok) {
@@ -200,10 +214,13 @@ const Index = () => {
         return;
       }
 
-      console.log(raw)
-
-      // const { parsed } = cleanAndParseText(raw.data);
-      setAnswersData(raw.data);
+      const savedAt = new Date().toISOString();
+      try { localStorage.setItem(answersKey(fileUrl), JSON.stringify({ data: raw.data, savedAt })); } catch { /* storage full */ }
+      setAnswersData({ ...raw.data, savedAt });
+      // The user may have gone back to the paper while this ran, so tell them it finished.
+      sonnerToast.success("Model answers are ready", {
+        action: { label: "View", onClick: () => setCurrentPage("answers") },
+      });
     } catch (err) {
       toast({
         title: "Error",
@@ -216,19 +233,12 @@ const Index = () => {
     }
   };
 
-  // Landing page
-  if (appState === "landing") {
+  if (appState === "loading") {
     return (
-      <LandingPage
-        onNavigateLogin={() => setAppState("login")}
-        onNavigateSignUp={() => setAppState("signup")}
-      />
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader className="h-5 w-5 animate-spin text-primary" />
+      </div>
     );
-  }
-
-  // Login / Sign up
-  if (appState === "login" || appState === "signup") {
-    return <Login onLogin={handleLogin} defaultSignUp={appState === "signup"} />;
   }
 
   // Pricing gate for unsubscribed users
@@ -264,23 +274,34 @@ const Index = () => {
       case "dashboard":
         return (
           <StudyDashboard
+            key={studyContext?.unit}
             unitId={Number(studyContext?.unit)}
             onNavigate={setCurrentPage}
             onGenerateQuiz={handleGenerateQuiz}
             onGenerateAnswers={handleGenerateAnswers}
-            onViewResource={(url) => { setSelectedPdfUrl(url); setCurrentPage("pdf"); }}
-            showResourceSelector={() => setResourcesSearchOpen(!resourcesSearchOpen)}
+            onViewResource={openPaper}
+            onChangeUnit={handleSearch}
+          />
+        );
+      case "quiz":
+        return (
+          <QuizSystem
+            key={selectedResourceUrl}
+            onClose={() => setCurrentPage(quizReturnPage)}
+            resourcePublicAccessUrl={selectedResourceUrl}
+            resourceTitle={selectedResourceTitle}
           />
         );
       case "resources":
         return (
           <StudyDashboard
+            key={studyContext?.unit}
             unitId={Number(studyContext?.unit)}
             onNavigate={setCurrentPage}
             onGenerateQuiz={handleGenerateQuiz}
             onGenerateAnswers={handleGenerateAnswers}
-            onViewResource={(url) => { setSelectedPdfUrl(url); setCurrentPage("pdf"); }}
-            showResourceSelector={() => setResourcesSearchOpen(!resourcesSearchOpen)}
+            onViewResource={openPaper}
+            onChangeUnit={handleSearch}
           />
         );
       case "flashcards":
@@ -292,25 +313,28 @@ const Index = () => {
       case "calendar":
         return <StudyCalendar />;
       case "pdf":
-        return <PdfViewerPage url={selectedPdfUrl} onBack={() => setCurrentPage("dashboard")} />;
+        return (
+          <PdfViewerPage
+            url={selectedPdfUrl}
+            title={selectedPdfTitle}
+            onBack={() => setCurrentPage("dashboard")}
+            onModelAnswers={() => handleGenerateAnswers(selectedPdfUrl, selectedPdfTitle)}
+          />
+        );
       case "subscriptions":
         return <SubscriptionsPage onNavigate={setCurrentPage} />;
       case "answers":
-        return isGeneratingAnswers ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-muted-foreground">
-            {/* <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin" /> */}
-            <Loader className="h-5 w-5 text-primary animate-spin" />
-            <p className="text-sm">Generating answers, please wait…</p>
-          </div>
-        ) : answersData ? (
+        return (
           <AnswersPage
             data={answersData}
-            onBack={() => { setAnswersData(null); setCurrentPage("dashboard"); }}
+            generating={isGeneratingAnswers}
+            title={answersSource?.title ?? selectedPdfTitle}
+            onBack={() => { setCurrentPage(answersSource ? "pdf" : "dashboard"); }}
+            onOpenPaper={() => { if (answersSource) openPaper(answersSource.url, answersSource.title); }}
+            onRegenerate={() => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title, true)}
+            onQuiz={() => answersSource && handleGenerateQuiz(answersSource.url, answersSource.title)}
+            downloadUrl={answersSource?.url}
           />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-muted-foreground">
-            <p>No answers available.</p>
-          </div>
         );
       default:
         return (
@@ -319,36 +343,21 @@ const Index = () => {
             onNavigate={setCurrentPage}
             onGenerateQuiz={handleGenerateQuiz}
             onGenerateAnswers={handleGenerateAnswers}
-            onViewResource={(url) => { setSelectedPdfUrl(url); setCurrentPage("pdf"); }}
+            onViewResource={openPaper}
           />
         );
     }
   };
 
   return (
-    <>
-      <AppLayout
-        currentPage={currentPage}
-        onNavigate={setCurrentPage}
-        onLogout={handleLogout}
-        studyContext={studyContext}
-      >
-        {renderPage()}
-      </AppLayout>
-
-      <QuizSystem
-        isOpen={quizOpen}
-        onClose={() => setQuizOpen(false)}
-        resourcePublicAccessUrl={selectedResourceUrl}
-        resourceTitle={selectedResourceTitle}
-      />
-
-      <ResourceSearchModal
-        isOpen={resourcesSearchOpen}
-        onClose={() => setResourcesSearchOpen(false)}
-        onSearch={handleSearch}
-      />
-    </>
+    <AppLayout
+      currentPage={currentPage}
+      onNavigate={setCurrentPage}
+      onLogout={handleLogout}
+      studyContext={studyContext}
+    >
+      {renderPage()}
+    </AppLayout>
   );
 };
 

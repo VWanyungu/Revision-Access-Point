@@ -2,27 +2,23 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Building2, BookOpen, GraduationCap, Calendar, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Progress } from "@/components/ui/progress";
-import { getResources, getSchools, getDepartments, getDepartmentsBySchoolId, getUnitsByDepartmentIdYearSemester } from "@/database/utils";
+import { getSchools, getDepartmentsBySchoolId, getUnitsByDepartmentIdYearSemester } from "@/database/utils";
 import { useQuery } from '@tanstack/react-query';
-
-interface ResourceSearchProps {
-  onSearch: (selection: {
-    school: string;
-    department: string;
-    year: string;
-    semester: string;
-    unit: string;
-  }) => void;
-}
 
 const years = ["1", "2", "3", "4"];
 
 const semesters = ["1", "2", "3"];
 
-const ResourceSearch = ({ onSearch }) => {
+interface ResourceSearchProps {
+  onSearch: (selection: { school: string; department: string; year: number; semester: number; unit: string }) => void;
+  /** Render only the fields and button, for use inside a popover on the unit page. Without it, this is the full first-run page. */
+  inline?: boolean;
+}
+
+const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
     const [school, setSchool] = useState("");
     const [schoolName, setSchoolName] = useState("");
     const [department, setDepartment] = useState("");
@@ -33,22 +29,23 @@ const ResourceSearch = ({ onSearch }) => {
 
     const progress = [school, department, year, semester, unit].filter(Boolean).length * 20;
 
-     const { data: schools = [], isLoading } = useQuery({
+     const { data: schools = [] } = useQuery({
         queryKey: ['schools'],
         queryFn: async () => {
             return await getSchools()
         },
     });
 
-    const { data: departments = [], isLoading: isDepartmentsLoading } = useQuery({
-        queryKey: ['departments'],
+    // The school is part of the key, otherwise choosing another school would show the first school's departments.
+    const { data: departments = [] } = useQuery({
+        queryKey: ['departments', school],
         queryFn: async () => {
             return await getDepartmentsBySchoolId(school)
         },
         enabled: !!school,
     });
 
-    const { data: units = [], isLoading: isUnitsLoading } = useQuery({
+    const { data: units = [] } = useQuery({
         queryKey: ['units', year, semester, department],
         queryFn: async () => {
             return await getUnitsByDepartmentIdYearSemester(department, year, semester)
@@ -71,6 +68,73 @@ const ResourceSearch = ({ onSearch }) => {
         }
     };
 
+  const fields = (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">School / University</label>
+        <Dropdown
+          fullWidth
+          label="School"
+          placeholder="Select your school"
+          items={schools}
+          selectedId={school}
+          onSelect={(value) => {
+            setSchool(value);
+            setDepartment("");
+            setUnit("");
+            setSchoolName(schools.find(s => s.id === value)?.name);
+          }}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Department</label>
+        <Dropdown
+          fullWidth
+          label="Department"
+          placeholder="Select your department"
+          items={departments}
+          selectedId={department}
+          disabled={!school}
+          onSelect={(value) => {
+            setDepartment(value);
+            setUnit("");
+            setDepartmentName(departments.find(d => d.id === value)?.name);
+          }}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Year of Study</label>
+          <Dropdown fullWidth label="Year of Study" placeholder="Select your year" items={years.map((y) => ({ id: y, name: y }))} selectedId={year} onSelect={setYear} disabled={!department} />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Semester of Study</label>
+          <Dropdown fullWidth label="Semester of Study" placeholder="Select your semester" items={semesters.map((s) => ({ id: s, name: s }))} selectedId={semester} onSelect={setSemester} disabled={!department} />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Unit</label>
+        <Dropdown fullWidth label="Unit" placeholder="Select your unit" items={units} selectedId={unit} onSelect={setUnit} disabled={!year || !semester} />
+      </div>
+
+      <Button
+        variant="accent"
+        size={inline ? "lg" : "xl"}
+        className="mt-2 w-full"
+        disabled={!school || !department || !year || !semester || !unit}
+        onClick={handleSearch}
+      >
+        <Search className="h-5 w-5" />
+        Search Resources
+      </Button>
+    </div>
+  );
+
+  if (inline) return fields;
+
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-6">
       <motion.div
@@ -80,7 +144,7 @@ const ResourceSearch = ({ onSearch }) => {
         className="w-full max-w-2xl"
       >
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Find Your Study Resources</h1>
+          <h1 className="text-2xl font-bold mb-2">Find Your Study Resources</h1>
           <p className="text-muted-foreground">
             Select your academic path to access notes, CATs, exams, and tutorials
           </p>
@@ -117,118 +181,7 @@ const ResourceSearch = ({ onSearch }) => {
             <Progress value={progress} className="h-2" />
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            {/* School */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">School / University</label>
-              <Select
-                value={school}
-                onValueChange={(value) => {
-                  setSchool(value);
-                  setDepartment("");
-                  setUnit("");
-                  setSchoolName(schools.find(s => s.id === value)?.name);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your school" />
-                </SelectTrigger>
-                <SelectContent>
-                  {schools.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Department */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Department</label>
-              <Select
-                value={department}
-                onValueChange={(value) => {
-                  setDepartment(value);
-                  setUnit("");
-                  setDepartmentName(departments.find(d => d.id === value)?.name);
-                }}
-                disabled={!school}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Year */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Year of Study</label>
-              <Select value={year} onValueChange={setYear} disabled={!department}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={y}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Semester of Study</label>
-              <Select value={semester} onValueChange={setSemester} disabled={!department}>
-                  <SelectTrigger>
-                  <SelectValue placeholder="Select your semester" />
-                  </SelectTrigger>
-                  <SelectContent>
-                  {semesters.map((y) => (
-                      <SelectItem key={y} value={y}>
-                      {y}
-                      </SelectItem>
-                  ))}
-                  </SelectContent>
-              </Select>
-            </div>
-
-            {/* Unit */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Unit</label>
-              <Select value={unit} onValueChange={setUnit} disabled={!year || !semester}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {units.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              variant="accent"
-              size="xl"
-              className="w-full mt-6"
-              disabled={!school || !department || !year || !semester || !unit}
-              onClick={handleSearch}
-            >
-              <Search className="h-5 w-5" />
-              Search Resources
-            </Button>
-          </CardContent>
+          <CardContent>{fields}</CardContent>
         </Card>
 
         <p className="text-center text-sm text-muted-foreground mt-4">

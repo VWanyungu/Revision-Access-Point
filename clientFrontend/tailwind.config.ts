@@ -12,12 +12,76 @@ export default {
         "2xl": "1400px",
       },
     },
+    /*
+     * THE type scale. It replaces Tailwind's defaults (not `extend`), so these nine steps are the only
+     * `text-*` sizes that exist, and each carries its own line height and tracking, so you rarely need
+     * `leading-*`/`tracking-*`. Never write `text-[13px]`: `npm run lint` fails on it
+     * (scripts/check-type-scale.mjs), because Tailwind itself would accept any arbitrary size.
+     *
+     *   xs   12  captions, uppercase labels, badges
+     *   sm   13  secondary text, links, buttons, table cells
+     *   base 15  body copy (the default)
+     *   lg   18  reading text, lead paragraphs, small headings
+     *   xl   24  card and section titles
+     *   2xl  32  page headings
+     *   3xl  44  page titles
+     *   4xl  56  hero titles
+     *   5xl  72  display (landing only)
+     */
+    fontSize: {
+      xs: ["0.75rem", { lineHeight: "1rem" }],
+      sm: ["0.8125rem", { lineHeight: "1.25rem" }],
+      base: ["0.9375rem", { lineHeight: "1.5rem" }],
+      lg: ["1.125rem", { lineHeight: "1.75rem" }],
+      xl: ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.01em" }],
+      "2xl": ["2rem", { lineHeight: "2.5rem", letterSpacing: "-0.02em" }],
+      "3xl": ["2.75rem", { lineHeight: "3rem", letterSpacing: "-0.03em" }],
+      "4xl": ["3.5rem", { lineHeight: "3.75rem", letterSpacing: "-0.035em" }],
+      "5xl": ["4.5rem", { lineHeight: "4.75rem", letterSpacing: "-0.04em" }],
+    },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['Source Serif 4', 'Georgia', 'serif'],
+        // Geist is the single app font (matches the Enterprise frontend); serif/literata stay as aliases so old classes resolve to it.
+        sans: ['Geist', 'system-ui', 'sans-serif'],
+        serif: ['Geist', 'system-ui', 'sans-serif'],
+        geist: ['Geist', 'system-ui', 'sans-serif'],
+        'geist-mono': ['Geist Mono', 'ui-monospace', 'monospace'],
+        literata: ['Geist', 'system-ui', 'sans-serif'],
       },
       colors: {
+        // Theme-aware tokens for the study screens (values in index.css, light and dark). Prefer these to hex.
+        surface: "hsl(var(--surface) / <alpha-value>)",
+        field: {
+          DEFAULT: "hsl(var(--field) / <alpha-value>)",
+          strong: "hsl(var(--field-strong) / <alpha-value>)",
+          soft: "hsl(var(--field-soft) / <alpha-value>)",
+        },
+        line: {
+          DEFAULT: "hsl(var(--line) / <alpha-value>)",
+          soft: "hsl(var(--line-soft) / <alpha-value>)",
+          strong: "hsl(var(--line-strong) / <alpha-value>)",
+        },
+        ink: {
+          DEFAULT: "hsl(var(--ink) / <alpha-value>)",
+          soft: "hsl(var(--ink-soft) / <alpha-value>)",
+          muted: "hsl(var(--ink-muted) / <alpha-value>)",
+          subtle: "hsl(var(--ink-subtle) / <alpha-value>)",
+          fg: "hsl(var(--ink-fg) / <alpha-value>)",
+          hover: "hsl(var(--ink-hover) / <alpha-value>)",
+        },
+        brand: {
+          DEFAULT: "hsl(var(--brand) / <alpha-value>)",
+          solid: "hsl(var(--brand-solid) / <alpha-value>)",
+        },
+        info: {
+          bg: "hsl(var(--info-bg) / <alpha-value>)",
+          fg: "hsl(var(--info-fg) / <alpha-value>)",
+        },
+        positive: {
+          DEFAULT: "hsl(var(--positive) / <alpha-value>)",
+          solid: "hsl(var(--positive-solid) / <alpha-value>)",
+        },
+        danger: "hsl(var(--danger) / <alpha-value>)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

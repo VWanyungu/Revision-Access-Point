@@ -1,228 +1,84 @@
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Timer, Play, Pause, RotateCcw, Coffee, Brain, SkipForward, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { useCallback, useEffect, useState } from "react";
+import { ArrowCounterClockwise, Pause, Play, SkipForward } from "@phosphor-icons/react";
 
-type TimerMode = "focus" | "break";
+type Mode = "focus" | "break";
 
+const MODES: Record<Mode, { label: string; seconds: number; bar: string }> = {
+  focus: { label: "Focus", seconds: 25 * 60, bar: "bg-brand-solid" },
+  break: { label: "Break", seconds: 5 * 60, bar: "bg-positive-solid" },
+};
+
+const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+const quiet =
+  "flex size-11 items-center justify-center rounded-full text-ink-muted transition-[background-color,color,transform] duration-300 hover:bg-field hover:text-ink active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40";
+
+/**
+ * Pomodoro timer. One dominant number (the time), one primary action (start / pause),
+ * quiet secondary actions, and progress that is shown as a bar and also exposed to assistive tech.
+ */
 const PomodoroTimerCondensed = () => {
-  const [mode, setMode] = useState<TimerMode>("focus");
-  const [isRunning, setIsRunning] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(25 * 60); // 25 minutes in seconds
-  const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const [mode, setMode] = useState<Mode>("focus");
+  const [running, setRunning] = useState(false);
+  const [left, setLeft] = useState(MODES.focus.seconds);
+  const [done, setDone] = useState(0);
 
-  const focusTime = 25 * 60;
-  const breakTime = 5 * 60;
+  const total = MODES[mode].seconds;
+  const progress = ((total - left) / total) * 100;
 
-  const totalTime = mode === "focus" ? focusTime : breakTime;
-  const progress = ((totalTime - timeRemaining) / totalTime) * 100;
+  const choose = useCallback((m: Mode) => { setMode(m); setLeft(MODES[m].seconds); setRunning(false); }, []);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleStart = () => setIsRunning(true);
-  const handlePause = () => setIsRunning(false);
-
-  const handleReset = () => {
-    setIsRunning(false);
-    setTimeRemaining(mode === "focus" ? focusTime : breakTime);
-  };
-
-  const switchMode = useCallback(() => {
-    if (mode === "focus") {
-      setSessionsCompleted((s) => s + 1);
-      setMode("break");
-      setTimeRemaining(breakTime);
-    } else {
-      setMode("focus");
-      setTimeRemaining(focusTime);
-    }
-    setIsRunning(false);
-  }, [mode]);
-
-  const handleSkip = () => {
-    switchMode();
-  };
+  // Finishing a focus session counts it, then moves to the other mode, paused so the user decides when to go on.
+  const next = useCallback(() => {
+    if (mode === "focus") setDone((n) => n + 1);
+    choose(mode === "focus" ? "break" : "focus");
+  }, [mode, choose]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (isRunning && timeRemaining > 0) {
-      interval = setInterval(() => {
-        setTimeRemaining((t) => t - 1);
-      }, 1000);
-    } else if (timeRemaining === 0) {
-      // Auto switch mode
-      switchMode();
-    }
-
-    return () => clearInterval(interval);
-  }, [isRunning, timeRemaining, switchMode]);
+    if (!running) return;
+    if (left <= 0) { next(); return; }
+    const t = setTimeout(() => setLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [running, left, next]);
 
   return (
-    // <div className="space-y-6 border border-primary-foreground/20 rounded-lg">
-    //   <Card className={`overflow-hidden ${mode === "focus" ? "" : "bg-success/5"}`}>
-    //     <CardHeader className="text-center pb-2">
-    //       {/* <div className="flex items-center justify-center gap-2">
-    //         {mode === "focus" ? (
-    //           <Brain className="h-5 w-5 text-primary" />
-    //         ) : (
-    //           <Coffee className="h-5 w-5 text-success" />
-    //         )}
-    //         <CardTitle className="text-lg capitalize">{mode} Time</CardTitle>
-    //       </div> */}
-    //     </CardHeader>
-    //     <CardContent className="text-center pb-8 flex">
-    //         {/* <div className="absolute inset-0 flex flex-col items-center justify-center">
-    //           <span className="text-6xl font-bold font-mono tracking-tight">
-    //             {formatTime(timeRemaining)}
-    //           </span>
-    //           <span className="text-sm text-muted-foreground mt-2 capitalize">
-    //             {mode === "focus" ? "Stay focused!" : "Take a break"}
-    //           </span>
-    //         </div> */}
-
-    //       {/* Controls */}
-    //       {/* <div className="flex items-center justify-center gap-3">
-    //         <Button variant="outline" size="icon-lg" onClick={handleReset}>
-    //           <RotateCcw className="h-5 w-5" />
-    //         </Button>
-
-    //         {isRunning ? (
-    //           <Button
-    //             size="xl"
-    //             className="w-32"
-    //             onClick={handlePause}
-    //           >
-    //             <Pause className="h-5 w-5" />
-    //             Pause
-    //           </Button>
-    //         ) : (
-    //           <Button
-    //             size="xl"
-    //             className="w-32"
-    //             onClick={handleStart}
-    //           >
-    //             <Play className="h-5 w-5" />
-    //             Start
-    //           </Button>
-    //         )}
-
-    //         <Button variant="outline" size="icon-lg" onClick={handleSkip}>
-    //           <SkipForward className="h-5 w-5" />
-    //         </Button>
-    //       </div> */}
-    //     </CardContent>
-
-    //     {/* Progress bar at bottom */}
-    //     <Progress value={progress} className="h-1 rounded-none" />
-    //   </Card>
-
-    // </div>
-    <div className="flex gap-4">
-      <motion.div
-        className="w-full flex items-center justify-center bg-primary-foreground backdrop-blur-md border-gray-800/50 rounded-lg"
-      >
-        {/* Progress background */}
-        <motion.div
-          className={`
-                absolute inset-0 origin-left
-                ${progress / 100 >= 1 ? 'bg-white' : 'bg-green-400'}
-                transition-colors duration-700 rounded-lg
-                `}
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: progress / 100 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        />
-
-        {/* Content layer */}
-        <div className="relative z-10 flex items-center justify-center gap-10 md:gap-16 w-full max-w-4xl px-4 sm:px-6">
-          {/* Timer display */}
-          {/* <div
-                className={`
-                    text-3xl md:text-4xl font-mono font-bold tracking-wider drop-shadow-md transition-colors
-                    ${progress >= 1 ? 'text-gray-900' : 'text-white'}
-                `}
-                >
-                    {formatTime(timeRemaining)}
-                </div> */}
-
-          <span className={`text-3xl font-bold font-mono tracking-tight text-primary`}>
-            {formatTime(timeRemaining)}
-          </span>
-
-          {/* Controls */}
-          {/* <div className="flex gap-4">
-                <button
-                    className={`
-                    w-11 h-11 rounded-full flex items-center justify-center text-white transition-all active:scale-95
-                    ${isRunning ? 'bg-red-600/80 hover:bg-red-600' : 'bg-emerald-600/80 hover:bg-emerald-600'}
-                    `}
-                    aria-label={isRunning ? "Pause" : "Play"}
-                >
-                    {isRunning ? (
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                    </svg>
-                    ) : (
-                    <svg className="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5.14v14.72l11-7.36z" />
-                    </svg>
-                    )}
-                </button>
-
-                <button
-                    className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all active:scale-95"
-                    aria-label="Skip"
-                >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2.5}
-                        d="M9 5l7 7-7 7M5 5l7 7-7 7"
-                    />
-                    </svg>
-                </button>
-                </div> */}
+    <section aria-label="Pomodoro timer" className="rounded-2xl border border-line bg-surface p-4 font-geist text-ink md:p-5">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div role="tablist" aria-label="Timer mode" className="flex rounded-full bg-field p-1">
+          {(Object.keys(MODES) as Mode[]).map((m) => (
+            <button
+              key={m} role="tab" aria-selected={mode === m} onClick={() => choose(m)}
+              className={`h-9 rounded-full px-4 text-sm transition-colors duration-300 ${mode === m ? "bg-surface font-medium shadow-sm ring-1 ring-line" : "text-ink-muted hover:text-ink"}`}
+            >
+              {MODES[m].label} <span className="ml-1 font-geist-mono text-ink-muted">{MODES[m].seconds / 60}</span>
+            </button>
+          ))}
         </div>
-      </motion.div>
 
-      <div className="flex items-center justify-center gap-3">
-        <Button variant="outline" size="icon-lg" onClick={handleReset}>
-          <RotateCcw className="h-5 w-5" />
-        </Button>
+        <div className="flex items-baseline gap-3">
+          <span role="timer" aria-label={`${Math.floor(left / 60)} minutes ${left % 60} seconds left`} className="font-geist-mono text-3xl font-normal tracking-tight tabular-nums">
+            {clock(left)}
+          </span>
+          <span className="text-sm text-ink-muted">{done} {done === 1 ? "session" : "sessions"} done</span>
+        </div>
 
-        {isRunning ? (
-          <Button
-            size="xl"
-            className="w-20 md:w-32"
-            onClick={handlePause}
+        <div className="ml-auto flex items-center gap-1">
+          <button className={quiet} aria-label="Reset" onClick={() => choose(mode)}><ArrowCounterClockwise size={20} /></button>
+          <button
+            onClick={() => setRunning((r) => !r)}
+            className="flex h-11 min-w-[7rem] items-center justify-center gap-2 rounded-full bg-ink px-5 text-base font-medium text-ink-fg transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-ink-hover active:scale-[0.98]"
           >
-            <Pause className="h-5 w-5" />
-            <span className="hidden md:block">Pause</span>
-          </Button>
-        ) : (
-          <Button
-            size="xl"
-            className="w-20 md:w-32"
-            onClick={handleStart}
-          >
-            <Play className="h-5 w-5" />
-            <span className="hidden md:block">Start</span>
-          </Button>
-        )}
-
-        <Button variant="outline" size="icon-lg" onClick={handleSkip}>
-          <SkipForward className="h-5 w-5" />
-        </Button>
+            {running ? <><Pause size={18} weight="fill" /> Pause</> : <><Play size={18} weight="fill" /> {left === total ? "Start" : "Resume"}</>}
+          </button>
+          <button className={quiet} aria-label={mode === "focus" ? "Skip to break" : "Skip to focus"} onClick={next}><SkipForward size={20} /></button>
+        </div>
       </div>
-    </div>
+
+      <div role="progressbar" aria-label={`${MODES[mode].label} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)} className="mt-4 h-1 overflow-hidden rounded-full bg-line">
+        <div className={`h-full origin-left rounded-full transition-transform duration-1000 ease-linear motion-reduce:transition-none ${MODES[mode].bar}`} style={{ transform: `scaleX(${progress / 100})` }} />
+      </div>
+      <p className="sr-only" aria-live="polite">{MODES[mode].label} {running ? "running" : "paused"}</p>
+    </section>
   );
 };
 

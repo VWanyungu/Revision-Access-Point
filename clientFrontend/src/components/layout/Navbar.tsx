@@ -1,150 +1,110 @@
-import { Bell, ChevronDown, User, BookOpen, Brain, Calendar, TrendingUp, LogOut, Menu, CreditCard } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BookOpen, CaretDown, CreditCard, SignOut } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
-import { supabase } from "@/database/supabase";
 import { toast } from "sonner";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { ModeToggle } from "@/components/mode-toggle";
+import { useAuth } from "@/context/AuthContext";
+import logoLight from "@/assets/auth/logo-light.svg";
 
 interface NavbarProps {
-  studyContext?: {
-    year: number;
-    unit: number;
-  };
+  studyContext?: { year: number; unit: number };
+  currentPage?: string;
   onMenuClick: () => void;
   onLogout: () => void;
   onNavigate: (page: string) => void;
 }
 
-const Navbar = ({ studyContext, onMenuClick, onLogout, onNavigate }: NavbarProps) => {
-  const [userName, setUserName] = useState("");
+const links = [
+  { page: "resources", label: "Resources", Icon: BookOpen },
+  { page: "subscriptions", label: "Subscriptions", Icon: CreditCard },
+];
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.user_metadata) {
-      setUserName(String(user.user_metadata.full_name).split(" ")[0]);
-    }
-  }, []);
+const Navbar = ({ currentPage, onLogout, onNavigate }: NavbarProps) => {
+  const { user, signOut } = useAuth();
+  const meta = user?.user_metadata?.full_name as string | undefined;
+  const userName = (meta || user?.email?.split("@")[0] || "Account").split(" ")[0];
 
   const handleLogout = async () => {
     localStorage.removeItem("user");
-
-    const { error } = await supabase.auth.signOut()
-
-    if (error) {
-      toast.error('Error logging out: ' + error.message)
-    } else {
-      toast.success('Logged out successful')
+    try {
+      await signOut();
+      toast.success("Logged out");
+    } catch (e: any) {
+      toast.error("Error logging out: " + e.message);
     }
-
     onLogout();
-  }
+  };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="flex h-16 items-center px-4 md:px-6">
-        {/* Mobile menu button */}
-        {/* <Button
-          variant="ghost"
-          size="icon"
-          className="mr-2 md:hidden"
-          onClick={onMenuClick}
+    // Sticky wrapper ignores the pointer so only the pill itself is clickable; page content scrolls beneath it.
+    <header className="pointer-events-none sticky top-0 z-50 px-3 pt-3 font-geist md:px-6 md:pt-4">
+      <nav
+        aria-label="Main"
+        className="pointer-events-auto mx-auto flex w-full max-w-3xl items-center gap-1 rounded-full bg-surface/85 p-1.5 pl-4 text-ink shadow-[0_8px_30px_-14px_rgba(14,21,37,0.18)] ring-1 ring-line backdrop-blur-xl"
+      >
+        <button
+          type="button"
+          onClick={() => onNavigate("resources")}
+          aria-label="Revision Access Point home"
+          className="mr-2 shrink-0 transition-opacity duration-300 hover:opacity-70"
         >
-          <Menu className="h-5 w-5" />
-        </Button> */}
+          <img src={logoLight} alt="" className="h-6 w-[107px] dark:invert" />
+        </button>
 
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          {/* <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <BookOpen className="h-5 w-5 text-primary-foreground" />
-          </div> */}
-          <span className="hidden font-semibold text-lg md:inline-block">Revision Access Point</span>
+        <div className="ml-auto hidden items-center gap-0.5 md:flex">
+          {links.map(({ page, label }) => (
+            <button
+              key={page}
+              type="button"
+              onClick={() => onNavigate(page)}
+              aria-current={currentPage === page ? "page" : undefined}
+              className={`rounded-full px-3.5 py-2 text-sm font-medium transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+                currentPage === page
+                  ? "bg-field text-ink"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Study Context */}
-        {/* {studyContext && (
-          <div className="ml-6 hidden items-center gap-2 md:flex">
-            <span className="text-muted-foreground">/</span>
-            <Badge variant="secondary" className="font-medium">
-              {studyContext.year}
-            </Badge>
-            <span className="text-muted-foreground">→</span>
-            <Badge variant="outline" className="font-medium">
-              {studyContext.unit}
-            </Badge>
-          </div>
-        )} */}
-
-        {/* Right side */}
-        <div className="ml-auto flex items-center gap-2">
-          {/* Back to Resources button */}
-          {/* <Button variant="outline" className="hidden md:flex gap-2" onClick={() => onNavigate("resources")}>
-            <BookOpen className="h-4 w-4" />
-            Back to Resources
-          </Button> */}
-
-          {/* Theme Toggle */}
-          {/* <ThemeToggle /> */}
-
+        <div className="ml-auto flex items-center gap-1 md:ml-1">
           <ModeToggle />
-
-          {/* User dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-                <span className="hidden md:inline">{userName}</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </Button>
+              <button
+                type="button"
+                className="group flex h-9 items-center gap-1.5 rounded-full bg-ink pl-4 pr-3 text-sm font-medium text-ink-fg ring-2 ring-ink/10 transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-ink-hover active:scale-[0.98]"
+              >
+                {userName}
+                <CaretDown size={14} className="transition-transform duration-300 group-data-[state=open]:rotate-180" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="">
-              {/* <DropdownMenuItem className="gap-2">
-                <Brain className="h-4 w-4" />
-                My Quizzes
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2">
-                <BookOpen className="h-4 w-4" />
-                Flashcards
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2">
-                <Calendar className="h-4 w-4" />
-                Study Calendar
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Progress
-              </DropdownMenuItem>
-              <DropdownMenuSeparator /> */}
-              <DropdownMenuItem className="gap-2 px-4 py-4 rounded-none cursor-pointer border-b border-border" onClick={() => onNavigate("resources")}>
-                <BookOpen className="h-4 w-4" />
-                Resources
-              </DropdownMenuItem>
-
-              <DropdownMenuItem className="gap-2 px-4 py-4 rounded-none cursor-pointer border-b border-border" onClick={() => onNavigate("subscriptions")}>
-                <CreditCard className="h-4 w-4" />
-                Subscriptions
-              </DropdownMenuItem>
-
-              {/* <DropdownMenuSeparator /> */}
-
-              <DropdownMenuItem className="gap-2 px-4 py-4 rounded-none cursor-pointer border-b border-border text-destructive focus:text-destructive" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-                Logout
+            <DropdownMenuContent align="end" sideOffset={10} className="min-w-[200px] rounded-2xl p-1.5 font-geist">
+              {links.map(({ page, label, Icon }) => (
+                <DropdownMenuItem
+                  key={page}
+                  className="cursor-pointer gap-2.5 rounded-xl px-3 py-2.5 text-sm md:hidden"
+                  onClick={() => onNavigate(page)}
+                >
+                  <Icon size={18} /> {label}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                className="cursor-pointer gap-2.5 rounded-xl px-3 py-2.5 text-sm text-danger focus:text-danger"
+                onClick={handleLogout}
+              >
+                <SignOut size={18} /> Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
+      </nav>
     </header>
   );
 };

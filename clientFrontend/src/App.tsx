@@ -2,12 +2,24 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import LandingPage from "./pages/LandingPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import { ThemeProvider } from "./components/theme-provider";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthShell } from "./components/auth/AuthKit";
+import { GuestRoute, ProtectedRoute } from "./components/auth/RouteGuards";
+
+const Landing = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  if (!loading && user) return <Navigate to="/app" replace />;
+  return <LandingPage onNavigateLogin={() => navigate("/login")} onNavigateSignUp={() => navigate("/signup")} />;
+};
 
 const queryClient = new QueryClient();
 
@@ -18,13 +30,28 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+
+              <Route element={<AuthShell />}>
+                <Route element={<GuestRoute />}>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Login />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                </Route>
+                {/* A recovery link signs the user in, so no guest guard here. */}
+                <Route path="/reset-password" element={<ResetPassword />} />
+              </Route>
+
+              <Route element={<ProtectedRoute />}>
+                <Route path="/app" element={<Index />} />
+              </Route>
+
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

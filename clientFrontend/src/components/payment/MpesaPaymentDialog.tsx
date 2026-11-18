@@ -1,274 +1,284 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Loader2, CheckCircle2, XCircle, ArrowLeft, Loader } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { CheckCircle, Circle, CircleHalf, WarningCircle } from "@phosphor-icons/react";
 import { supabase } from "@/database/supabase";
+import { useAuth } from "@/context/AuthContext";
+import {
+  EASE, PayPage, PayTopBar, PayBottomBar, Title, InkButton, QuietButton, DetailRow, formatDate,
+} from "@/components/pay/PayKit";
 
-type PaymentStep = "phone" | "processing" | "success" | "error";
+type Step = "phone" | "waiting" | "received" | "failed";
 
-interface MpesaPaymentDialogProps {
+interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  semesterName: string;
   price: string;
   departmentId: string;
   year: string;
   semester: string;
+  /** e.g. "Computer Science, Y4 S1" */
+  courseLabel: string;
+  /** Shown before payment; the real date comes from the subscription afterwards. */
+  accessUntil: string;
   onPaymentSuccess?: () => void;
 }
 
+const PROMPT_LIFETIME_MS = 120_000;
+const RESEND_AFTER_MS = 30_000;
+const POLL_MS = 3_000;
+
+const mmss = (ms: number) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+/** 712345678 -> 712 345 678 */
+const groupDigits = (d: string) => d.replace(/(\d{3})(?=\d)/g, "$1 ");
+const clock = (t: number) =>
+  new Date(t).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase();
+
 const MpesaPaymentDialog = ({
-  open,
-  onOpenChange,
-  semesterName,
-  price,
-  departmentId,
-  year,
-  semester,
-  onPaymentSuccess,
-}: MpesaPaymentDialogProps) => {
-  const [step, setStep] = useState<PaymentStep>("phone");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneError, setPhoneError] = useState("");
-  const [loading, setLoading] = useState(false)
+  open, onOpenChange, price, departmentId, year, semester, courseLabel, accessUntil, onPaymentSuccess,
+}: Props) => {
+  const { user } = useAuth();
+  const reduce = useReducedMotion();
+  const [step, setStep] = useState<Step>("phone");
+  const [digits, setDigits] = useState("");
+  const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sentAt, setSentAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const [receipt, setReceipt] = useState<{ ref: string; until: string } | null>(null);
+  const [note, setNote] = useState("");
 
-  const resetDialog = () => {
-    setStep("phone");
-    setPhoneNumber("");
-    setPhoneError("");
-  };
+  const findPass = useCallback(async () => {
+    if (!user) return null;
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("payment_ref, end_date")
+      .eq("user_uuid", user.id)
+      .eq("department_id", Number(departmentId))
+      .eq("year_of_study", Number(year))
+      .eq("semester_of_study", Number(semester))
+      .gte("end_date", new Date().toISOString().slice(0, 10))
+      .limit(1)
+      .maybeSingle();
+    return data;
+  }, [user, departmentId, year, semester]);
 
-  const handleClose = (isOpen: boolean) => {
-    if (!isOpen) {
-      resetDialog();
+  const received = useCallback(async () => {
+    const pass = await findPass();
+    if (!pass) return false;
+    setReceipt({ ref: pass.payment_ref, until: formatDate(new Date(pass.end_date)) });
+    setStep("received");
+    return true;
+  }, [findPass]);
+
+  // Reset whenever the flow is opened.
+  useEffect(() => {
+    if (open) {
+      setStep("phone"); setDigits(""); setError(""); setNote(""); setReceipt(null);
     }
-    onOpenChange(isOpen);
-  };
+  }, [open]);
 
-  const validatePhone = (value: string): boolean => {
-    // Kenyan phone: 07XXXXXXXX or 01XXXXXXXX or 254XXXXXXXXX
-    const cleaned = value.replace(/\s+/g, "");
-    const kenyanRegex = /^(07\d{8}|01\d{8}|254[71]\d{8})$/;
-    return kenyanRegex.test(cleaned);
-  };
+  // While waiting: tick the clock, poll for the pass, and expire the prompt.
+  useEffect(() => {
+    if (step !== "waiting") return;
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    const poll = setInterval(() => { received(); }, POLL_MS);
+    return () => { clearInterval(tick); clearInterval(poll); };
+  }, [step, received]);
 
-  const handleSubmit = async () => {
-    setLoading(true)
-    const cleaned = phoneNumber.replace(/\s+/g, "");
-    if (!cleaned) {
-      setPhoneError("Phone number is required");
+  useEffect(() => {
+    if (step === "waiting" && now - sentAt >= PROMPT_LIFETIME_MS) {
+      received().then((paid) => { if (!paid) setStep("failed"); });
+    }
+  }, [step, now, sentAt, received]);
+
+  const send = async () => {
+    if (!/^[71]\d{8}$/.test(digits)) {
+      setError("Enter a Safaricom number, for example 712 345 678.");
       return;
     }
-    if (!validatePhone(cleaned)) {
-      setPhoneError("Enter a valid Safaricom number (e.g. 0712345678)");
-      return;
-    }
-    setPhoneError("");
-    setStep("processing");
-
+    setError("");
+    setSending(true);
     try {
-      const amount = parseFloat(price.replace(/[^\d.]/g, ''));
-      const { data, error } = await supabase.functions.invoke("mpesa-initiate-payment", {
+      if (await findPass()) {
+        setError("You already have an active pass for this semester.");
+        return;
+      }
+      const { error: fnError } = await supabase.functions.invoke("mpesa-initiate-payment", {
         body: {
-          phone_number: cleaned,
-          amount: amount,
+          phone_number: `254${digits}`,
+          amount: parseFloat(price.replace(/[^\d.]/g, "")),
           department_id: Number(departmentId),
           year_of_study: Number(year),
-          semester_of_study: Number(semester)
-        }
+          semester_of_study: Number(semester),
+        },
       });
-
-      if (error) throw error;
-
-      // Simulate polling or callback success for display purposes
-      setTimeout(() => {
-        setStep("success");
-        onPaymentSuccess?.();
-        setLoading(false)
-      }, 5000);
-
+      if (fnError) throw fnError;
+      const t = Date.now();
+      setSentAt(t); setNow(t); setNote("");
+      setStep("waiting");
     } catch (e) {
       console.error("Payment failed", e);
-      setStep("error");
-      setLoading(false)
+      setStep("failed");
+    } finally {
+      setSending(false);
     }
   };
 
+  const close = () => onOpenChange(false);
+  const phoneDisplay = `0${groupDigits(digits)}`;
+  const course = courseLabel;
+
+  if (!open) return null;
+
+  const body: Record<Step, JSX.Element> = {
+    phone: (
+      <>
+        <Title>Pay with M-Pesa</Title>
+        <div className="mt-8 flex flex-col">
+          <DetailRow label="Plan" value="Semester pass" />
+          <DetailRow label="Course" value={course} />
+          <DetailRow label="Access until" value={accessUntil} />
+          <DetailRow total label="Total" value={price} />
+        </div>
+        <label className="mt-8 flex flex-col gap-2">
+          <span className="text-sm font-medium">M-Pesa phone number</span>
+          <span
+            className={`flex h-[52px] items-center gap-3 rounded-[10px] bg-field px-4 transition-shadow duration-300 ${
+              error ? "ring-2 ring-danger" : "focus-within:ring-2 focus-within:ring-brand-solid"
+            }`}
+          >
+            <span className="font-geist-mono text-sm text-ink-muted">+254</span>
+            <span className="h-5 w-px bg-line-strong" />
+            <input
+              type="tel" inputMode="numeric" autoComplete="tel-national" autoFocus
+              placeholder="712 345 678"
+              value={groupDigits(digits)}
+              onChange={(e) => {
+                const d = e.target.value.replace(/\D/g, "").replace(/^254/, "").replace(/^0/, "").slice(0, 9);
+                setDigits(d);
+                setError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && send()}
+              className="min-w-0 flex-1 bg-transparent font-geist-mono text-base outline-none placeholder:text-ink-subtle"
+            />
+          </span>
+          {error && (
+            <span role="alert" className="flex items-start gap-1.5 text-sm text-danger">
+              <WarningCircle size={16} className="mt-0.5 shrink-0" /> {error}
+            </span>
+          )}
+        </label>
+        <PayBottomBar>
+          <InkButton className="w-full" disabled={sending} onClick={send}>
+            {sending ? "Sending…" : "Send payment prompt"}
+          </InkButton>
+        </PayBottomBar>
+      </>
+    ),
+
+    waiting: (
+      <>
+        <Title sub={`We sent a prompt to ${phoneDisplay}. Enter your M-Pesa PIN to pay ${price}.`}>Check your phone</Title>
+        <div className="mt-8 flex flex-col gap-1">
+          <span className="font-geist-mono text-3xl font-medium tabular-nums" aria-live="off">
+            {mmss(sentAt + PROMPT_LIFETIME_MS - now)}
+          </span>
+          <span className="text-sm text-ink-muted">until the prompt expires</span>
+        </div>
+        <ol className="mt-8 flex flex-col gap-5 border-t border-line pt-8">
+          <li className="flex gap-3">
+            <CheckCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-positive" />
+            <div>
+              <p className="text-base">Prompt sent</p>
+              <p className="font-geist-mono text-sm text-ink-muted">Sent at {clock(sentAt)}</p>
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <CircleHalf size={20} weight="fill" className="mt-0.5 shrink-0 text-brand" />
+            <p className="text-base font-medium">Waiting for your PIN</p>
+          </li>
+          <li className="flex gap-3 text-ink-muted">
+            <Circle size={20} className="mt-0.5 shrink-0" />
+            <p className="text-base">Confirming with M-Pesa</p>
+          </li>
+        </ol>
+        <PayBottomBar>
+          {now - sentAt >= RESEND_AFTER_MS ? (
+            <QuietButton disabled={sending} onClick={send} className="h-auto py-1 text-sm text-ink-muted">Resend prompt</QuietButton>
+          ) : (
+            <p className="text-sm text-ink-muted">Resend prompt in {mmss(sentAt + RESEND_AFTER_MS - now)}</p>
+          )}
+          <QuietButton onClick={() => setStep("phone")}>Use a different number</QuietButton>
+        </PayBottomBar>
+      </>
+    ),
+
+    received: (
+      <>
+        <Title
+          icon={<CheckCircle size={32} weight="fill" className="text-positive" />}
+          sub={`Your semester pass is active until ${receipt?.until ?? accessUntil}.`}
+        >
+          Payment received
+        </Title>
+        <div className="mt-8 flex flex-col">
+          <DetailRow label="M-Pesa receipt" value={<span className="font-geist-mono">{receipt?.ref}</span>} />
+          <DetailRow label="Amount" value={price} />
+          <DetailRow label="Paid from" value={<span className="font-geist-mono">{phoneDisplay}</span>} />
+          <DetailRow label="Course" value={course} />
+        </div>
+        <p className="mt-6 text-sm text-ink-muted">You can find this receipt later under Subscriptions.</p>
+        <PayBottomBar>
+          <InkButton className="w-full" onClick={() => { onPaymentSuccess?.(); close(); }}>Start studying</InkButton>
+        </PayBottomBar>
+      </>
+    ),
+
+    failed: (
+      <>
+        <Title icon={<WarningCircle size={28} className="text-warning" />}>Payment not completed</Title>
+        <div className="mt-8 flex items-center gap-4 border-t border-line pt-6">
+          <p className="flex-1 text-base font-medium">Got an M-Pesa confirmation SMS anyway?</p>
+          <QuietButton
+            tone="soft"
+            onClick={async () => {
+              if (!(await received())) setNote("No payment found yet. M-Pesa can take a minute, so try again shortly.");
+            }}
+          >
+            Check again
+          </QuietButton>
+        </div>
+        {note && <p role="status" className="mt-3 text-sm text-ink-muted">{note}</p>}
+        <PayBottomBar>
+          <InkButton className="w-full" disabled={sending} onClick={send}>
+            {sending ? "Sending…" : "Resend prompt"}
+          </InkButton>
+          <QuietButton onClick={() => setStep("phone")}>Use a different number</QuietButton>
+        </PayBottomBar>
+      </>
+    ),
+  };
+
+  // Rendered by PricingGate in place of the plan screen, so it is a step of the page, not an overlay.
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[calc(100%-2rem)] md:max-w-2xl max-h-[90vh] overflow-auto">
-        <AnimatePresence mode="wait">
-          {/* Step 1: Phone number entry */}
-          {step === "phone" && (
-            <motion.div
-              key="phone"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <DialogHeader className="mb-6">
-                <DialogTitle className="flex items-center gap-2 text-xl">
-                  M-Pesa Payment
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <div className="relative">
-                    {/* <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /> */}
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="0712345678"
-                      value={phoneNumber}
-                      onChange={(e) => {
-                        setPhoneNumber(e.target.value);
-                        if (phoneError) setPhoneError("");
-                      }}
-                      onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                      className=""
-                      maxLength={13}
-                    />
-                  </div>
-                  {phoneError && (
-                    <p className="text-sm text-destructive">{phoneError}</p>
-                  )}
-                </div>
-
-                <div className="bg-secondary/50 p-3 text-sm text-muted-foreground">
-                  An STK prompt will be sent to your phone. Enter your M-Pesa PIN to complete the payment.
-                </div>
-
-                <Button className="w-full" size="lg" onClick={handleSubmit}>
-                  {loading ? (
-                    <Loader className="h-5 w-5 animate-spin" />
-                  ) : (<> Pay {price}</>)}
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 2: Processing */}
-          {step === "processing" && (
-            <motion.div
-              key="processing"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="py-10 text-center"
-            >
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative">
-                  <div className="h-16 w-16 bg-primary/10 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">Check your phone</h3>
-                  <p className="text-muted-foreground text-sm">
-                    An M-Pesa prompt has been sent to{" "}
-                    <span className="font-medium text-foreground">{phoneNumber}</span>.
-                    <br />
-                    Enter your PIN to complete payment.
-                  </p>
-                </div>
-                <div className="flex gap-1 mt-2">
-                  {[0, 1, 2].map((i) => (
-                    <motion.div
-                      key={i}
-                      className="h-2 w-2 bg-primary"
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 3: Success */}
-          {step === "success" && (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, type: "spring" }}
-              className="py-10 text-center"
-            >
-              <div className="flex flex-col items-center gap-4">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", delay: 0.1 }}
-                >
-                  <div className="h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-                  </div>
-                </motion.div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">Payment Successful!</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Your {semesterName} subscription is now active.
-                    <br />
-                    {price} has been deducted from your M-Pesa.
-                  </p>
-                </div>
-                <Button className="mt-2" onClick={() => handleClose(false)}>
-                  Continue to App
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 4: Error */}
-          {step === "error" && (
-            <motion.div
-              key="error"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="py-10 text-center"
-            >
-              <div className="flex flex-col items-center gap-4">
-                <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
-                  <XCircle className="h-10 w-10 text-destructive" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">Payment Failed</h3>
-                  <p className="text-muted-foreground text-sm">
-                    The transaction could not be completed. This could be due to
-                    insufficient funds, a cancelled request, or a timeout.
-                  </p>
-                </div>
-                <div className="flex gap-3 mt-2">
-                  <Button variant="outline" onClick={() => setStep("phone")}>
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Try Again
-                  </Button>
-                  <Button variant="ghost" onClick={() => handleClose(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </DialogContent>
-    </Dialog>
+    <PayPage>
+      <PayTopBar onBack={step === "received" ? undefined : close} />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={reduce ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduce ? undefined : { opacity: 0, y: -8 }}
+          transition={{ duration: 0.45, ease: EASE }}
+          className="px-5 pb-44 pt-8 md:mx-auto md:max-w-[480px] md:px-0 md:pb-24 md:pt-16"
+        >
+          {body[step]}
+        </motion.div>
+      </AnimatePresence>
+    </PayPage>
   );
 };
 

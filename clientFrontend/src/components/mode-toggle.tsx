@@ -8,9 +8,9 @@ export function ModeToggle() {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       size="icon"
-      className="relative border-border/50 bg-background/50 backdrop-blur-md overflow-hidden"
+      className="relative overflow-hidden hover:bg-transparent"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
     >
       <motion.div

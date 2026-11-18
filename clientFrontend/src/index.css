@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400;500&display=swap');
 /* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:wght@400;500;600&display=swap'); */
 @import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Birthstone&display=swap');
@@ -90,6 +91,32 @@
 
     --radius: 0.625rem;
 
+    /*
+     * Semantic colour tokens for the study screens. Use these (bg-surface, text-ink-muted, border-line, ...)
+     * instead of hex values, so every screen follows the theme. Light values match the original design.
+     * Roles: surface = cards, field = chips and quiet fills, line = hairlines, ink = text, brand = links.
+     */
+    --surface: 0 0% 100%;
+    --field: 214 29% 94%;
+    --field-strong: 214 30% 90%;
+    --field-soft: 45 14% 96%;
+    --line: 217 25% 86%;
+    --line-soft: 0 0% 92%;
+    --line-strong: 217 22% 74%;
+    --ink: 222 46% 10%;
+    --ink-soft: 200 8% 20%;
+    --ink-muted: 219 19% 34%;
+    --ink-subtle: 217 15% 62%;
+    --ink-fg: 0 0% 100%;
+    --ink-hover: 222 40% 17%;
+    --brand: 224 72% 42%;
+    --brand-solid: 224 72% 42%;
+    --info-bg: 201 90% 94%;
+    --info-fg: 203 67% 37%;
+    --positive: 133 40% 30%;
+    --positive-solid: 133 40% 30%;
+    --danger: 344 77% 36%;
+
     /* Success and warning */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
@@ -120,16 +147,43 @@
   }
 
   .dark {
-    --background: 229 84% 5%;
-    /* #020617 */
-    --foreground: 215 20% 65%;
-    /* #94A3B8 */
+    /* Native controls and scrollbars follow the theme too. */
+    color-scheme: dark;
 
-    --card: 222 47% 11%;
-    --card-foreground: 215 20% 65%;
+    /*
+     * Dark: flat graphite, not black and not navy. Depth comes from three close greys (page, surface, field),
+     * hairlines and brighter text, never from glows or gradients. Text is near white; secondary text keeps
+     * about 7:1 contrast on the surface.
+     */
+    --surface: 220 11% 10%;
+    --field: 220 10% 15%;
+    --field-strong: 220 10% 19%;
+    --field-soft: 220 10% 12.5%;
+    --line: 220 9% 21%;
+    --line-soft: 220 9% 17%;
+    --line-strong: 220 8% 33%;
+    --ink: 220 14% 93%;
+    --ink-soft: 220 10% 82%;
+    --ink-muted: 220 8% 66%;
+    --ink-subtle: 220 7% 58%;
+    --ink-fg: 220 12% 8%;
+    --ink-hover: 220 12% 85%;
+    --brand: 222 90% 72%;
+    --brand-solid: 224 70% 52%;
+    --info-bg: 205 40% 17%;
+    --info-fg: 203 80% 72%;
+    --positive: 140 40% 62%;
+    --positive-solid: 140 35% 38%;
+    --danger: 345 85% 72%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 215 20% 65%;
+    --background: 220 12% 7%;
+    --foreground: 220 14% 93%;
+
+    --card: 220 11% 10%;
+    --card-foreground: 220 14% 93%;
+
+    --popover: 220 11% 10%;
+    --popover-foreground: 220 14% 93%;
 
     --primary: 198 93% 60%;
     /* #38BDF8 */
@@ -137,32 +191,31 @@
     --primary-dark: 198 93% 50%;
     --primary-light: 198 93% 20%;
 
-    --secondary: 217 33% 17%;
-    /* #1E293B */
-    --secondary-foreground: 215 20% 65%;
+    --secondary: 220 10% 15%;
+    --secondary-foreground: 220 14% 93%;
 
-    --accent: 217 33% 17%;
-    --accent-foreground: 215 20% 65%;
-    --accent-dark: 217 33% 10%;
-    --accent-light: 217 33% 20%;
+    --accent: 220 10% 15%;
+    --accent-foreground: 220 14% 93%;
+    --accent-dark: 220 10% 10%;
+    --accent-light: 220 10% 19%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 10% 15%;
+    --muted-foreground: 220 8% 66%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 210 20% 98%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
+    --border: 220 9% 21%;
+    --input: 220 9% 21%;
     --ring: 198 93% 60%;
 
     --success: 142 76% 45%;
     --warning: 38 92% 55%;
 
-    --sidebar-background: 229 84% 5%;
-    --sidebar-foreground: 215 20% 65%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-border: 217 33% 17%;
+    --sidebar-background: 220 12% 7%;
+    --sidebar-foreground: 220 8% 66%;
+    --sidebar-accent: 220 10% 15%;
+    --sidebar-border: 220 9% 21%;
   }
 }
 
@@ -173,8 +226,6 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    /* font-family: 'Inter', system-ui, sans-serif; */
-    font-family: "Rubik", sans-serif !important;
   }
 
   h1,

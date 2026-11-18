@@ -16,7 +16,7 @@ export const getResources = async (unitId: number, filter?: ResourceFilter) => {
     try{
         const query = supabase
             .from('resources')
-            .select('*, resource_types(name), units(name), departments(name), schools(name)')
+            .select('*, resource_types(name), units(name, code), departments(name), schools(name)')
             .eq('unit_id', unitId);
         
         if(filter){
