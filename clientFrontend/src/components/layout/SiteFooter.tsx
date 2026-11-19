@@ -19,6 +19,9 @@ export const SOCIALS = [
   { label: "Facebook", logo: facebookLogo, href: "https://facebook.com" },
 ];
 
+// 44px-tall rows on phones, tight on desktop.
+const fl = "block max-md:py-3.5";
+
 /** The site footer, shown on every page. `showCta` adds the "start revising" card above it (landing page only). */
 const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inApp?: boolean }) => {
   const navigate = useNavigate();
@@ -107,7 +110,7 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
                       key={label}
                       href={href}
                       aria-label={label}
-                      className="flex h-9 w-9 items-center justify-center rounded-[10px] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
+                      className="flex h-11 w-11 items-center justify-center rounded-[10px] transition-transform md:h-9 md:w-9 duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
                     >
                       <img src={logo} alt="" className="size-5 brightness-0 invert" />
                     </a>
@@ -119,17 +122,17 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
 
           <div className="flex min-h-[344px] flex-col justify-between gap-10 rounded-3xl bg-field p-7">
             <div className="flex gap-16 whitespace-nowrap text-sm font-medium md:gap-20">
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col md:gap-2.5">
                 <p className="text-base font-normal text-ink-subtle">Navigation</p>
-                <Link to="/">Home</Link>
-                <a href="/#get">What you get</a>
-                {user ? <Link to="/app">Open app</Link> : <Link to="/login">Sign in</Link>}
+                <Link className={fl} to="/">Home</Link>
+                <a className={fl} href="/#get">What you get</a>
+                {user ? <Link className={fl} to="/app">Open app</Link> : <Link className={fl} to="/login">Sign in</Link>}
               </div>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col md:gap-2.5">
                 <p className="text-base font-normal text-ink-subtle">Company</p>
-                <a href="/terms-of-user.txt">Terms of use</a>
-                <a href="/privacy-policy.txt">Privacy policy</a>
-                <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+                <a className={fl} href="/terms-of-user.txt">Terms of use</a>
+                <a className={fl} href="/privacy-policy.txt">Privacy policy</a>
+                <a className={fl} href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
               </div>
             </div>
             <p className="max-w-[250px] text-sm text-muted-foreground">

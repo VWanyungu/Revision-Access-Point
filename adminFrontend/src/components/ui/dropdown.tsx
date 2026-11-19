@@ -66,7 +66,7 @@ export function Dropdown({ label, items, selectedId, onSelect, align = 'left', p
         aria-expanded={open}
         disabled={disabled}
         onClick={() => (open ? close() : setOpen(true))}
-        className={cn('flex max-w-full cursor-pointer items-center gap-2 rounded-full border border-input bg-surface py-2 pl-4 pr-3 text-sm disabled:cursor-not-allowed disabled:opacity-50', block ? 'w-full justify-between' : 'w-max', className)}
+        className={cn('flex max-w-full cursor-pointer items-center gap-2 rounded-full border border-input bg-surface py-2 pl-4 pr-3 text-sm max-md:min-h-11 disabled:cursor-not-allowed disabled:opacity-50', block ? 'w-full justify-between' : 'w-max', className)}
       >
         {label && <span className="shrink-0 border-r border-input pr-3 text-ink-muted">{label.replace(/:$/, '')}</span>}
         <span className={cn('truncate whitespace-nowrap', selected ? 'font-medium' : 'text-ink-subtle')}>{selected?.name ?? placeholder}</span>

@@ -50,7 +50,7 @@ const Navbar = ({ currentPage, onLogout, onNavigate }: NavbarProps) => {
           type="button"
           onClick={() => onNavigate("resources")}
           aria-label="Revision Access Point home"
-          className="mr-2 shrink-0 transition-opacity duration-300 hover:opacity-70"
+          className="relative mr-2 shrink-0 transition-opacity duration-300 hover:opacity-70 before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']"
         >
           <img src={logoLight} alt="" className="h-6 w-[107px] dark:invert" />
         </button>
@@ -80,7 +80,7 @@ const Navbar = ({ currentPage, onLogout, onNavigate }: NavbarProps) => {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="group flex h-9 items-center gap-1.5 rounded-full bg-primary pl-4 pr-3 text-sm font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98]"
+                className="group relative flex h-9 items-center gap-1.5 rounded-full bg-primary pl-4 pr-3 before:absolute before:-inset-1 before:content-[''] text-sm font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98]"
               >
                 {userName}
                 <CaretDown size={14} className="transition-transform duration-300 group-data-[state=open]:rotate-180" />

@@ -35,10 +35,10 @@ const label = "text-xs font-medium uppercase tracking-[0.14em] text-ink-muted";
 const spring = "ease-[cubic-bezier(0.32,0.72,0,1)]";
 
 /** Pill button with its arrow nested in a circle that drifts on hover. */
-const IslandButton = ({ children, onClick, tone = "ink" }: { children: React.ReactNode; onClick: () => void; tone?: "ink" | "soft" }) => (
+const IslandButton = ({ children, onClick, tone = "ink", className = "" }: { children: React.ReactNode; onClick: () => void; tone?: "ink" | "soft"; className?: string }) => (
   <button
     onClick={onClick}
-    className={`group inline-flex h-11 shrink-0 items-center gap-3 rounded-full pl-5 pr-1.5 text-sm font-medium transition-[background-color,transform] duration-500 ${spring} active:scale-[0.98] ${
+    className={`group inline-flex h-11 shrink-0 items-center gap-3 rounded-full pl-5 pr-1.5 text-sm font-medium transition-[background-color,transform] duration-500 ${spring} active:scale-[0.98] ${className} ${
       tone === "ink" ? "bg-primary text-primary-foreground hover:bg-primary-dark" : "bg-field text-ink ring-1 ring-line hover:bg-field-strong"
     }`}
   >
@@ -162,19 +162,13 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
   const pages = Math.max(1, Math.ceil(past.length / PAGE_SIZE));
   const current = Math.min(page, pages - 1);
   const shown = past.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE);
-  const summary = subs.length === 0
-    ? "Nothing here yet."
-    : `${active.length} active · ${subs.length} ${subs.length === 1 ? "pass" : "passes"} in total`;
 
   return (
     <div className="font-geist text-ink">
       <div className="mx-auto max-w-3xl px-4 pb-28 pt-10 md:pt-14 md:px-6">
         <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-2xl font-medium md:text-3xl">Subscriptions</h1>
-            <p className="mt-2 text-base text-ink-muted">{summary}</p>
-          </div>
-          <IslandButton onClick={() => setIsInitiating(true)}>New subscription</IslandButton>
+          <h1 className="text-2xl font-medium md:text-3xl">Subscriptions</h1>
+          <IslandButton className="max-md:w-full max-md:justify-between" onClick={() => setIsInitiating(true)}>New subscription</IslandButton>
         </header>
 
         {isLoading ? (

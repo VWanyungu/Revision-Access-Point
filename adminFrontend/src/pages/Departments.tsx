@@ -197,9 +197,9 @@ const Departments = () => {
         }
       />
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {/* Search */}
-        <div className="relative w-full max-w-sm col-span-1">
+        <div className="relative w-full max-w-sm sm:col-span-1">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search"
@@ -210,7 +210,7 @@ const Departments = () => {
         </div>
 
         {/* Filter */}
-        <div className="flex items-center gap-2 sm:w-auto col-span-2">
+        <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
           <InstitutionFilter value={institutionId} onChange={(id) => { setInstitutionId(id); setPage(1); }} />
           <Combobox
             options={[

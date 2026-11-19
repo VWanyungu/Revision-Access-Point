@@ -34,7 +34,7 @@ export const AdminNav = () => {
   return (
     <header className="pointer-events-none sticky top-0 z-50 px-3 pt-3 md:px-6 md:pt-4">
       <nav aria-label="Main" className="pointer-events-auto mx-auto flex w-full max-w-5xl items-center gap-1 rounded-full bg-surface/70 p-1.5 pl-4 text-ink ring-1 ring-line/60 backdrop-blur-xl">
-        <NavLink to="/dashboard" aria-label="Revision Access Point admin" className="mr-2 shrink-0 transition-opacity hover:opacity-70">
+        <NavLink to="/dashboard" aria-label="Revision Access Point admin" className="relative mr-2 shrink-0 transition-opacity hover:opacity-70 before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']">
           <img src={logo} alt="" className="h-6 w-[107px] dark:invert" />
         </NavLink>
 
@@ -50,7 +50,7 @@ export const AdminNav = () => {
           <ModeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" className="group flex h-9 items-center gap-2 rounded-full bg-primary pl-1.5 pr-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-dark">
+              <button type="button" className="group relative flex h-9 items-center gap-2 rounded-full bg-primary pl-1.5 pr-3 before:absolute before:-inset-1 before:content-[''] text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-dark">
                 <Avatar className="size-6">
                   {me?.avatarUrl && <AvatarImage src={me.avatarUrl} alt="" />}
                   <AvatarFallback className="bg-primary-foreground/20 text-xs text-primary-foreground">{me?.initials || 'A'}</AvatarFallback>

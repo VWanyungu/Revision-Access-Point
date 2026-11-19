@@ -55,7 +55,8 @@ interface Topic { id: string; title: string; description?: string; notes: Resour
 const NOTES = 1, EXAMS = 2, CATS = 3, TUTORIALS = 4;
 type View = "all" | "syllabus" | "papers" | "library";
 const num = (i: number) => String(i + 1).padStart(2, "0");
-const link = "inline-flex items-center gap-1.5 text-sm font-medium transition-opacity duration-300 hover:opacity-60";
+// 44px tall on phones so it is easy to tap; inline-sized on desktop.
+const link = "inline-flex items-center gap-1.5 text-sm font-medium transition-opacity duration-300 hover:opacity-60 max-md:min-h-11";
 
 /** "CAT 2, 2025/26" -> { year: "2025/26", slot: "cat2" }. Unparseable names land in the "Other" row. */
 const classify = (r: Resource) => {
@@ -71,6 +72,22 @@ const classify = (r: Resource) => {
 
 const youtubeId = (html: string) => html.match(/embed\/([\w-]{11})/)?.[1] ?? html.match(/(?:v=|youtu\.be\/)([\w-]{11})/)?.[1];
 const youtubeUrl = (html: string) => { const id = youtubeId(html); return id ? `https://www.youtube.com/watch?v=${id}` : null; };
+
+/** Phones show two lines with a Read more toggle; from md up the text is shown in full. Short text gets no toggle. */
+const ClampedText = ({ children, className = "" }: { children: string; className?: string }) => {
+  const [open, setOpen] = useState(false);
+  const long = children.length > 110;
+  return (
+    <div className={className}>
+      <p className={!open && long ? "line-clamp-2 md:line-clamp-none" : ""}>{children}</p>
+      {long && (
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-brand md:hidden">
+          {open ? "Show less" : "Read more"}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const StatusDot = ({ state }: { state: "done" | "current" | "todo" }) =>
   state === "done" ? (
@@ -159,6 +176,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   const [picked, setPicked] = useState<number | null>(null);
   const [tab, setTab] = useState<"notes" | "tutorials" | "quiz">("notes");
   const [sheet, setSheet] = useState(false);
+  const [syllabusInView, setSyllabusInView] = useState(false);
   const [query, setQuery] = useState("");
   const timer = useTimer();
   const [view, setView] = useState<View>("syllabus");
@@ -183,6 +201,15 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
       .map((n) => ({ id: `n${n.id}`, title: n.name, description: n.description, notes: [n] }));
     return [...grouped, ...loose];
   }, [topicRows, notes]);
+  // The topics button floats only while the syllabus is on screen.
+  useEffect(() => {
+    const el = document.getElementById("syllabus");
+    if (!el || el.hidden) { setSyllabusInView(false); return; }
+    const io = new IntersectionObserver(([e]) => setSyllabusInView(e.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [view, noSyllabus, isLoading, topics.length]);
+
   const isRead = (n: Resource) => read.includes(n.id);
   const isDone = (t: Topic) => t.notes.every(isRead);
 
@@ -272,12 +299,12 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <h3 className="font-literata text-lg font-medium md:text-xl">{r.name}</h3>
-        <p className="mt-1 font-geist-mono text-sm text-ink-muted">Updated {formatDate(new Date(r.updated_at ?? r.created_at))}{isRead(r) ? " · Read" : ""}</p>
+        <h3 className={`font-literata text-lg font-medium md:text-xl ${isRead(r) ? "text-ink-muted" : ""}`}>{r.name}</h3>
+        <p className="mt-1 font-geist-mono text-sm text-ink-muted">Updated {formatDate(new Date(r.updated_at ?? r.created_at))}</p>
         {r.description && <p className="mt-2 text-base">{r.description}</p>}
         <div className="mt-3 flex items-center gap-5">
           <button className={link} onClick={() => open(r)}>Read <ArrowUpRight size={14} /></button>
-          <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me <ArrowRight size={14} /></button>
+          <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me</button>
         </div>
       </div>
     </motion.article>
@@ -340,7 +367,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             ? <a className={link} href={youtubeUrl(r.public_access_url)!} target="_blank" rel="noreferrer">YouTube <ArrowUpRight size={14} /></a>
             : <a className={link} href={r.public_access_url} target="_blank" rel="noreferrer">Watch <ArrowUpRight size={14} /></a>)
           : <button className={link} onClick={() => open(r)}>Open <ArrowUpRight size={14} /></button>}
-        {r.resource_type_id === NOTES && <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me <ArrowRight size={14} /></button>}
+        {r.resource_type_id === NOTES && <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me</button>}
         {(r.resource_type_id === EXAMS || r.resource_type_id === CATS) && <button className={`${link} text-brand`} onClick={() => onGenerateAnswers(r.public_access_url, r.name)}>Model answers <ArrowRight size={14} /></button>}
       </div>
       {r.resource_type_id === TUTORIALS && youtubeId(r.public_access_url) && (
@@ -384,7 +411,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             : <img src={unitHero} alt="" className="size-full object-cover dark:opacity-[0.14] dark:invert" />}
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 via-[42%] to-background/20" />
         </div>
-        <div className="relative mx-auto flex max-w-[1200px] flex-col gap-6 px-5 pb-12 pt-[120px] md:flex-row md:items-end md:justify-between md:px-10 md:pb-14 md:pt-[152px]">
+        <div className="relative mx-auto flex max-w-[1200px] flex-col gap-3 md:gap-6 px-5 pb-6 pt-[88px] md:flex-row md:items-end md:justify-between md:gap-6 md:px-10 md:pb-14 md:pt-[152px]">
           <div ref={pickerRef} className="relative" onKeyDown={(e) => e.key === "Escape" && setPickerOpen(false)}>
             <motion.h1 {...rise(0)} className="font-literata text-3xl md:text-4xl">
               {unit?.name?.trim() || (isLoading ? " " : "Your unit")}
@@ -393,7 +420,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
               {unit?.code && <span className="font-geist-mono text-ink">{unit.code}</span>}
               {departmentName && <span>{departmentName}{yearLabel ? `, Year ${yearLabel}, Semester ${semesterLabel}` : ""}</span>}
               {onChangeUnit && (
-                <button onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen} aria-haspopup="dialog" className="inline-flex items-center gap-1 font-medium text-brand hover:opacity-60">
+                <button onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen} aria-haspopup="dialog" className="inline-flex items-center gap-1 font-medium text-brand hover:opacity-60 max-md:min-h-11">
                   Change unit <CaretDown size={14} className={`transition-transform duration-300 ${pickerOpen ? "rotate-180" : ""}`} />
                 </button>
               )}
@@ -416,10 +443,10 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             </AnimatePresence>
           </div>
           {topics.length > 0 && (
-            <div className="max-w-[340px] rounded-2xl bg-background/80 p-4 text-base backdrop-blur-md">
-              <p>{doneCount} of {topics.length} {topics.length === 1 ? "topic" : "topics"} complete.{resume ? (last ? " Pick up where you stopped." : " Start with the first note.") : ""}</p>
+            <div className="max-w-[340px] text-base md:rounded-2xl md:bg-background/80 md:p-4 md:backdrop-blur-md">
+              <p className="max-md:hidden">{doneCount} of {topics.length} {topics.length === 1 ? "topic" : "topics"} complete.{resume ? (last ? " Pick up where you stopped." : " Start with the first note.") : ""}</p>
               {resume && (
-                <button className={`${link} mt-2`} onClick={() => open(resume)}>Continue reading <ArrowUpRight size={14} /></button>
+                <button className={`${link} md:mt-2`} onClick={() => open(resume)}>Continue reading <ArrowUpRight size={14} /></button>
               )}
             </div>
           )}
@@ -428,15 +455,16 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
 
       {/* Tabs + search */}
       <div className="mx-auto max-w-[1200px] px-5 pt-8 md:px-10">
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+        <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:overflow-x-auto no-scrollbar">
           {tabs.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setView(id)}
+              aria-label={label}
               aria-current={view === id ? "true" : undefined}
               className={`flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-base transition-colors duration-300 ${view === id ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
             >
-              <Icon size={18} /> {label}
+              <Icon size={18} /> <span className={view === id ? "" : "max-md:hidden"}>{label}</span>
             </button>
           ))}
           <button
@@ -452,7 +480,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
           <input
             value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Search this unit’s notes, CATs and past papers" aria-label="Search this unit"
-            className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-muted"
+            className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-transparent sm:placeholder:text-ink-muted"
           />
           {query ? (
             <button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="flex size-10 items-center justify-center rounded-full text-ink-muted hover:bg-surface"><X size={18} /></button>
@@ -476,7 +504,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                 ) : (
                   <>
                     <button className={link} onClick={() => open(r)}>Read <ArrowUpRight size={14} /></button>
-                    <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me <ArrowRight size={14} /></button>
+                    <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me</button>
                     {(r.resource_type_id === EXAMS || r.resource_type_id === CATS) && (
                       <button className={`${link} text-brand`} onClick={() => onGenerateAnswers(r.public_access_url, r.name)}>Model answers <ArrowRight size={14} /></button>
                     )}
@@ -525,31 +553,24 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             </section>
           )}
           <section id="syllabus" hidden={noSyllabus || !show("all", "syllabus")} className="scroll-mt-32">
-            <div className="mx-auto grid max-w-[1200px] px-5 py-12 md:grid-cols-[340px_minmax(0,1fr)] md:px-10 md:py-16">
+            <div className="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] px-5 py-12 md:grid-cols-[340px_minmax(0,1fr)] md:px-10 md:py-16">
               <aside className="hidden md:block md:pr-8">
                 <div className="sticky top-24">{topics.length ? topicList((i) => { setPicked(i); setTab("notes"); }) : <p className="text-base text-ink-muted">No notes uploaded yet.</p>}</div>
               </aside>
               <div className="md:border-l md:border-line md:pl-12">
-                {/* Phones: the topic list opens inline, in the page flow */}
-                {topics.length > 0 && (
-                  <div className="mb-8 md:hidden">
-                    <button
-                      onClick={() => setSheet((v) => !v)} aria-expanded={sheet}
-                      className="flex h-12 w-full items-center gap-2 rounded-full bg-field px-5 text-base font-medium"
-                    >
-                      <ListChecks size={18} /> Topics
-                      <span className="ml-auto font-geist-mono text-sm font-normal text-ink-muted">{doneCount} of {topics.length} complete</span>
-                      <CaretDown size={16} className={`transition-transform duration-300 ${sheet ? "rotate-180" : ""}`} />
-                    </button>
-                    {sheet && <div className="mt-2">{topicList((i) => { setPicked(i); setTab("notes"); setSheet(false); })}</div>}
-                  </div>
-                )}
                 {topic ? (
                   <>
                     <h2 className="font-literata text-2xl">{topic.title}</h2>
-                    <p className="mt-3 max-w-[680px] text-base text-ink-muted">
+                    {/* One short, fixed-width segment per note (not stretched across the page). */}
+                    <div
+                      className="mt-3 flex w-fit max-w-full flex-wrap gap-1.5 md:hidden"
+                      role="img" aria-label={`${topic.notes.filter(isRead).length} of ${topic.notes.length} notes read`}
+                    >
+                      {topic.notes.map((n) => <span key={n.id} className={`block h-1 w-8 shrink-0 rounded-full ${isRead(n) ? "bg-positive-solid" : "bg-line-strong"}`} />)}
+                    </div>
+                    <ClampedText key={topic.id} className="mt-3 max-w-[680px] text-base text-ink-muted">
                       {topic.description || "Read the note, then use Quiz me to check what stuck."}
-                    </p>
+                    </ClampedText>
 
                     <div className="mt-8 flex gap-1" role="tablist">
                       {([["notes", "Notes", topic.notes.length], ["tutorials", "Tutorials", tutorials.length], ["quiz", "Quiz", 0]] as const).map(([k, label, n]) => (
@@ -577,8 +598,9 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                                   <button
                                     key={n.id}
                                     onClick={() => onGenerateQuiz(n.public_access_url, n.name)}
-                                    className="flex h-11 items-center rounded-full bg-primary px-5 text-left text-base font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98]"
-                                  >{topic.notes.length === 1 ? "Quiz me on this note" : `Quiz me on ${n.name}`}</button>
+                                    title={n.name}
+                                    className="flex h-11 min-w-0 max-w-full items-center rounded-full bg-primary px-5 text-left text-base font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98]"
+                                  ><span className="truncate">{topic.notes.length === 1 ? "Quiz me on this note" : `Quiz me on ${n.name}`}</span></button>
                                 ))}
                               </div>
                             </div>
@@ -588,7 +610,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                     </div>
 
                     {tab === "notes" && (
-                      <p className="mt-8 flex items-center gap-3 rounded-[10px] bg-field px-4 py-3 text-base">
+                      <p className="mt-8 flex items-center gap-3 rounded-[10px] bg-field px-4 py-3 text-base max-md:hidden">
                         <span className="flex shrink-0 gap-0.5" aria-hidden>
                           {topic.notes.map((n) => <span key={n.id} className={`h-1 w-5 rounded-full ${isRead(n) ? "bg-positive-solid" : "bg-line-strong"}`} />)}
                         </span>
@@ -610,7 +632,24 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             {byYear.length === 0 ? (
               <p className="text-base text-ink-muted">No past papers uploaded for this unit yet.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              {/* Phones: one card per academic year, with the three sittings stacked. */}
+              <div className="space-y-4 md:hidden">
+                {byYear.map(([year, cells]) => (
+                  <div key={year} className="rounded-2xl border border-line p-4">
+                    <p className="font-literata text-lg">{year}</p>
+                    <div className="mt-3 space-y-3">
+                      {([["CAT 1", cells.cat1, "c1"], ["CAT 2", cells.cat2, "c2"], ["Main exam", cells.exam, "ex"]] as const).map(([label, cell, key]) => (
+                        <div key={key}>
+                          <p className="mb-1.5 text-xs text-ink-muted">{label}</p>
+                          {cell ? paperCell(cell, key) : <p className="text-sm text-ink-muted">Not uploaded</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <div className="min-w-[760px]">
                   <div className="grid grid-cols-[140px_repeat(3,minmax(0,1fr))] gap-4 border-b border-line pb-3 text-sm text-ink-muted">
                     <span>Academic year</span><span>CAT 1</span><span>CAT 2</span><span>Main exam</span>
@@ -623,6 +662,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                   ))}
                 </div>
               </div>
+              </>
             )}
           </Section>}
 
@@ -655,6 +695,41 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             )}
           </Section>}
         </>
+      )}
+
+      {/* Phones: topics float at the bottom right and open as a sheet, so switching topic never means scrolling back up. */}
+      {topics.length > 0 && !isLoading && show("all", "syllabus") && (
+        <div className="md:hidden">
+          <button
+            onClick={() => setSheet(true)}
+            aria-haspopup="dialog" aria-expanded={sheet}
+            aria-label={`Topics: ${current + 1} of ${topics.length}, ${doneCount} complete. Open the topic list`}
+            className={`fixed bottom-5 right-4 z-40 flex h-14 items-center gap-2.5 rounded-full bg-primary pl-5 pr-6 text-base font-medium text-primary-foreground shadow-[0_12px_32px_-12px_hsl(var(--ink)/0.5)] transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-95 ${syllabusInView || sheet ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}`}
+          >
+            <ListChecks size={20} />
+            <span>Topics</span>
+            <span className="tabular-nums opacity-80">{current + 1} / {topics.length}</span>
+          </button>
+
+          {sheet && (
+            <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Choose a topic" onKeyDown={(e) => e.key === "Escape" && setSheet(false)}>
+              <button aria-label="Close topic list" className="absolute inset-0 bg-ink/40" onClick={() => setSheet(false)} />
+              <div className="absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col rounded-t-3xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_48px_-16px_rgba(14,21,37,0.3)]">
+                <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-line" aria-hidden />
+                <div className="flex items-center justify-between px-5 pb-2 pt-3">
+                  <p className="text-base font-medium">Topics <span className="ml-1 font-geist-mono text-sm font-normal text-ink-muted">{doneCount} of {topics.length} complete</span></p>
+                  <button onClick={() => setSheet(false)} aria-label="Close" className="flex size-11 items-center justify-center rounded-full text-ink-muted hover:bg-field"><X size={20} /></button>
+                </div>
+                <div className="overflow-y-auto px-2 pb-4">
+                  {topicList((i) => {
+                    setPicked(i); setTab("notes"); setSheet(false);
+                    requestAnimationFrame(() => document.getElementById("syllabus")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Closing line */}

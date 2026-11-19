@@ -226,9 +226,6 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle }: QuizSys
         {bar("Results", { quiz: true, toQuiz: () => setStage("setup") })}
         <Frame>
           <h1 className="font-literata text-2xl md:text-3xl">{correct} of {questions.length} correct</h1>
-          <p className="mt-2 text-base text-ink-muted">
-            {missed.length ? `Review the ${missed.length} you missed, then retry just those.` : "You got every question right."}
-          </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {missed.length > 0 && <InkButton onClick={retryMissed}>Retry these {missed.length}</InkButton>}
             <QuietButton tone="soft" onClick={() => setStage("setup")}>New quiz</QuietButton>

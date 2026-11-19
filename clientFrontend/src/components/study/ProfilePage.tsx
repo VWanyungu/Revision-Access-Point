@@ -6,6 +6,9 @@ import { supabase } from "@/database/supabase";
 import { getProgress } from "@/database/progress";
 import { useAuth } from "@/context/AuthContext";
 import { EASE, formatDate } from "@/components/pay/PayKit";
+import { BannerArt } from "./ProfileBanner";
+import ProfileMobile from "./ProfileMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProfilePageProps {
   onNavigate: (page: string) => void;
@@ -20,24 +23,6 @@ interface Pass {
   institution_name?: string;
 }
 
-const RINGS_FAINT = [40, 80, 120, 160, 200, 240, 280, 320];
-const RINGS_BOLD = [28, 70, 112, 154, 196];
-
-/** Concentric rings: faint grey on the left, bold ink with RAP-blue segments on the right. Decorative only. */
-const BannerArt = () => (
-  <svg aria-hidden viewBox="0 0 1000 180" preserveAspectRatio="xMaxYMid slice" className="absolute inset-0 h-full w-full">
-    <g fill="none" stroke="hsl(var(--line))" strokeWidth="14" opacity="0.7">
-      {RINGS_FAINT.map((r) => <circle key={r} cx="720" cy="90" r={r} />)}
-    </g>
-    <g fill="none" strokeWidth="20">
-      {RINGS_BOLD.map((r) => <circle key={r} cx="880" cy="90" r={r} stroke="hsl(var(--ink))" />)}
-      {RINGS_BOLD.map((r, i) => (
-        <circle key={`b${r}`} cx="880" cy="90" r={r} stroke="hsl(var(--brand-light))" strokeDasharray={`${34 + i * 6} ${2 * Math.PI * r}`} strokeDashoffset={-i * 70} />
-      ))}
-    </g>
-  </svg>
-);
-
 const Stat = ({ name, value }: { name: string; value: React.ReactNode }) => (
   <div>
     <dt className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">{name}</dt>
@@ -48,6 +33,7 @@ const Stat = ({ name, value }: { name: string; value: React.ReactNode }) => (
 const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   const { user } = useAuth();
   const reduce = useReducedMotion();
+  const isMobile = useIsMobile();
 
   const fullName = (user?.user_metadata?.full_name as string | undefined) || user?.email?.split("@")[0] || "Student";
   // Google sign-in stores the photo as avatar_url (or picture); email sign-ups have none, so they keep the initials.
@@ -83,6 +69,28 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
   const average = scores.length ? Math.round((scores.reduce((n, s) => n + s.best / s.total, 0) / scores.length) * 100) : null;
   const active = pass ? new Date(`${pass.end_date}T23:59:59`).getTime() >= Date.now() : false;
 
+  if (isMobile) {
+    return (
+      <ProfileMobile
+        name={fullName}
+        initials={initials}
+        photo={photo && !photoFailed ? photo : undefined}
+        onPhotoError={() => setPhotoFailed(true)}
+        department={pass?.department_name ?? "No semester pass yet"}
+        rows={pass ? [pass.institution_name, pass.school_name, `Year ${pass.year_of_study}, Semester ${pass.semester_of_study}`].filter(Boolean) as string[] : user?.email ? [user.email] : []}
+        access={pass ? `${active ? "Access until" : "Expired"} ${formatDate(new Date(`${pass.end_date}T00:00:00`))}` : undefined}
+        stats={[
+          { name: "Opened", value: Object.keys(progress?.opens ?? {}).length },
+          { name: "Quizzes", value: quizzes },
+          { name: "Avg best", value: average === null ? "–" : `${average}%` },
+        ]}
+        email={user?.email}
+        since={user?.created_at ? formatDate(new Date(user.created_at)) : undefined}
+        onBilling={() => onNavigate("subscriptions")}
+      />
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-4xl px-4 pb-8 pt-10 md:pt-14 font-geist text-ink md:px-6 md:pb-12">
       <motion.article
@@ -109,9 +117,14 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
 
           <h1 className="mt-5 text-2xl font-semibold">{fullName}</h1>
           <p className="mt-1 text-lg">{pass?.department_name ?? "No semester pass yet"}</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            {[pass?.institution_name, pass?.school_name, pass && `Year ${pass.year_of_study}, Semester ${pass.semester_of_study}`].filter(Boolean).join(" · ") || user?.email}
-          </p>
+          {/* Institution, school and year each on their own row. */}
+          {pass ? (
+            [pass.institution_name, pass.school_name, `Year ${pass.year_of_study}, Semester ${pass.semester_of_study}`]
+              .filter(Boolean)
+              .map((row) => <p key={row} className="mt-1 text-sm text-ink-muted">{row}</p>)
+          ) : (
+            <p className="mt-1 text-sm text-ink-muted">{user?.email}</p>
+          )}
           {pass && (
             <p className="mt-1 text-sm text-ink-muted">
               {active ? "Access until" : "Expired"} {formatDate(new Date(`${pass.end_date}T00:00:00`))}

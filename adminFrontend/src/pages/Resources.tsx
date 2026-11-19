@@ -379,9 +379,9 @@ const Resources = () => {
       {/* <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6"> */}
       <Tabs value={activeTab} className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             {/* Search */}
-            <div className="relative max-w-sm col-span-1">
+            <div className="relative max-w-sm sm:col-span-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search"
@@ -392,7 +392,7 @@ const Resources = () => {
             </div>
             
             {/* Filter */}
-            <div className="flex items-center gap-2 col-span-2">
+            <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
               <InstitutionFilter value={filter.institution_id} onChange={(id) => { setFilter({ ...filter, unit_id: 0, institution_id: id }); setPage(1); }} />
               <Combobox
                 options={[

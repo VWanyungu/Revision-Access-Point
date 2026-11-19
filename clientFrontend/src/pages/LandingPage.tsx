@@ -290,7 +290,7 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
                   key={label}
                   href={href}
                   aria-label={label}
-                  className="flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-700 sm:h-10 sm:w-10 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
+                  className="flex h-11 w-11 items-center justify-center rounded-full transition-transform duration-700 sm:h-10 sm:w-10 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
                 >
                   <img src={logo} alt="" className="size-6" />
                 </a>

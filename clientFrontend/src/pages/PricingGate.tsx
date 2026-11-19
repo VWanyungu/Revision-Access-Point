@@ -42,13 +42,14 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
   const [semester, setSemester] = useState("");
 
   const { data: institutions = [] } = useQuery({ queryKey: ["institutions"], queryFn: async () => (await getInstitutions()) ?? [] });
-  const institutionId = institution || (institutions[0] ? String(institutions[0].id) : "");
+  // Nothing is preselected: a student picks their own institution, school and department.
+  const institutionId = institution;
   const { data: schools = [] } = useQuery({
     queryKey: ["schools", institutionId],
     queryFn: async () => (await getSchools(institutionId)) ?? [],
     enabled: !!institutionId,
   });
-  const schoolId = school || (schools[0] ? String(schools[0].id) : "");
+  const schoolId = school;
   const { data: departments = [] } = useQuery({
     queryKey: ["departments", schoolId],
     queryFn: async () => (await getDepartmentsBySchoolId(schoolId)) ?? [],
@@ -116,15 +117,15 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
 
           <div className="flex flex-col gap-5">
             <SelectField
-              label="Institution" value={institutionId} onChange={(v) => { setInstitution(v); setSchool(""); setDepartment(""); }}
+              label="Institution" placeholder="Select your institution" value={institutionId} onChange={(v) => { setInstitution(v); setSchool(""); setDepartment(""); }}
               options={institutions.map((i: any) => ({ value: String(i.id), label: i.name }))}
             />
             <SelectField
-              label="School" value={schoolId} onChange={(v) => { setSchool(v); setDepartment(""); }}
+              label="School" placeholder={institutionId ? "Select your school" : "Choose an institution first"} value={schoolId} onChange={(v) => { setSchool(v); setDepartment(""); }}
               options={schools.map((s: any) => ({ value: String(s.id), label: s.name }))}
             />
             <SelectField
-              label="Department" value={department} onChange={setDepartment} placeholder="Select your department"
+              label="Department" value={department} onChange={setDepartment} placeholder={schoolId ? "Select your department" : "Choose a school first"}
               options={departments.map((d: any) => ({ value: String(d.id), label: d.name }))}
             />
             <div className="flex gap-3 md:gap-4">

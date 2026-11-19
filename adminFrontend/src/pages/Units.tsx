@@ -259,9 +259,9 @@ const Units = () => {
         }
       />
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {/* Search */}
-        <div className="relative max-w-sm col-span-1">
+        <div className="relative max-w-sm sm:col-span-1">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search"
@@ -272,7 +272,7 @@ const Units = () => {
         </div>
 
         {/* Filter */}
-        <div className="flex items-center gap-2 col-span-2">
+        <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
           <InstitutionFilter value={filter.institution_id} onChange={(id) => { setFilter({ department_id: 0, institution_id: id }); setPage(1); }} />
           <Combobox
             options={[

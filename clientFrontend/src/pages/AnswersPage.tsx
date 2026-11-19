@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  ArrowRight, ArrowsClockwise, ArrowUpRight, CaretDown, CircleHalf, DownloadSimple, Info, ListChecks,
+  ArrowRight, ArrowsClockwise, ArrowUpRight, ArrowUp, CaretDown, CircleHalf, DownloadSimple, Info, ListChecks, X,
 } from "@phosphor-icons/react";
 import { StepRenderer } from "@/components/study/StepRenderer";
 import { MixedContentRenderer } from "@/components/study/MixedContentRenderer";
 import PageCrumbs from "@/components/layout/PageCrumbs";
+import { QuestionMobile } from "@/components/study/AnswersMobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { EASE, QuietButton, formatDate } from "@/components/pay/PayKit";
 
 interface MarksBreakdown {
@@ -191,7 +193,11 @@ const QuestionSection = ({ q, index, last, onNext, onQuiz }: {
 
 export default function AnswersPage({ data, generating, title, onBack, onOpenPaper, onRegenerate, onQuiz, downloadUrl }: AnswersPageProps) {
   const [active, setActive] = useState(0);
+  const isMobile = useIsMobile(); // phones get their own, full-width question layout
+  const reduce = useReducedMotion();
   const [sheet, setSheet] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const [pastHeader, setPastHeader] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
 
@@ -203,6 +209,15 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
     );
     mainRef.current.querySelectorAll("section[data-index]").forEach((el) => obs.observe(el));
     return () => obs.disconnect();
+  }, [data, isMobile]);
+
+  // The scroll-to-top button appears once the page header has scrolled out of view.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setPastHeader(!e.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
   }, [data]);
 
   // Keep the current question in view inside the index without moving the page.
@@ -259,7 +274,7 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
       <PageCrumbs onHome={onBack} trail={[{ label: heading, onClick: onOpenPaper }]} current="Model answers" />
 
       <div className="mx-auto max-w-[1200px] px-4 pb-28 pt-8 md:px-8 md:pb-32 md:pt-10">
-        <header>
+        <header ref={headerRef}>
           <h1 className="max-w-[18ch] text-balance text-3xl font-medium md:text-4xl">{heading}</h1>
 
           <dl className="mt-7 flex flex-wrap gap-x-10 gap-y-4">
@@ -287,19 +302,6 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
           </p>
         </header>
 
-        {/* Phones: the question list opens inline, in the page flow */}
-        <div className="mt-10 md:hidden">
-          <button
-            onClick={() => setSheet((v) => !v)} aria-expanded={sheet}
-            className="flex h-12 w-full items-center gap-2 rounded-full border border-line-soft bg-surface px-5 text-base font-medium"
-          >
-            <ListChecks size={18} /> Questions
-            <span className="ml-auto text-sm font-normal text-ink-muted">{count}</span>
-            <CaretDown size={16} className={`transition-transform duration-300 ${sheet ? "rotate-180" : ""}`} />
-          </button>
-          {sheet && <div className="mt-2 rounded-xl border border-line-soft bg-surface p-2">{list}</div>}
-        </div>
-
         {/* Split: a sticky index on the left, the cards on the right */}
         <div className="mt-10 grid gap-0 md:mt-16 md:grid-cols-[280px_minmax(0,1fr)] md:gap-12 lg:gap-16">
           <aside className="hidden md:block">
@@ -311,12 +313,63 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
               <div ref={trayRef} className="relative max-h-[calc(100dvh-14rem)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{list}</div>
             </div>
           </aside>
-          <div ref={mainRef} className="flex max-w-[780px] flex-col gap-5 md:gap-6">
-            {data.questions.map((q, i) => (
-              <QuestionSection key={i} q={q} index={i} last={i === count - 1} onQuiz={onQuiz} onNext={() => jump(i + 1)} />
-            ))}
+          <div ref={mainRef} className={isMobile ? "flex flex-col" : "flex max-w-[780px] flex-col gap-5 md:gap-6"}>
+            {data.questions.map((q, i) => isMobile
+              ? <QuestionMobile key={i} q={q} index={i} last={i === count - 1} onQuiz={onQuiz} onNext={() => jump(i + 1)} />
+              : <QuestionSection key={i} q={q} index={i} last={i === count - 1} onQuiz={onQuiz} onNext={() => jump(i + 1)} />)}
           </div>
         </div>
+      </div>
+
+      {/* Phones: a floating button (bottom right) that opens the question list in a sheet, so a 20-question paper is not a long hunt. */}
+      <div className="md:hidden">
+        <div className="fixed bottom-5 right-4 z-40 flex items-center gap-2">
+          <button
+            onClick={() => setSheet(true)}
+            aria-haspopup="dialog" aria-expanded={sheet}
+            aria-label={`Questions: viewing ${active + 1} of ${count}. Open the question list`}
+            className="flex h-14 items-center gap-2.5 rounded-full bg-primary pl-5 pr-6 text-base font-medium text-primary-foreground shadow-[0_12px_32px_-12px_hsl(var(--ink)/0.5)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-95"
+          >
+            <ListChecks size={20} />
+            <span className="tabular-nums">{active + 1} / {count}</span>
+          </button>
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" })}
+            aria-label="Scroll to top"
+            tabIndex={pastHeader ? 0 : -1}
+            className={`flex h-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface/80 text-ink shadow-[0_12px_32px_-12px_hsl(var(--ink)/0.4)] ring-1 ring-line backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-95 ${pastHeader ? "w-14 opacity-100" : "pointer-events-none -ml-2 w-0 opacity-0 ring-0"}`}
+          >
+            <ArrowUp size={20} />
+          </button>
+        </div>
+
+        {sheet && (
+          <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Jump to a question" onKeyDown={(e) => e.key === "Escape" && setSheet(false)}>
+            <button aria-label="Close question list" className="absolute inset-0 bg-ink/40" onClick={() => setSheet(false)} />
+            <div className="absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col rounded-t-3xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_48px_-16px_rgba(14,21,37,0.3)]">
+              <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-line" aria-hidden />
+              <div className="flex items-center justify-between px-5 pb-2 pt-3">
+                <p className="text-base font-medium">Questions <span className="ml-1 text-sm font-normal text-ink-muted">{count}</span></p>
+                <button onClick={() => setSheet(false)} aria-label="Close" className="flex size-11 items-center justify-center rounded-full text-ink-muted hover:bg-field"><X size={20} /></button>
+              </div>
+              <ul className="overflow-y-auto px-3 pb-4">
+                {data.questions.map((q, i) => (
+                  <li key={i}>
+                    <button
+                      ref={i === active ? (el) => el?.scrollIntoView({ block: "center" }) : undefined}
+                      onClick={() => jump(i)}
+                      aria-current={active === i ? "true" : undefined}
+                      className={`flex min-h-12 w-full items-center gap-4 rounded-2xl px-3 py-2 text-left text-base transition-colors duration-300 ${active === i ? "bg-field font-medium text-ink" : "text-ink-muted active:bg-field"}`}
+                    >
+                      <span className="w-10 shrink-0 tabular-nums text-ink">{q.question_number}</span>
+                      <span className="line-clamp-2 min-w-0 flex-1">{q.question_text}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

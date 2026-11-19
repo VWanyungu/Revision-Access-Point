@@ -22,11 +22,11 @@ const buttonVariants = cva(
         pagination: "border border-input"
       },
       size: {
-        default: "h-10 px-4 py-1",
+        default: "h-10 px-4 py-1 max-md:h-11",
         sm: "h-9 px-3",
         lg: "h-11 px-8 text-base",
         xl: "h-12 px-10 text-base font-semibold",
-        icon: "h-10 w-10",
+        icon: "h-10 w-10 max-md:h-11 max-md:w-11",
         "icon-sm": "h-8 w-8",
         "icon-lg": "h-12 w-12",
       },
