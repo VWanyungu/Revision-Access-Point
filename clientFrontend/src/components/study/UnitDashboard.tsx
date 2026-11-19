@@ -136,8 +136,19 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   const notes: Resource[] = useMemo(() => resources.filter((r) => r.resource_type_id === NOTES).sort((a, b) => a.id - b.id), [resources]);
   const tutorials: Resource[] = useMemo(() => resources.filter((r) => r.resource_type_id === TUTORIALS), [resources]);
   const papers: Resource[] = useMemo(() => resources.filter((r) => r.resource_type_id === EXAMS || r.resource_type_id === CATS), [resources]);
-  const unit = resources[0]?.units;
-  const departmentName = resources[0]?.departments?.name || selection?.departmentName;
+  // The unit's own details, so the title is right even before it has any resources or when the saved selection is old.
+  const { data: unitMeta } = useQuery({
+    queryKey: ["unit-meta", unitId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("units").select("name, code, year_of_study, semester_of_study, departments(name)").eq("id", unitId).maybeSingle();
+      return error ? null : (data as unknown as { name: string; code: string; year_of_study: number; semester_of_study: number; departments: { name: string } | null } | null);
+    },
+    enabled: !!unitId,
+  });
+  const unit = resources[0]?.units ?? unitMeta;
+  const departmentName = resources[0]?.departments?.name || unitMeta?.departments?.name || selection?.departmentName;
+  const yearLabel = selection?.year ?? unitMeta?.year_of_study;
+  const semesterLabel = selection?.semester ?? unitMeta?.semester_of_study;
 
   // Read marks and the last opened note live in Supabase (resource_opens); topics group a unit's notes (topics, resources.topic_id).
   const queryClient = useQueryClient();
@@ -380,7 +391,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             </motion.h1>
             <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
               {unit?.code && <span className="font-geist-mono text-ink">{unit.code}</span>}
-              {departmentName && <span>{departmentName}{selection?.year ? `, Year ${selection.year}, Semester ${selection.semester}` : ""}</span>}
+              {departmentName && <span>{departmentName}{yearLabel ? `, Year ${yearLabel}, Semester ${semesterLabel}` : ""}</span>}
               {onChangeUnit && (
                 <button onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen} aria-haspopup="dialog" className="inline-flex items-center gap-1 font-medium text-brand hover:opacity-60">
                   Change unit <CaretDown size={14} className={`transition-transform duration-300 ${pickerOpen ? "rotate-180" : ""}`} />
@@ -405,7 +416,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             </AnimatePresence>
           </div>
           {topics.length > 0 && (
-            <div className="max-w-[340px] text-base">
+            <div className="max-w-[340px] rounded-2xl bg-background/80 p-4 text-base backdrop-blur-md">
               <p>{doneCount} of {topics.length} {topics.length === 1 ? "topic" : "topics"} complete.{resume ? (last ? " Pick up where you stopped." : " Start with the first note.") : ""}</p>
               {resume && (
                 <button className={`${link} mt-2`} onClick={() => open(resume)}>Continue reading <ArrowUpRight size={14} /></button>
@@ -566,7 +577,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                                   <button
                                     key={n.id}
                                     onClick={() => onGenerateQuiz(n.public_access_url, n.name)}
-                                    className="flex h-11 items-center rounded-full bg-ink px-5 text-left text-base font-medium text-ink-fg transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-ink-hover active:scale-[0.98]"
+                                    className="flex h-11 items-center rounded-full bg-primary px-5 text-left text-base font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98]"
                                   >{topic.notes.length === 1 ? "Quiz me on this note" : `Quiz me on ${n.name}`}</button>
                                 ))}
                               </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Landmark, Trash2 } from 'lucide-react';
+import { Landmark, Pencil, Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
@@ -18,6 +18,7 @@ const Institutions = () => {
   const [page, setPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState({ name: '', short_name: '' });
+  const [editing, setEditing] = useState<Institution | null>(null);
   const [deleting, setDeleting] = useState<Institution | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -37,10 +38,12 @@ const Institutions = () => {
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await addRecord('institutions', { name: form.name.trim(), short_name: form.short_name.trim().toUpperCase() });
-    if (res.status === 'error') return toast({ title: 'Could not create institution', variant: 'destructive' });
-    toast({ title: 'Institution created' });
+    const fields = { name: form.name.trim(), short_name: form.short_name.trim().toUpperCase() };
+    const res = editing ? await updateRecord('institutions', editing.id, fields) : await addRecord('institutions', fields);
+    if (res.status === 'error') return toast({ title: editing ? 'Could not save institution' : 'Could not create institution', variant: 'destructive' });
+    toast({ title: editing ? 'Institution updated' : 'Institution created' });
     setIsFormOpen(false);
+    setEditing(null);
     setForm({ name: '', short_name: '' });
     refresh();
   };
@@ -67,20 +70,25 @@ const Institutions = () => {
     { key: 'short_name', header: 'Short name', render: (i) => <InlineText value={i.short_name} onSave={rename(i, 'short_name')} /> },
     {
       key: 'actions', header: '', className: 'text-right',
-      render: (i) => <Button variant="ghost" size="icon" aria-label="Delete" className="text-danger" onClick={() => setDeleting(i)}><Trash2 className="h-4 w-4" /></Button>,
+      render: (i) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => { setEditing(i); setForm({ name: i.name, short_name: i.short_name }); setIsFormOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Delete" className="text-danger" onClick={() => setDeleting(i)}><Trash2 className="h-4 w-4" /></Button>
+        </div>
+      ),
     },
   ];
 
   return (
     <div className="animate-fade-in space-y-6">
       <PageHeader title="Institutions" description="Each institution owns its schools, units, resources and students."
-        actions={<Button onClick={() => setIsFormOpen(true)}>Add</Button>} />
+        actions={<Button onClick={() => { setEditing(null); setForm({ name: '', short_name: '' }); setIsFormOpen(true); }}>Add</Button>} />
 
-      <FormModal open={isFormOpen} onOpenChange={setIsFormOpen} title="Add institution">
-        <form onSubmit={create} className="grid gap-4 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
+      <FormModal open={isFormOpen} onOpenChange={(o) => { setIsFormOpen(o); if (!o) setEditing(null); }} title={editing ? 'Edit institution' : 'Add institution'}>
+        <form onSubmit={create} className="space-y-4">
           <div className="space-y-2"><Label htmlFor="inst-name">Name</Label><Input id="inst-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="inst-short">Short name</Label><Input id="inst-short" required maxLength={12} value={form.short_name} onChange={(e) => setForm({ ...form, short_name: e.target.value })} /></div>
-          <Button type="submit">Create</Button>
+          <div className="flex justify-end"><Button type="submit">{editing ? 'Save' : 'Create'}</Button></div>
         </form>
       </FormModal>
 

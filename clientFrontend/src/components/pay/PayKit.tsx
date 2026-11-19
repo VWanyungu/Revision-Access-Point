@@ -37,7 +37,7 @@ export const PayTopBar = ({ trail = [], current = "Payment", onHome }: { trail?:
  */
 export const PayBottomBar = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
   <div
-    className={`fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 border-t border-line bg-background px-5 pb-6 pt-4 md:static md:border-0 md:px-0 md:pb-0 md:pt-8 ${className}`}
+    className={`fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 border-t border-line bg-background px-5 pb-6 pt-4 md:static md:border-0 md:bg-transparent md:px-0 md:pb-0 md:pt-8 ${className}`}
   >
     {children}
   </div>
@@ -58,7 +58,7 @@ export const InkButton = ({
   children, arrow, className = "", ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { arrow?: boolean }) => (
   <button
-    className={`group flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-base font-medium text-ink-fg transition-[transform,background-color,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-ink-hover active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 ${className}`}
+    className={`group flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-base font-medium text-primary-foreground transition-[transform,background-color,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 ${className}`}
     {...rest}
   >
     {children}

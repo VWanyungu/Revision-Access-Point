@@ -49,7 +49,7 @@ export const EarningsPanel = ({ role }: { role: AdminRole }) => {
         <div className="rounded-3xl bg-surface p-6 ring-1 ring-line lg:col-span-2">
           <h2 className="mb-4 text-lg font-semibold">By course</h2>
           {byCourse.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{isLoading ? 'Loading…' : 'No paid passes for your courses yet.'}</p>
+            <p className="text-sm text-muted-foreground">{isLoading ? 'Loading…' : role === 'course_admin' ? 'No paid passes for your courses yet.' : 'No paid passes yet.'}</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">

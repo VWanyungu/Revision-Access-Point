@@ -39,7 +39,7 @@ const IslandButton = ({ children, onClick, tone = "ink" }: { children: React.Rea
   <button
     onClick={onClick}
     className={`group inline-flex h-11 shrink-0 items-center gap-3 rounded-full pl-5 pr-1.5 text-sm font-medium transition-[background-color,transform] duration-500 ${spring} active:scale-[0.98] ${
-      tone === "ink" ? "bg-ink text-ink-fg hover:bg-ink-hover" : "bg-field text-ink ring-1 ring-line hover:bg-field-strong"
+      tone === "ink" ? "bg-primary text-primary-foreground hover:bg-primary-dark" : "bg-field text-ink ring-1 ring-line hover:bg-field-strong"
     }`}
   >
     {children}

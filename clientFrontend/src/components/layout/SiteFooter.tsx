@@ -20,14 +20,14 @@ export const SOCIALS = [
 ];
 
 /** The site footer, shown on every page. `showCta` adds the "start revising" card above it (landing page only). */
-const SiteFooter = ({ showCta = false }: { showCta?: boolean }) => {
+const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inApp?: boolean }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const year = new Date().getFullYear();
 
   return (
-      <footer id="footer" className="relative overflow-hidden bg-background px-4 pb-10 pt-20 md:px-[120px]">
-        <div className="relative z-10 mx-auto max-w-[1200px]">
+      <footer id="footer" className={`relative overflow-hidden bg-background px-4 pb-10 ${inApp ? "pt-10 md:px-10" : "pt-20 md:px-[120px]"}`}>
+        <div className={`relative z-10 mx-auto ${inApp ? "max-w-[1120px]" : "max-w-[1200px]"}`}>
         {showCta && (
         <Reveal>
           <div className="mb-3 overflow-hidden rounded-3xl bg-card">

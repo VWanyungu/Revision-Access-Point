@@ -51,7 +51,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
 
   const fullName = (user?.user_metadata?.full_name as string | undefined) || user?.email?.split("@")[0] || "Student";
   // Google sign-in stores the photo as avatar_url (or picture); email sign-ups have none, so they keep the initials.
-  const photo = (user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture) as string | undefined;
+  const photo = ((user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture) as string | undefined)?.replace(/=s\d+-c$/, "=s288-c"); // Google serves 96px by default; the avatar is 144px
   const [photoFailed, setPhotoFailed] = useState(false);
   const initials = fullName.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 

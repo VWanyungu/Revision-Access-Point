@@ -254,7 +254,7 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
         animate={{ opacity: showTop ? 1 : 0, y: showTop ? 0 : 16, scale: showTop ? 1 : 0.9 }}
         transition={{ duration: 0.7, ease: EASE }}
         style={{ pointerEvents: showTop ? "auto" : "none" }}
-        className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-ink text-ink-fg shadow-[0_10px_32px_hsl(var(--ink)/0.2)] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
+        className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_32px_hsl(var(--ink)/0.2)] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
       >
         <ArrowUp size={20} weight="light" />
       </motion.button>
@@ -283,14 +283,14 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
           />
 
           <div className="absolute right-6 top-6 flex flex-col items-end gap-2.5 md:right-12 md:top-8">
-            <p className="text-base font-medium text-white">Follow us</p>
+            <p className="hidden text-base font-medium text-white sm:block">Follow us</p>
             <div className="flex gap-2">
               {SOCIALS.map(({ label, logo, href }) => (
                 <a
                   key={label}
                   href={href}
                   aria-label={label}
-                  className="flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
+                  className="flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-700 sm:h-10 sm:w-10 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
                 >
                   <img src={logo} alt="" className="size-6" />
                 </a>

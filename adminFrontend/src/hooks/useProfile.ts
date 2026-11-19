@@ -17,6 +17,7 @@ export const useProfile = () =>
         role: (a.role ?? 'super_admin') as AdminRole,
         institutionId: (a.institution_id as number | undefined) ?? null,
         // Department ids a course admin owns (set server-side in app_metadata.course_ids).
+        schoolIds: ((a.school_ids as number[] | undefined) ?? []).map(Number),
         courseIds: ((a.course_ids as number[] | undefined) ?? []).map(Number),
         email: data.user.email ?? '',
         name,

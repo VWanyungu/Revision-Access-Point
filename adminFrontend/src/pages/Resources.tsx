@@ -445,9 +445,13 @@ const Resources = () => {
         // description={editingResource ? 'Update resource information' : 'Add a new learning resource'}
       >
           <form onSubmit={handleSubmit} className="space-y-4 overflow-scroll">
-            <div className="space-y-2">
-              <a href={formData.public_access_url} target="_blank" rel="noopener noreferrer" className='text-sm text-primary'>Public View Link</a>
-            </div>
+            {formData.public_access_url && (
+              <div className="space-y-2">
+                <a href={formData.public_access_url} target="_blank" rel="noopener noreferrer" className='text-sm text-primary'>Public View Link</a>
+              </div>
+            )}
+
+            <InstitutionSelect value={formInstitution} onChange={(id) => { setFormInstitution(id); setFormData((f) => ({ ...f, school_id: 0, department_id: 0, unit_id: 0, topic_id: 0 })); }} />
 
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
@@ -504,7 +508,7 @@ const Resources = () => {
                 onValueChange={(value) => setFormData({ ...formData, resource_type_id: Number(value) })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select resource_type_id" />
+                  <SelectValue placeholder="Select a type" />
                 </SelectTrigger>
                 <SelectContent>
                   {resourceTypes.map((resourceType) => (
@@ -515,8 +519,6 @@ const Resources = () => {
                 </SelectContent>
               </Select>
             </div>
-
-            <InstitutionSelect value={formInstitution} onChange={(id) => { setFormInstitution(id); setFormData((f) => ({ ...f, school_id: 0, department_id: 0, unit_id: 0, topic_id: 0 })); }} />
 
             <div className="space-y-2">
               <Label htmlFor="school">School</Label>

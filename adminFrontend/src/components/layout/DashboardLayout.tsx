@@ -3,7 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminNav } from './AdminNav';
 import { supabase } from '@/data/supabase';
-import { setInstitutionScope, setCourseScope } from '@/data/db';
+import { setInstitutionScope, setCourseScope, setSchoolScope } from '@/data/db';
 import { canOpen } from './AdminNav';
 import { PanelSlotContext } from '@/components/shared/InlinePanel';
 import { useProfile } from '@/hooks/useProfile';
@@ -29,7 +29,8 @@ export const DashboardLayout = () => {
   const { data: me } = useProfile();
   if (!me) return <div className="min-h-screen bg-background" />;
   // Before any page queries run: institution admins only ever see their own institution.
-  setInstitutionScope(me.role === 'institution_admin' || me.role === 'course_admin' ? me.institutionId : null);
+  setInstitutionScope(me.role !== 'super_admin' ? me.institutionId : null);
+  setSchoolScope(me.role === 'school_admin' ? me.schoolIds : null);
   // Course admins are limited to their own courses.
   setCourseScope(me.role === 'course_admin' ? me.courseIds : null);
   // Hiding a nav link is not enough: a course admin typing /admins must not get in.

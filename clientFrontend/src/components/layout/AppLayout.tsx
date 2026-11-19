@@ -40,7 +40,7 @@ const AppLayout = ({ children, currentPage, onNavigate, onLogout, studyContext }
           </div>
         </main>
       </div>
-      <SiteFooter />
+      <SiteFooter inApp />
     </div>
   );
 };

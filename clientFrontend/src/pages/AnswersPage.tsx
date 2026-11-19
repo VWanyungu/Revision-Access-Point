@@ -273,7 +273,7 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
 
           <div className="mt-7 flex flex-wrap items-center gap-2">
             {onOpenPaper && (
-              <button onClick={onOpenPaper} className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-ink-fg transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-ink-hover active:scale-[0.98]">
+              <button onClick={onOpenPaper} className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary-dark active:scale-[0.98]">
                 Open the paper <ArrowUpRight size={14} />
               </button>
             )}

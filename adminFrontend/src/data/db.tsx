@@ -60,6 +60,10 @@ export const setInstitutionScope = (id: number | null) => { institutionScope = i
 let courseScope: number[] | null = null
 export const setCourseScope = (ids: number[] | null) => { courseScope = ids }
 
+/** Set for school admins: everything is limited to these school ids (and the departments, units and resources under them). */
+let schoolScope: number[] | null = null
+export const setSchoolScope = (ids: number[] | null) => { schoolScope = ids }
+
 const INSTITUTION = 'institutions(id, short_name)'
 
 export const getRecords = async (schema, options: { institution_id?: number, department_id?: number, unit_id?: number, resource_type_id?: number, page?: number, pageSize?: number, search?: string } = {}): Promise<{ data: any[], meta: { total: number, page: number, pageSize: number, lastPage: number } }> => {
@@ -99,6 +103,17 @@ export const getRecords = async (schema, options: { institution_id?: number, dep
         // Explicit filter from the page (super admins); scoped admins are already limited above.
         if (options.institution_id && options.institution_id > 0 && schema !== 'institutions') {
             query = query.eq('institution_id', options.institution_id);
+        }
+
+        // A school admin sees only their own schools, and what sits under them.
+        if (schoolScope !== null) {
+            const ids = schoolScope.length ? schoolScope : [-1]
+            if (schema === 'schools') query = query.in('id', ids)
+            else if (schema === 'departments') query = query.in('school_id', ids)
+            else if (schema === 'units' || schema === 'resources') {
+                const { data: d } = await supabase.from('departments').select('id').in('school_id', ids)
+                query = query.in('department_id', (d ?? []).map((r) => r.id).concat(-1))
+            }
         }
 
         // A course admin sees only their own courses (and the school above them), never a sibling course.

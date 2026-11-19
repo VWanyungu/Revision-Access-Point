@@ -139,6 +139,9 @@ const Schools = () => {
       className: 'text-right',
       render: (school) => (
         <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => handleOpenEdit(school)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -173,7 +176,7 @@ const Schools = () => {
 
       {/* Search */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-sm">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search schools..."
@@ -182,7 +185,7 @@ const Schools = () => {
             className="pl-8"
           />
         </div>
-        <InstitutionFilter value={institutionId} onChange={(id) => { setInstitutionId(id); setPage(1); }} />
+        <div className="w-full sm:w-64"><InstitutionFilter value={institutionId} onChange={(id) => { setInstitutionId(id); setPage(1); }} /></div>
       </div>
 
       <DataTable
