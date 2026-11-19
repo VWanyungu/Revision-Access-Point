@@ -72,6 +72,13 @@ export default {
         brand: {
           DEFAULT: "hsl(var(--brand) / <alpha-value>)",
           solid: "hsl(var(--brand-solid) / <alpha-value>)",
+          light: "hsl(var(--brand-light) / <alpha-value>)",
+        },
+        band: {
+          DEFAULT: "hsl(var(--band) / <alpha-value>)",
+          raised: "hsl(var(--band-raised) / <alpha-value>)",
+          fg: "hsl(var(--band-fg) / <alpha-value>)",
+          muted: "hsl(var(--band-muted) / <alpha-value>)",
         },
         info: {
           bg: "hsl(var(--info-bg) / <alpha-value>)",

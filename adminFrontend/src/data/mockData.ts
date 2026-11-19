@@ -2,6 +2,7 @@ export interface School {
   id: number;
   name: string;
   code: string;
+  institutions?: { id: number; short_name: string };
 }
 
 export interface Department {
@@ -33,6 +34,7 @@ export interface Resource {
   created_at: string;
   uploaded_by: string;
   public_access_url: string;
+  topic_id?: number | null;
   resource_type_id: number;
   unit_id: string;
   department_id: string;
@@ -43,7 +45,7 @@ export interface Admin {
   id: string;
   name: string;
   email: string;
-  role: 'super_admin' | 'school_admin' | 'course_admin';
+  role: 'super_admin' | 'institution_admin' | 'school_admin' | 'course_admin';
   scope: string;
   createdAt: string;
   lastActive: string;
@@ -96,6 +98,7 @@ export const resources: Resource[] = [
 
 export const admins: Admin[] = [
   { id: 'admin-1', name: 'John Administrator', email: 'john.admin@university.edu', role: 'super_admin', scope: 'Platform', createdAt: '2024-01-01', lastActive: '2024-03-20' },
+  { id: 'admin-0', name: 'Grace MMUST', email: 'grace@mmust.ac.ke', role: 'institution_admin', scope: 'MMUST', createdAt: '2024-01-10', lastActive: '2024-03-20' },
   { id: 'admin-2', name: 'Sarah Engineering', email: 'sarah.eng@university.edu', role: 'school_admin', scope: 'School of Engineering', createdAt: '2024-01-15', lastActive: '2024-03-19' },
   { id: 'admin-3', name: 'Mike Business', email: 'mike.bus@university.edu', role: 'school_admin', scope: 'School of Business', createdAt: '2024-01-20', lastActive: '2024-03-18' },
   { id: 'admin-4', name: 'Emily CS Admin', email: 'emily.cs@university.edu', role: 'course_admin', scope: 'Computer Science', createdAt: '2024-02-01', lastActive: '2024-03-20' },

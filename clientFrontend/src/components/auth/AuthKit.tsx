@@ -37,7 +37,7 @@ export const AuthShell = () => (
           ))}
         </div>
       </div>
-      <p className="text-sm text-[#9aa6b9]">Pay per semester with M-Pesa. Nothing renews on its own.</p>
+      <p className="text-sm text-[#9aa6b9]">Pay per semester. Nothing renews on its own.</p>
     </aside>
     <main className="flex flex-1 flex-col">
       <Outlet />

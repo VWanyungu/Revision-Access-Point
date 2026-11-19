@@ -41,11 +41,32 @@ export const getResources = async (unitId: number, filter?: ResourceFilter) => {
     }
 }
 
-export const getSchools = async () => {
+export const getInstitutions = async () => {
     try{
         const { data, error } = await supabase
+            .from('institutions')
+            .select('id, name, short_name')
+            .order('name')
+
+        if (error) {
+            throw error;
+        }
+
+        return data;
+    }catch(err){
+        console.error("Error fetching institutions:", err);
+        return null;
+    }
+}
+
+/** Schools of one institution, or all of them when no institution is given. */
+export const getSchools = async (institutionId?: string) => {
+    try{
+        let query = supabase
             .from('schools')
             .select('*')
+        if (institutionId) query = query.eq('institution_id', institutionId)
+        const { data, error } = await query
 
         if (error) {
             throw error;

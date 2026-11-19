@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import SiteFooter from "./SiteFooter";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -39,6 +40,7 @@ const AppLayout = ({ children, currentPage, onNavigate, onLogout, studyContext }
           </div>
         </main>
       </div>
+      <SiteFooter />
     </div>
   );
 };

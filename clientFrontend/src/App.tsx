@@ -11,14 +11,15 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import { ThemeProvider } from "./components/theme-provider";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { TimerProvider } from "./context/TimerContext";
 import { AuthShell } from "./components/auth/AuthKit";
 import { GuestRoute, ProtectedRoute } from "./components/auth/RouteGuards";
 
 const Landing = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  if (!loading && user) return <Navigate to="/app" replace />;
-  return <LandingPage onNavigateLogin={() => navigate("/login")} onNavigateSignUp={() => navigate("/signup")} />;
+  // Signed-in users can still see the landing page (the footer's Home link goes here); "Get started" takes them to the app.
+  return <LandingPage onNavigateSignUp={() => navigate(!loading && user ? "/app" : "/signup")} />;
 };
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+           <TimerProvider>
             <Routes>
               <Route path="/" element={<Landing />} />
 
@@ -51,6 +53,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+           </TimerProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

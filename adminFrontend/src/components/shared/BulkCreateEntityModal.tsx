@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Check, AlertTriangle, Loader2, Grid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './InlinePanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { addRecord } from '@/data/db';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Combobox } from './Combobox';
+import { InstitutionSelect } from './InstitutionSelect';
 
 export type EntityType = 'school' | 'department' | 'unit';
 
@@ -20,6 +21,8 @@ interface BulkCreateEntityModalProps {
     type: EntityType;
     schools?: any[];
     departments?: any[];
+    /** Institution new schools are created under (children inherit theirs from their parent). */
+    institutionId?: number;
     onSuccess: () => void;
 }
 
@@ -43,11 +46,20 @@ export const BulkCreateEntityModal = ({
     type,
     schools = [],
     departments = [],
+    institutionId,
     onSuccess
 }: BulkCreateEntityModalProps) => {
     const [entries, setEntries] = useState<EntityEntry[]>([]);
     const [isCreating, setIsCreating] = useState(false);
     const [progress, setProgress] = useState(0);
+    // One institution for the whole batch: schools are created under it, and the school / department lists narrow to it.
+    const [institution, setInstitution] = useState(institutionId ?? 0);
+    const schoolOptions = schools.filter((s) => !institution || s.institution_id === institution);
+    const departmentOptions = departments.filter((d) => !institution || d.institution_id === institution);
+    const pickInstitution = (id: number) => {
+        setInstitution(id);
+        setEntries((prev) => prev.map((e) => ({ ...e, school_id: undefined, department_id: undefined })));
+    };
     const { toast } = useToast();
 
     const getTitle = () => {
@@ -106,6 +118,11 @@ export const BulkCreateEntityModal = ({
         const pendingEntries = entries.filter(e => e.status === 'pending' || e.status === 'error');
         if (pendingEntries.length === 0) return;
 
+        if (!institution) {
+            toast({ title: 'Choose an institution first', variant: 'destructive' });
+            return;
+        }
+
         // Validation
         const invalid = pendingEntries.find(e => {
             if (!e.name || !e.code) return true;
@@ -148,6 +165,7 @@ export const BulkCreateEntityModal = ({
                     payload.semester_of_study = e.semester_of_study;
                 }
 
+                if (schema === 'schools') payload.institution_id = institution;
                 const { status, error } = await addRecord(schema, payload);
 
                 if (status === 'success') {
@@ -182,11 +200,15 @@ export const BulkCreateEntityModal = ({
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-            <DialogContent className="w-[90%] rounded md:max-w-4xl h-[80vh] flex flex-col p-0">
+            <DialogContent className="flex h-[80vh] flex-col p-0">
                 <DialogHeader className="p-6 pb-2">
                     <DialogTitle>{getTitle()}</DialogTitle>
                     <DialogDescription>{getDescription()}</DialogDescription>
                 </DialogHeader>
+
+                <div className="px-6 pb-4">
+                    <InstitutionSelect value={institution} onChange={pickInstitution} />
+                </div>
 
                 <div className="flex-1 overflow-hidden bg-muted/10">
                     <ScrollArea className="h-full p-3 md:p-6">
@@ -195,16 +217,16 @@ export const BulkCreateEntityModal = ({
                                 <div
                                     key={entry.id}
                                     className={cn(
-                                        "bg-card rounded-lg border p-4 shadow-sm transition-all relative flex flex-col justify-start items-center gap-3 md:gap-4 md:flex-row md:items-start",
+                                        "bg-surface rounded-3xl ring-1 ring-line p-4 shadow-sm transition-all relative flex items-start gap-3",
                                         entry.status === 'creating' && "opacity-70 pointer-events-none border-primary/50",
                                         entry.status === 'success' && "border-green-500/50 bg-green-500/5",
                                         entry.status === 'error' && "border-destructive/50 bg-destructive/5"
                                     )}
                                 >
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                    <div className="grid min-w-0 flex-1 grid-cols-2 gap-3">
 
                                         {/* Common Fields */}
-                                        <div className={cn("col-span-12", (type === 'school' ? "md:col-span-6" : type === 'department' ? "md:col-span-4" : "md:col-span-3"))}>
+                                        <div className="col-span-2">
                                             <Label className="text-xs">Name *</Label>
                                             <Input
                                                 value={entry.name}
@@ -214,7 +236,7 @@ export const BulkCreateEntityModal = ({
                                             />
                                         </div>
 
-                                        <div className={cn("col-span-12", "md:col-span-2")}>
+                                        <div className="col-span-2">
                                             <Label className="text-xs">Code *</Label>
                                             <Input
                                                 value={entry.code}
@@ -226,7 +248,7 @@ export const BulkCreateEntityModal = ({
 
                                         {/* Department Specific */}
                                         {type === 'department' && (
-                                            <div className="col-span-12 md:col-span-5">
+                                            <div className="col-span-2">
                                                 <Label className="text-xs">School *</Label>
                                                 <Select
                                                     value={entry.school_id ? String(entry.school_id) : ''}
@@ -236,7 +258,7 @@ export const BulkCreateEntityModal = ({
                                                         <SelectValue placeholder="Select School" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {schools.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                                        {schoolOptions.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -245,7 +267,7 @@ export const BulkCreateEntityModal = ({
                                         {/* Unit Specific */}
                                         {type === 'unit' && (
                                             <>
-                                                <div className="col-span-12 md:col-span-3">
+                                                <div className="col-span-2">
                                                     <Label className="text-xs">Department *</Label>
                                                     {/* <Select
                                                         value={entry.department_id ? String(entry.department_id) : ''}
@@ -259,14 +281,14 @@ export const BulkCreateEntityModal = ({
                                                         </SelectContent>
                                                     </Select> */}
                                                     <Combobox
-                                                        options={departments.map((dept: any) => ({ value: String(dept.id), label: dept.name }))}
+                                                        options={departmentOptions.map((dept: any) => ({ value: String(dept.id), label: dept.name }))}
                                                         value={entry.department_id ? String(entry.department_id) : ''}
                                                         onChange={(val) => updateEntry(entry.id, 'department_id', Number(val))}
                                                         placeholder="Select Department"
                                                         searchPlaceholder="Search departments..."
                                                     />
                                                 </div>
-                                                <div className="col-span-6 md:col-span-2">
+                                                <div className="col-span-1">
                                                     <Label className="text-xs">Year *</Label>
                                                     <Select
                                                         value={String(entry.year_of_study)}
@@ -280,7 +302,7 @@ export const BulkCreateEntityModal = ({
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
-                                                <div className="col-span-6 md:col-span-2">
+                                                <div className="col-span-1">
                                                     <Label className="text-xs">Sem *</Label>
                                                     <Select
                                                         value={String(entry.semester_of_study)}
@@ -301,7 +323,7 @@ export const BulkCreateEntityModal = ({
 
                                     {/* Actions / Status Icon */}
                                     {/* <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col justify-center w-full"> */}
-                                    <div className="flex flex-col justify-center w-full pt-3 md:pt-6">
+                                    <div className="flex w-8 shrink-0 flex-col items-center pt-6">
                                         {entry.status === 'creating' ? (
                                             <Loader2 className="h-4 w-4 animate-spin text-primary" />
                                         ) : entry.status === 'success' ? (
@@ -318,7 +340,7 @@ export const BulkCreateEntityModal = ({
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => removeEntry(entry.id)}
-                                                className="text-muted-foreground hover:text-destructive h-8 w-full md:w-8"
+                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

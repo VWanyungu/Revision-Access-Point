@@ -20,6 +20,7 @@ interface Sub {
   semester_of_study: number;
   department_name?: string;
   school_name?: string;
+  institution_name?: string;
 }
 
 const DAY = 86_400_000;
@@ -74,13 +75,13 @@ const ActivePass = ({ sub, index, onRenew }: { sub: Sub; index: number; onRenew:
       <div className="rounded-[calc(2rem-0.375rem)] bg-surface p-6 shadow-[0_24px_48px_-28px_rgba(14,21,37,0.18)] md:p-10">
         <div className="flex items-center justify-between gap-4">
           <span className="inline-flex items-center gap-2 rounded-full bg-positive/10 px-3 py-1 text-xs font-medium text-positive">
-            <span className="size-1.5 rounded-full bg-positive" aria-hidden /> Active
+            Active
           </span>
           <span className="text-sm text-ink-muted">Semester pass</span>
         </div>
 
         <h2 className="mt-6 text-balance text-2xl font-medium text-ink md:text-3xl">{sub.department_name ?? "Your department"}</h2>
-        {sub.school_name && <p className="mt-2 text-base text-ink-muted">{sub.school_name}</p>}
+        {(sub.institution_name || sub.school_name) && <p className="mt-2 text-base text-ink-muted">{[sub.institution_name, sub.school_name].filter(Boolean).join(" · ")}</p>}
 
         <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
           <Fact name="Year" value={sub.year_of_study} />
@@ -105,7 +106,7 @@ const ActivePass = ({ sub, index, onRenew }: { sub: Sub; index: number; onRenew:
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 pt-2">
-          <p className="text-sm text-ink-muted">Paid with M-Pesa · Ref <span className="font-geist-mono text-ink">{sub.payment_ref}</span></p>
+          <p className="text-sm text-ink-muted">Ref <span className="font-geist-mono text-ink">{sub.payment_ref}</span></p>
           {endingSoon && <IslandButton tone="soft" onClick={onRenew}>Renew this pass</IslandButton>}
         </div>
       </div>
@@ -125,7 +126,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
     queryFn: async (): Promise<Sub[]> => {
       const { data, error } = await supabase
         .from("subscriptions")
-        .select("*, departments(school_id, name)")
+        .select("*, departments(school_id, name), institutions(name, short_name)")
         .eq("user_uuid", user!.id)
         .order("end_date", { ascending: false });
       if (error) {
@@ -137,6 +138,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
         ...sub,
         department_name: sub.departments?.name,
         school_name: schools?.find((s) => s.id === sub.departments?.school_id)?.name,
+        institution_name: sub.institutions?.short_name ?? sub.institutions?.name,
       }));
     },
   });
@@ -166,7 +168,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
 
   return (
     <div className="font-geist text-ink">
-      <div className="mx-auto max-w-3xl px-4 pb-28 pt-10 md:px-6 md:pt-16">
+      <div className="mx-auto max-w-3xl px-4 pb-28 pt-10 md:pt-14 md:px-6">
         <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-medium md:text-3xl">Subscriptions</h1>
@@ -185,7 +187,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
             <div className="flex w-full flex-col items-center rounded-[calc(2rem-0.375rem)] bg-surface px-6 py-16 text-center">
               <span className="flex size-14 items-center justify-center rounded-full bg-field text-ink-muted"><Receipt size={26} /></span>
               <h2 className="mt-6 text-xl font-medium">No passes yet</h2>
-              <p className="mt-2 max-w-sm text-base text-ink-muted">A semester pass opens every note, CAT and past paper for your unit. Pay once, with M-Pesa; nothing renews on its own.</p>
+              <p className="mt-2 max-w-sm text-base text-ink-muted">A semester pass opens every note, CAT and past paper for your unit. Pay once; nothing renews on its own.</p>
               <div className="mt-8"><IslandButton onClick={() => setIsInitiating(true)}>See the semester pass</IslandButton></div>
             </div>
           </div>
@@ -222,7 +224,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
                     <li key={s.id} className="-mt-px grid gap-3 border-y border-line py-5 first:mt-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8">
                       <div className="min-w-0">
                         <p className="truncate text-base font-medium">{s.department_name ?? "Unknown department"}</p>
-                        <p className="mt-1 text-sm text-ink-muted">Year {s.year_of_study} · Semester {s.semester_of_study}{s.school_name ? ` · ${s.school_name}` : ""}</p>
+                        <p className="mt-1 text-sm text-ink-muted">Year {s.year_of_study} · Semester {s.semester_of_study}{s.institution_name ? ` · ${s.institution_name}` : ""}{s.school_name ? ` · ${s.school_name}` : ""}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 md:flex-col md:items-end md:gap-1">
                         <p className="text-sm tabular-nums text-ink-muted">{formatDate(new Date(s.start_date))} – {formatDate(new Date(s.end_date))}</p>

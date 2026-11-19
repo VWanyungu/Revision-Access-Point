@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { ArrowLeft, CaretDown, CaretUp, DownloadSimple, ListChecks, Minus, Plus } from "@phosphor-icons/react";
+import { ArrowLeft, CaretDown, CaretUp, DownloadSimple, ListChecks, Minus, Plus, Question } from "@phosphor-icons/react";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -12,6 +12,9 @@ interface PdfViewerPageProps {
   url: string;
   title?: string;
   onBack: () => void;
+  /** Notes offer a quiz; past papers offer model answers; anything else offers neither. */
+  kind?: "note" | "paper" | null;
+  onQuiz?: () => void;
   onModelAnswers?: () => void;
 }
 
@@ -57,7 +60,7 @@ const LazyPage = ({ index, width, rotation, onVisible, register }: {
   );
 };
 
-export default function PdfViewerPage({ url, title, onBack, onModelAnswers }: PdfViewerPageProps) {
+export default function PdfViewerPage({ url, title, onBack, kind, onQuiz, onModelAnswers }: PdfViewerPageProps) {
   const [numPages, setNumPages] = useState(0);
   const [current, setCurrent] = useState(1);
   const [scale, setScale] = useState(1);
@@ -75,6 +78,10 @@ export default function PdfViewerPage({ url, title, onBack, onModelAnswers }: Pd
   const width = Math.round(Math.min(BASE_WIDTH, vw - 32) * scale);
   const goTo = (n: number) => pageEls.current[n - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
   const heading = title || "Paper";
+  const action =
+    kind === "note" && onQuiz ? { label: "Quiz", Icon: Question, run: onQuiz }
+    : kind === "paper" && onModelAnswers ? { label: "Model answers", Icon: ListChecks, run: onModelAnswers }
+    : null;
 
   if (!url) {
     return (
@@ -94,10 +101,11 @@ export default function PdfViewerPage({ url, title, onBack, onModelAnswers }: Pd
     </div>
   );
 
+  // Pulled up under the floating navbar (60px on phones, 64px from md) so this page's background fills the strip behind it.
   return (
-    <div className="min-h-[calc(100dvh-4rem)] bg-field pb-28 font-geist text-ink md:pb-16">
+    <div className="-mt-[60px] bg-field pb-28 pt-[60px] font-geist text-ink md:-mt-16 md:pb-16 md:pt-16">
       {/* Floating bar: same width and styling as the main navbar, 12px beneath it. The wrapper ignores the pointer so only the pill is clickable. */}
-      <div className="pointer-events-none sticky top-[72px] z-40 px-3 pt-3 md:top-[76px] md:px-6">
+      <div className="pointer-events-none sticky top-[72px] z-40 px-3 pb-4 pt-3 md:top-[76px] md:px-6">
         <div className="pointer-events-auto mx-auto flex w-full max-w-3xl items-center gap-1 rounded-full bg-surface/85 p-1.5 text-ink shadow-[0_8px_30px_-14px_rgba(14,21,37,0.18)] ring-1 ring-line backdrop-blur-xl">
           <button onClick={onBack} aria-label="Back" className="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-field"><ArrowLeft size={18} /></button>
           <p className="min-w-0 flex-1 truncate px-1 text-base font-medium">
@@ -111,16 +119,16 @@ export default function PdfViewerPage({ url, title, onBack, onModelAnswers }: Pd
             <button className={iconBtn} aria-label="Zoom in" disabled={scale >= 2} onClick={() => setScale((s) => Math.min(2, +(s + 0.25).toFixed(2)))}><Plus size={16} /></button>
           </div>
           <a className={`${iconBtn} !size-9`} href={url} target="_blank" rel="noreferrer" aria-label="Download"><DownloadSimple size={18} /></a>
-          {onModelAnswers && (
-            <button onClick={onModelAnswers} className="hidden h-9 shrink-0 items-center gap-2 rounded-full bg-ink px-4 text-sm font-medium text-ink-fg transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-ink-hover active:scale-[0.98] md:flex">
-              <ListChecks size={16} /> Model answers
+          {action && (
+            <button onClick={action.run} className="hidden h-9 shrink-0 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98] md:flex">
+              <action.Icon size={16} /> {action.label}
             </button>
           )}
         </div>
       </div>
 
       {/* Pages */}
-      <div className="flex flex-col items-center px-4 pt-6 md:pt-10">
+      <div className="flex flex-col items-center px-4">
         <Document
           file={url}
           onLoadSuccess={({ numPages: n }) => { setNumPages(n); setCurrent(1); }}
@@ -136,7 +144,7 @@ export default function PdfViewerPage({ url, title, onBack, onModelAnswers }: Pd
       {/* Mobile bottom bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-line bg-surface px-5 pb-6 pt-4 md:hidden">
         {pager}
-        {onModelAnswers && <InkButton className="ml-auto" onClick={onModelAnswers}><ListChecks size={18} /> Model answers</InkButton>}
+        {action && <InkButton className="ml-auto !bg-primary !text-primary-foreground hover:!bg-primary-dark" onClick={action.run}><action.Icon size={18} /> {action.label}</InkButton>}
       </div>
     </div>
   );

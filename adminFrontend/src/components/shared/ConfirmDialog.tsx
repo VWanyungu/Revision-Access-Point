@@ -1,13 +1,5 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -20,33 +12,21 @@ interface ConfirmDialogProps {
   variant?: 'default' | 'destructive';
 }
 
-export const ConfirmDialog = ({
-  open,
-  onOpenChange,
-  title,
-  description,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
-  onConfirm,
-  variant = 'default',
-}: ConfirmDialogProps) => {
+/** Inline confirmation banner (no modal). */
+export const ConfirmDialog = ({ open, onOpenChange, title, description, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm, variant = 'default' }: ConfirmDialogProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (open) ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [open]);
+  if (!open) return null;
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            className={variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'action-button'}
-          >
-            {confirmText}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <div ref={ref} role="alert" className="my-6 flex flex-col gap-4 rounded-3xl bg-surface p-6 ring-1 ring-line sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="mt-1 whitespace-pre-line text-sm text-ink-muted">{description}</p>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button variant="outline" onClick={() => onOpenChange(false)}>{cancelText}</Button>
+        <Button variant={variant === 'destructive' ? 'destructive' : 'default'} onClick={onConfirm}>{confirmText}</Button>
+      </div>
+    </div>
   );
 };

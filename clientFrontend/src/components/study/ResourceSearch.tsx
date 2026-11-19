@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Building2, BookOpen, GraduationCap, Calendar, CheckCircle2 } from "lucide-react";
+import { Search, Landmark, Building2, BookOpen, GraduationCap, Calendar, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Progress } from "@/components/ui/progress";
-import { getSchools, getDepartmentsBySchoolId, getUnitsByDepartmentIdYearSemester } from "@/database/utils";
+import { getInstitutions, getSchools, getDepartmentsBySchoolId, getUnitsByDepartmentIdYearSemester } from "@/database/utils";
 import { useQuery } from '@tanstack/react-query';
 
 const years = ["1", "2", "3", "4"];
@@ -13,12 +13,14 @@ const years = ["1", "2", "3", "4"];
 const semesters = ["1", "2", "3"];
 
 interface ResourceSearchProps {
-  onSearch: (selection: { school: string; department: string; year: number; semester: number; unit: string }) => void;
+  onSearch: (selection: { institution: string; school: string; department: string; year: number; semester: number; unit: string }) => void;
   /** Render only the fields and button, for use inside a popover on the unit page. Without it, this is the full first-run page. */
   inline?: boolean;
 }
 
 const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
+    const [institution, setInstitution] = useState("");
+    const [institutionName, setInstitutionName] = useState("");
     const [school, setSchool] = useState("");
     const [schoolName, setSchoolName] = useState("");
     const [department, setDepartment] = useState("");
@@ -27,13 +29,18 @@ const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
     const [unit, setUnit] = useState("");
     const [semester, setSemester] = useState("");
 
-    const progress = [school, department, year, semester, unit].filter(Boolean).length * 20;
+    const progress = [institution, school, department, year, semester, unit].filter(Boolean).length * (100 / 6);
 
-     const { data: schools = [] } = useQuery({
-        queryKey: ['schools'],
-        queryFn: async () => {
-            return await getSchools()
-        },
+    const { data: institutions = [] } = useQuery({
+        queryKey: ['institutions'],
+        queryFn: async () => await getInstitutions(),
+    });
+
+    // Choosing an institution comes first; the school list is only that institution's schools.
+    const { data: schools = [] } = useQuery({
+        queryKey: ['schools', institution],
+        queryFn: async () => await getSchools(institution),
+        enabled: !!institution,
     });
 
     // The school is part of the key, otherwise choosing another school would show the first school's departments.
@@ -54,6 +61,7 @@ const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
     });
 
     const steps = [
+        { id: "institution", label: "Institution", icon: Landmark, completed: !!institution },
         { id: "school", label: "School", icon: Building2, completed: !!school },
         { id: "department", label: "Department", icon: BookOpen, completed: !!department },
         { id: "year", label: "Year", icon: Calendar, completed: !!year },
@@ -62,22 +70,41 @@ const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
     ];
 
     const handleSearch = () => {
-        if (school && department && year && semester && unit) {
-            localStorage.setItem("resourceSelection", JSON.stringify({school: school, schoolName: schoolName, department: department, departmentName: departmentName, year: Number(year), semester: Number(semester), unit: unit}));
-            onSearch({ school, department, year: Number(year), semester: Number(semester), unit });
+        if (institution && school && department && year && semester && unit) {
+            localStorage.setItem("resourceSelection", JSON.stringify({institution: institution, institutionName: institutionName, school: school, schoolName: schoolName, department: department, departmentName: departmentName, year: Number(year), semester: Number(semester), unit: unit}));
+            onSearch({ institution, school, department, year: Number(year), semester: Number(semester), unit });
         }
     };
 
   const fields = (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium">School / University</label>
+        <label className="text-sm font-medium">Institution</label>
+        <Dropdown
+          fullWidth
+          label="Institution"
+          placeholder="Select your institution"
+          items={institutions}
+          selectedId={institution}
+          onSelect={(value) => {
+            setInstitution(value);
+            setSchool("");
+            setDepartment("");
+            setUnit("");
+            setInstitutionName(institutions.find(i => i.id === value)?.name);
+          }}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">School</label>
         <Dropdown
           fullWidth
           label="School"
           placeholder="Select your school"
           items={schools}
           selectedId={school}
+          disabled={!institution}
           onSelect={(value) => {
             setSchool(value);
             setDepartment("");
@@ -124,7 +151,7 @@ const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
         variant="accent"
         size={inline ? "lg" : "xl"}
         className="mt-2 w-full"
-        disabled={!school || !department || !year || !semester || !unit}
+        disabled={!institution || !school || !department || !year || !semester || !unit}
         onClick={handleSearch}
       >
         <Search className="h-5 w-5" />

@@ -136,7 +136,7 @@ const MpesaPaymentDialog = ({
   const body: Record<Step, JSX.Element> = {
     phone: (
       <>
-        <Title>Pay with M-Pesa</Title>
+        <Title>Payment</Title>
         <div className="mt-8 flex flex-col">
           <DetailRow label="Plan" value="Semester pass" />
           <DetailRow label="Course" value={course} />
@@ -144,7 +144,7 @@ const MpesaPaymentDialog = ({
           <DetailRow total label="Total" value={price} />
         </div>
         <label className="mt-8 flex flex-col gap-2">
-          <span className="text-sm font-medium">M-Pesa phone number</span>
+          <span className="text-sm font-medium">Phone number</span>
           <span
             className={`flex h-[52px] items-center gap-3 rounded-[10px] bg-field px-4 transition-shadow duration-300 ${
               error ? "ring-2 ring-danger" : "focus-within:ring-2 focus-within:ring-brand-solid"
@@ -181,7 +181,7 @@ const MpesaPaymentDialog = ({
 
     waiting: (
       <>
-        <Title sub={`We sent a prompt to ${phoneDisplay}. Enter your M-Pesa PIN to pay ${price}.`}>Check your phone</Title>
+        <Title sub={`We sent a prompt to ${phoneDisplay}. Enter your PIN to pay ${price}.`}>Check your phone</Title>
         <div className="mt-8 flex flex-col gap-1">
           <span className="font-geist-mono text-3xl font-medium tabular-nums" aria-live="off">
             {mmss(sentAt + PROMPT_LIFETIME_MS - now)}
@@ -202,7 +202,7 @@ const MpesaPaymentDialog = ({
           </li>
           <li className="flex gap-3 text-ink-muted">
             <Circle size={20} className="mt-0.5 shrink-0" />
-            <p className="text-base">Confirming with M-Pesa</p>
+            <p className="text-base">Confirming your payment</p>
           </li>
         </ol>
         <PayBottomBar>
@@ -225,7 +225,7 @@ const MpesaPaymentDialog = ({
           Payment received
         </Title>
         <div className="mt-8 flex flex-col">
-          <DetailRow label="M-Pesa receipt" value={<span className="font-geist-mono">{receipt?.ref}</span>} />
+          <DetailRow label="Receipt" value={<span className="font-geist-mono">{receipt?.ref}</span>} />
           <DetailRow label="Amount" value={price} />
           <DetailRow label="Paid from" value={<span className="font-geist-mono">{phoneDisplay}</span>} />
           <DetailRow label="Course" value={course} />
@@ -241,11 +241,11 @@ const MpesaPaymentDialog = ({
       <>
         <Title icon={<WarningCircle size={28} className="text-warning" />}>Payment not completed</Title>
         <div className="mt-8 flex items-center gap-4 border-t border-line pt-6">
-          <p className="flex-1 text-base font-medium">Got an M-Pesa confirmation SMS anyway?</p>
+          <p className="flex-1 text-base font-medium">Got a confirmation SMS anyway?</p>
           <QuietButton
             tone="soft"
             onClick={async () => {
-              if (!(await received())) setNote("No payment found yet. M-Pesa can take a minute, so try again shortly.");
+              if (!(await received())) setNote("No payment found yet. Payments can take a minute, so try again shortly.");
             }}
           >
             Check again
@@ -265,7 +265,7 @@ const MpesaPaymentDialog = ({
   // Rendered by PricingGate in place of the plan screen, so it is a step of the page, not an overlay.
   return (
     <PayPage>
-      <PayTopBar onBack={step === "received" ? undefined : close} />
+      <PayTopBar onHome={step === "received" ? undefined : close} trail={step === "received" ? [] : [{ label: "Choose semester", onClick: close }]} />
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
@@ -273,7 +273,7 @@ const MpesaPaymentDialog = ({
           animate={{ opacity: 1, y: 0 }}
           exit={reduce ? undefined : { opacity: 0, y: -8 }}
           transition={{ duration: 0.45, ease: EASE }}
-          className="px-5 pb-44 pt-8 md:mx-auto md:max-w-[480px] md:px-0 md:pb-24 md:pt-16"
+          className="px-5 pb-44 pt-6 md:mx-auto md:max-w-[480px] md:px-0 md:pb-24 md:pt-8"
         >
           {body[step]}
         </motion.div>

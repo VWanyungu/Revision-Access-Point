@@ -1,160 +1,216 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Academic Blue Theme */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Core backgrounds */
+    --background: 210 40% 98%;
+    /* #F8FAFC */
+    --foreground: 217 33% 17%;
+    /* #1E293B */
 
+    /* Cards and surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 217 33% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 217 33% 17%;
 
-    /* Navy Blue - Primary structural color */
-    --primary: 217 71% 33%;
+    /* Primary - RAP blue */
+    --primary: 224 72% 42%;
+    /* RAP blue #1e46b8, the only blue primary */
     --primary-foreground: 0 0% 100%;
+    --primary-dark: 224 72% 34%;
+    --primary-light: 224 72% 95%;
 
-    /* Light blue-gray for secondary */
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary - Neutral Gray */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 217 33% 17%;
 
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* Accent - Subtle */
+    --accent: 210 40% 96%;
+    --accent-foreground: 217 33% 17%;
+    --accent-dark: 210 40% 90%;
+    --accent-light: 210 40% 98%;
 
-    /* Subtle blue accent */
-    --accent: 214 100% 97%;
-    --accent-foreground: 217 71% 33%;
+    /* Muted */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 46%;
 
-    /* Academic Red - Action color */
-    --destructive: 0 72% 51%;
+    /* Destructive */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Action Red for primary CTAs */
-    --action: 0 72% 51%;
-    --action-foreground: 0 0% 100%;
-    --action-hover: 0 72% 45%;
-
+    /* Borders and inputs */
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 217 71% 33%;
+    --ring: 224 72% 42%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
-    /* Sidebar */
-    --sidebar-background: 217 71% 20%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 217 71% 20%;
-    --sidebar-accent: 217 71% 28%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 50% 30%;
-    --sidebar-ring: 217 91% 60%;
-    --sidebar-muted: 217 40% 70%;
+    /*
+     * Semantic colour tokens for the study screens. Use these (bg-surface, text-ink-muted, border-line, ...)
+     * instead of hex values, so every screen follows the theme. Light values match the original design.
+     * Roles: surface = cards, field = chips and quiet fills, line = hairlines, ink = text, brand = links.
+     */
+    --surface: 0 0% 100%;
+    --field: 214 29% 94%;
+    --field-strong: 214 30% 90%;
+    --field-soft: 45 14% 96%;
+    --line: 217 25% 86%;
+    --line-soft: 0 0% 92%;
+    --line-strong: 217 22% 74%;
+    --ink: 222 46% 10%;
+    --ink-soft: 200 8% 20%;
+    --ink-muted: 219 19% 34%;
+    --ink-subtle: 217 15% 62%;
+    --ink-fg: 0 0% 100%;
+    --ink-hover: 222 40% 17%;
+    --brand: 224 72% 42%;
+    --brand-solid: 224 72% 42%;
+    /* RAP blue = --brand-solid. --brand-light is its tint for use on navy; --band* is the navy surface family. */
+    --brand-light: 223 100% 74%;
+    --band: 216 71% 15%;
+    --band-raised: 216 61% 21%;
+    --band-fg: 216 33% 93%;
+    --band-muted: 218 17% 66%;
+    --info-bg: 201 90% 94%;
+    --info-fg: 203 67% 37%;
+    --positive: 133 40% 30%;
+    --positive-solid: 133 40% 30%;
+    --danger: 344 77% 36%;
 
-    /* Success state */
+    /* Success and warning */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
-
-    /* Warning state */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    /* Info state */
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
+    /* Sidebar */
+    --sidebar-background: 210 40% 98%;
+    --sidebar-foreground: 217 33% 17%;
+    --sidebar-primary: 224 72% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 217 33% 17%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 224 72% 42%;
+    --sidebar-muted: 219 19% 34%;
 
-    /* Chart colors */
-    --chart-1: 217 71% 33%;
-    --chart-2: 0 72% 51%;
-    --chart-3: 142 76% 36%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 199 89% 48%;
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(224 72% 42%) 0%, hsl(224 72% 34%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(210 40% 96%) 0%, hsl(210 40% 90%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(224 72% 95%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-elevated: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    /* Native controls and scrollbars follow the theme too. */
+    color-scheme: dark;
 
-    --card: 217 50% 15%;
-    --card-foreground: 210 40% 98%;
+    /*
+     * Dark: flat graphite, not black and not navy. Depth comes from three close greys (page, surface, field),
+     * hairlines and brighter text, never from glows or gradients. Text is near white; secondary text keeps
+     * about 7:1 contrast on the surface.
+     */
+    --surface: 220 11% 10%;
+    --field: 220 10% 15%;
+    --field-strong: 220 10% 19%;
+    --field-soft: 220 10% 12.5%;
+    --line: 220 9% 21%;
+    --line-soft: 220 9% 17%;
+    --line-strong: 220 8% 33%;
+    --ink: 220 14% 93%;
+    --ink-soft: 220 10% 82%;
+    --ink-muted: 220 8% 66%;
+    --ink-subtle: 220 7% 58%;
+    --ink-fg: 220 12% 8%;
+    --ink-hover: 220 12% 85%;
+    --brand: 222 90% 72%;
+    --brand-solid: 224 72% 42%;
+    --info-bg: 205 40% 17%;
+    --info-fg: 203 80% 72%;
+    --positive: 140 40% 62%;
+    --positive-solid: 140 35% 38%;
+    --danger: 345 85% 72%;
 
-    --popover: 217 50% 15%;
-    --popover-foreground: 210 40% 98%;
+    --background: 220 12% 7%;
+    --foreground: 220 14% 93%;
 
-    --primary: 210 100% 70%;
-    --primary-foreground: 222 47% 11%;
+    --card: 220 11% 10%;
+    --card-foreground: 220 14% 93%;
 
-    --secondary: 217 32% 25%;
-    --secondary-foreground: 210 40% 98%;
+    --popover: 220 11% 10%;
+    --popover-foreground: 220 14% 93%;
 
-    --muted: 217 32% 20%;
-    --muted-foreground: 215 20% 65%;
+    --primary: 224 72% 42%;
+    /* same RAP blue in dark mode */
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 224 72% 34%;
+    --primary-light: 224 40% 20%;
 
-    --accent: 217 32% 25%;
-    --accent-foreground: 210 40% 98%;
+    --secondary: 220 10% 15%;
+    --secondary-foreground: 220 14% 93%;
+
+    --accent: 220 10% 15%;
+    --accent-foreground: 220 14% 93%;
+    --accent-dark: 220 10% 10%;
+    --accent-light: 220 10% 19%;
+
+    --muted: 220 10% 15%;
+    --muted-foreground: 220 8% 66%;
 
     --destructive: 0 62% 50%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 210 20% 98%;
 
-    --action: 0 62% 55%;
-    --action-foreground: 0 0% 100%;
-    --action-hover: 0 62% 60%;
+    --border: 220 9% 21%;
+    --input: 220 9% 21%;
+    --ring: 224 72% 42%;
 
-    --border: 217 32% 25%;
-    --input: 217 32% 25%;
-    --ring: 210 100% 70%;
+    --success: 142 76% 45%;
+    --warning: 38 92% 55%;
 
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 100% 70%;
-    --sidebar-primary-foreground: 222 47% 8%;
-    --sidebar-accent: 217 32% 20%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 32% 20%;
-    --sidebar-ring: 210 100% 70%;
-    --sidebar-muted: 215 20% 65%;
+    --sidebar-background: 220 12% 7%;
+    --sidebar-foreground: 220 8% 66%;
+    --sidebar-accent: 220 10% 15%;
+    --sidebar-border: 220 9% 21%;
+    --sidebar-muted: 220 8% 66%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+  h1, h2, h3, h4, h5, h6 { @apply font-semibold tracking-tight; }
 }
 
 @layer components {
   .card-hover {
-    @apply transition-all duration-200 hover:shadow-md hover:border-primary/20;
+    @apply transition-colors duration-300 hover:ring-line-strong;
   }
 
   .stat-card {
-    @apply bg-card rounded-lg border p-6 card-hover;
+    @apply bg-surface rounded-3xl ring-1 ring-line p-6;
   }
 
   .nav-link {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-muted transition-all duration-200;
+    @apply flex items-center gap-3 px-3.5 py-2.5 rounded-full text-sm text-ink-muted transition-colors duration-300;
   }
 
   .nav-link:hover {
-    @apply bg-sidebar-accent text-sidebar-foreground;
+    @apply bg-field text-ink;
   }
 
   .nav-link.active {
-    @apply bg-sidebar-accent text-sidebar-foreground font-medium;
+    @apply bg-field text-ink font-medium;
   }
 
   .table-row-hover {
@@ -162,11 +218,11 @@
   }
 
   .action-button {
-    @apply bg-action text-action-foreground hover:bg-action-hover transition-colors;
+    @apply rounded-full bg-primary text-primary-foreground hover:bg-primary-dark transition-colors;
   }
 
   .context-badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-accent text-accent-foreground;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-field text-ink;
   }
 
   .empty-state {
@@ -205,3 +261,8 @@
     }
   }
 }
+
+/* No visible scrollbars anywhere; scrolling still works. Includes Radix ScrollArea's custom bars. */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; }
+[data-radix-scroll-area-scrollbar] { display: none !important; }

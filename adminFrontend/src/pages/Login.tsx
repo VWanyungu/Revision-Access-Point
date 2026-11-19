@@ -12,11 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import logo from '@/assets/logo-light.svg';
 import { GraduationCap, Loader, Loader2 } from 'lucide-react';
 
 const Login = () => {
-  const [email, setEmail] = useState('admin@gmail.com');
-  const [password, setPassword] = useState('king');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<AdminRole>('super_admin');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,11 +48,11 @@ const Login = () => {
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
+          <div className="flex items-center gap-3 mb-8 justify-center">
             {/* <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div> */}
-            <span className="text-xl font-semibold">Revision Access Point Admin</span>
+            <img src={logo} alt="Revision Access Point admin" className="h-7 dark:invert" />
           </div>
 
           {/* <div className="text-center mb-8">
@@ -61,7 +62,7 @@ const Login = () => {
             </p>
           </div> */}
 
-          <form onSubmit={handleSubmit} className="space-y-5 border border-border rounded-lg p-6">
+          <form onSubmit={handleSubmit} className="space-y-5 rounded-3xl bg-surface p-8 ring-1 ring-line">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

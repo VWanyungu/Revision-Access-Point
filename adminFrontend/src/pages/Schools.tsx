@@ -4,12 +4,17 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { FormModal } from '@/components/shared/FormModal';
 import { BulkCreateEntityModal } from '@/components/shared/BulkCreateEntityModal';
+import { InlineText } from '@/components/shared/InlineText';
+import { INSTITUTION_COLUMN } from '@/components/shared/institutionColumn';
+import { useProfile } from '@/hooks/useProfile';
+import { Combobox } from '@/components/shared/Combobox';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { schools as initialSchools, School as SchoolType } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/data/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -21,9 +26,13 @@ const Schools = () => {
   const queryClient = useQueryClient();
   const [editingSchool, setEditingSchool] = useState<SchoolType | null>(null);
   const [deletingSchool, setDeletingSchool] = useState<SchoolType | null>(null);
-  const [formData, setFormData] = useState({ id: 0, name: '', code: '' });
+  const [formData, setFormData] = useState({ id: 0, name: '', code: '', institution_id: 0 });
+  const { data: me } = useProfile();
+  const { data: instData } = useQuery({ queryKey: ['institutions', 'all'], queryFn: () => getRecords('institutions', { pageSize: 100 }) });
+  const institutions = instData?.data ?? [];
   const { toast } = useToast();
 
+  const [institutionId, setInstitutionId] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -34,9 +43,9 @@ const Schools = () => {
   }, [search]);
 
   const { data: schoolsData, isLoading } = useQuery({
-    queryKey: ['schools', page, debouncedSearch],
+    queryKey: ['schools', page, debouncedSearch, institutionId],
     queryFn: async () => {
-      return await getRecords('schools', { page, pageSize: 10, search: debouncedSearch })
+      return await getRecords('schools', { page, pageSize: 10, search: debouncedSearch, institution_id: institutionId })
     },
     placeholderData: (previousData) => previousData,
   });
@@ -46,19 +55,19 @@ const Schools = () => {
 
   const handleOpenCreate = () => {
     setEditingSchool(null);
-    setFormData({ id: 0, name: '', code: '' });
+    setFormData({ id: 0, name: '', code: '', institution_id: institutions[0]?.id ?? 0 });
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (school: SchoolType) => {
     setEditingSchool(school);
-    setFormData({ id: school.id, name: school.name, code: school.code });
+    setFormData({ id: school.id, name: school.name, code: school.code, institution_id: school.institutions?.id ?? 0 });
     setIsFormOpen(true);
   };
 
   const handleOpenDelete = (school: SchoolType) => {
     setDeletingSchool(school);
-    setFormData({ id: school.id, name: school.name, code: school.code });
+    setFormData({ id: school.id, name: school.name, code: school.code, institution_id: school.institutions?.id ?? 0 });
     setIsDeleteOpen(true);
   };
 
@@ -74,7 +83,7 @@ const Schools = () => {
       else
         toast({ title: 'Error updating school', variant: 'destructive' });
     } else {
-      const { status, error, data } = await addRecord('schools', { name: formData.name, code: formData.code });
+      const { status, error, data } = await addRecord('schools', { name: formData.name, code: formData.code, ...(formData.institution_id ? { institution_id: formData.institution_id } : {}) });
       if (status === 'success'){
         toast({ title: 'School created successfully' });
         queryClient.invalidateQueries({ queryKey: ['departments'] });
@@ -100,35 +109,36 @@ const Schools = () => {
     setDeletingSchool(null);
   };
 
+  const saveField = async (id: number, fields: Record<string, string>) => {
+    const res = await updateRecord('schools', id, fields);
+    if (res.status === 'error') { toast({ title: 'Could not save', variant: 'destructive' }); throw res.error; }
+    queryClient.invalidateQueries({ queryKey: ['schools'] });
+    queryClient.invalidateQueries({ queryKey: ['departments'] });
+  };
+
   const columns: Column<SchoolType>[] = [
     {
       key: 'name',
       header: 'School Name',
       render: (school) => (
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2 rounded-full bg-field">
             <Building2 className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="font-medium">{school.name}</p>
-            <p className="text-xs text-muted-foreground">{school.code}</p>
+            <InlineText value={school.name} onSave={(v) => saveField(school.id, { name: v })} className="font-medium" />
+            <InlineText value={school.code} onSave={(v) => saveField(school.id, { code: v.toUpperCase() })} className="block text-xs text-ink-muted" />
           </div>
         </div>
       ),
     },
+    INSTITUTION_COLUMN,
     {
       key: 'actions',
       header: '',
       className: 'text-right',
       render: (school) => (
         <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpenEdit(school)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -162,7 +172,7 @@ const Schools = () => {
       />
 
       {/* Search */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -172,6 +182,7 @@ const Schools = () => {
             className="pl-8"
           />
         </div>
+        <InstitutionFilter value={institutionId} onChange={(id) => { setInstitutionId(id); setPage(1); }} />
       </div>
 
       <DataTable
@@ -201,6 +212,17 @@ const Schools = () => {
               required
             />
           </div>
+          {me?.role === 'super_admin' && (
+            <div className="space-y-2">
+              <Label>Institution</Label>
+              <Combobox
+                options={institutions.map((i: any) => ({ value: String(i.id), label: `${i.short_name} - ${i.name}` }))}
+                value={String(formData.institution_id)}
+                onChange={(v) => setFormData({ ...formData, institution_id: Number(v) })}
+                placeholder="Select institution"
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="code">School Code</Label>
             <Input
@@ -227,6 +249,7 @@ const Schools = () => {
         open={isBulkOpen}
         onOpenChange={setIsBulkOpen}
         type="school"
+        institutionId={formData.institution_id || institutions[0]?.id}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['schools'] });
         }}

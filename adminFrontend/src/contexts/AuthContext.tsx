@@ -2,7 +2,7 @@ import { supabase } from '@/data/supabase';
 import { set } from 'date-fns';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
-export type AdminRole = 'super_admin' | 'school_admin' | 'course_admin';
+export type AdminRole = 'super_admin' | 'institution_admin' | 'school_admin' | 'course_admin';
 
 export interface User {
   id?: string;

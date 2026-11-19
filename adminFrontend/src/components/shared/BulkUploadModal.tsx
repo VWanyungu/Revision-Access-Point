@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Upload, X, Loader2, Plus, Copy, Trash2, Check, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './InlinePanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { InstitutionSelect } from './InstitutionSelect';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,6 +45,8 @@ export const BulkUploadModal = ({
     resourceTypes,
     onSuccess
 }: BulkUploadModalProps) => {
+    // One institution for the batch: the school / department / unit lists narrow to it.
+    const [institution, setInstitution] = useState(0);
     const [resources, setResources] = useState<BulkResourceEntry[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -198,13 +201,17 @@ export const BulkUploadModal = ({
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-            <DialogContent className="w-[90%] rounded md:max-w-5xl h-[85vh] flex flex-col p-0">
+            <DialogContent className="flex h-[85vh] flex-col p-0">
                 <DialogHeader className="p-6 pb-0">
                     <DialogTitle>Bulk Upload Resources</DialogTitle>
                     {/* <DialogDescription>
                         Add multiple resources manually. Context (School, Dept, Unit) is copied to new rows automatically to save time.
                     </DialogDescription> */}
                 </DialogHeader>
+
+                <div className="px-6 py-4">
+                    <InstitutionSelect value={institution} onChange={(id) => { setInstitution(id); setResources((prev) => prev.map((r) => ({ ...r, school_id: 0, department_id: 0, unit_id: 0 }))); }} />
+                </div>
 
                 <div className="flex-1 overflow-hidden bg-muted/10">
                     <ScrollArea className="h-full p-3 md:p-6">
@@ -213,17 +220,17 @@ export const BulkUploadModal = ({
                                 <div
                                     key={resource.id}
                                     className={cn(
-                                        "bg-card rounded-lg border p-4 shadow-sm transition-all",
+                                        "bg-surface rounded-3xl ring-1 ring-line p-4 shadow-sm transition-all",
                                         resource.status === 'uploading' && "opacity-70 pointer-events-none border-primary/50",
                                         resource.status === 'success' && "border-green-500/50 bg-green-500/5",
                                         resource.status === 'error' && "border-destructive/50 bg-destructive/5"
                                     )}
                                 >
-                                    <div className="flex flex-col justify-start items-center gap-3 md:gap-4 md:flex-row md:items-start">
-                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="min-w-0 flex-1 space-y-3">
 
                                             {/* File Upload - Prominent */}
-                                            <div className="md:col-span-3">
+                                            <div>
                                                 <Label className="text-xs text-muted-foreground mb-1 block">File (PDF)</Label>
                                                 <div className="relative">
                                                     <Input
@@ -236,14 +243,14 @@ export const BulkUploadModal = ({
                                                     <label
                                                         htmlFor={`file-${resource.id}`}
                                                         className={cn(
-                                                            "flex flex-col items-center justify-center border-2 border-dashed rounded-md h-24 cursor-pointer hover:bg-muted/50 transition-colors",
+                                                            "flex flex-col items-center justify-center border-2 border-dashed rounded-md h-20 cursor-pointer hover:bg-muted/50 transition-colors",
                                                             resource.file ? "border-primary/50 bg-primary/5" : "border-muted"
                                                         )}
                                                     >
                                                         {resource.file ? (
                                                             <div className="text-center p-2">
                                                                 <FileText className="h-6 w-6 mx-auto text-primary mb-1" />
-                                                                <p className="text-[10px] truncate max-w-[120px]">{resource.file.name}</p>
+                                                                <p className="text-[10px] truncate max-w-[16rem]">{resource.file.name}</p>
                                                             </div>
                                                         ) : (
                                                             <>
@@ -256,8 +263,8 @@ export const BulkUploadModal = ({
                                             </div>
 
                                             {/* Details */}
-                                            <div className="md:col-span-9 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                                <div className="col-span-2 lg:col-span-2">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="col-span-2">
                                                     <Label className="text-xs">Name *</Label>
                                                     <Input
                                                         value={resource.name}
@@ -267,7 +274,7 @@ export const BulkUploadModal = ({
                                                     />
                                                 </div>
 
-                                                <div className="col-span-2 lg:col-span-2">
+                                                <div className="col-span-2">
                                                     <Label className="text-xs text-muted-foreground">School</Label>
                                                     <Select
                                                         value={resource.school_id ? String(resource.school_id) : ''}
@@ -277,13 +284,13 @@ export const BulkUploadModal = ({
                                                             <SelectValue placeholder="Select School" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {schools.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                                            {schools.filter(s => !institution || s.institution_id === institution).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
 
                                                 {/* Context Row - Collapsed mostly but visible if needed */}
-                                                <div className="col-span-2 lg:col-span-2">
+                                                <div className="col-span-2">
                                                     <Label className="text-xs text-muted-foreground">Department</Label>
                                                     <Select
                                                         value={resource.department_id ? String(resource.department_id) : ''}
@@ -294,14 +301,14 @@ export const BulkUploadModal = ({
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {resource.school_id
-                                                                ? departments.filter(d => d.schools.id === resource.school_id).map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)
+                                                                ? departments.filter(d => d.schools.id === resource.school_id && (!institution || d.institution_id === institution)).map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)
                                                                 : <SelectItem value="0" disabled>Select School First</SelectItem>
                                                             }
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
 
-                                                <div className="col-span-1 lg:col-span-1">
+                                                <div className="col-span-1">
                                                     <Label className="text-xs">Unit *</Label>
                                                     <Select
                                                         value={resource.unit_id ? String(resource.unit_id) : ''}
@@ -319,7 +326,7 @@ export const BulkUploadModal = ({
                                                     </Select>
                                                 </div>
 
-                                                <div className="col-span-1 lg:col-span-1">
+                                                <div className="col-span-1">
                                                     <Label className="text-xs">Type *</Label>
                                                     <Select
                                                         value={resource.resource_type_id ? String(resource.resource_type_id) : ''}
@@ -338,7 +345,7 @@ export const BulkUploadModal = ({
 
                                         {/* Actions */}
                                         {/* <div className="flex flex-col gap-2 pt-6 w-full"> */}
-                                        <div className="flex flex-col gap-2 pt-3 w-full">
+                                        <div className="flex w-8 shrink-0 flex-col gap-2 pt-6">
                                             {resource.status === 'uploading' ? (
                                                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
                                             ) : resource.status === 'success' ? (
@@ -355,7 +362,7 @@ export const BulkUploadModal = ({
                                                     variant="outline"
                                                     size="icon"
                                                     onClick={() => removeResource(resource.id)}
-                                                    className="text-muted-foreground hover:text-destructive h-8 w-full md:w-8"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>

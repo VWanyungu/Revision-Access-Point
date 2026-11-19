@@ -59,12 +59,12 @@
     --popover: 0 0% 100%;
     --popover-foreground: 217 33% 17%;
 
-    /* Primary - Ethereal Academic Blue */
-    --primary: 199 89% 48%;
-    /* #0EA5E9 */
+    /* Primary - RAP blue */
+    --primary: 224 72% 42%;
+    /* RAP blue #1e46b8, the only blue primary */
     --primary-foreground: 0 0% 100%;
-    --primary-dark: 199 89% 38%;
-    --primary-light: 199 89% 95%;
+    --primary-dark: 224 72% 34%;
+    --primary-light: 224 72% 95%;
 
     /* Secondary - Neutral Gray */
     --secondary: 210 40% 96%;
@@ -87,7 +87,7 @@
     /* Borders and inputs */
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 199 89% 48%;
+    --ring: 224 72% 42%;
 
     --radius: 0.625rem;
 
@@ -111,6 +111,12 @@
     --ink-hover: 222 40% 17%;
     --brand: 224 72% 42%;
     --brand-solid: 224 72% 42%;
+    /* RAP blue = --brand-solid. --brand-light is its tint for use on navy; --band* is the navy surface family. */
+    --brand-light: 223 100% 74%;
+    --band: 216 71% 15%;
+    --band-raised: 216 61% 21%;
+    --band-fg: 216 33% 93%;
+    --band-muted: 218 17% 66%;
     --info-bg: 201 90% 94%;
     --info-fg: 203 67% 37%;
     --positive: 133 40% 30%;
@@ -126,17 +132,17 @@
     /* Sidebar */
     --sidebar-background: 210 40% 98%;
     --sidebar-foreground: 217 33% 17%;
-    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary: 224 72% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 96%;
     --sidebar-accent-foreground: 217 33% 17%;
     --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 199 89% 48%;
+    --sidebar-ring: 224 72% 42%;
 
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(199 89% 48%) 0%, hsl(199 89% 38%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(224 72% 42%) 0%, hsl(224 72% 34%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(210 40% 96%) 0%, hsl(210 40% 90%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(199 89% 95%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(224 72% 95%) 100%);
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -169,7 +175,7 @@
     --ink-fg: 220 12% 8%;
     --ink-hover: 220 12% 85%;
     --brand: 222 90% 72%;
-    --brand-solid: 224 70% 52%;
+    --brand-solid: 224 72% 42%;
     --info-bg: 205 40% 17%;
     --info-fg: 203 80% 72%;
     --positive: 140 40% 62%;
@@ -185,11 +191,11 @@
     --popover: 220 11% 10%;
     --popover-foreground: 220 14% 93%;
 
-    --primary: 198 93% 60%;
-    /* #38BDF8 */
-    --primary-foreground: 229 84% 5%;
-    --primary-dark: 198 93% 50%;
-    --primary-light: 198 93% 20%;
+    --primary: 224 72% 42%;
+    /* same RAP blue in dark mode */
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 224 72% 34%;
+    --primary-light: 224 40% 20%;
 
     --secondary: 220 10% 15%;
     --secondary-foreground: 220 14% 93%;
@@ -207,7 +213,7 @@
 
     --border: 220 9% 21%;
     --input: 220 9% 21%;
-    --ring: 198 93% 60%;
+    --ring: 224 72% 42%;
 
     --success: 142 76% 45%;
     --warning: 38 92% 55%;
@@ -302,3 +308,7 @@
     text-wrap: balance;
   }
 }
+/* No visible scrollbars anywhere; scrolling still works. Includes Radix ScrollArea's custom bars. */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; }
+[data-radix-scroll-area-scrollbar] { display: none !important; }

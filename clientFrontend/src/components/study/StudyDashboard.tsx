@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import ResourceTabs, { DisplayResourceDiv, DisplayResourceTabs } from "./ResourceTabs";
 import { ResourceDiv } from "./ResourceTabs";
-import PomodoroTimerCondensed from "./PomodoroTimerCondensed";
+import { useTimer } from "@/context/TimerContext";
 import { useState, useRef, useEffect } from "react";
 import { getResources } from "@/database/utils";
 import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -207,7 +207,7 @@ const sampleResources = [
 ]
 
 export const DisplayStudyDashboard = () => {
-  const [showPomodoro, setShowPomodoro] = useState(localStorage.getItem("showPomodoro") || "false");
+  const timer = useTimer();
   const [showSearch, setShowSearch] = useState(localStorage.getItem("showSearch") || "false");
   const unitsXtics = JSON.parse(localStorage.getItem("resourceSelection"));
   const [search, setSearch] = useState<ResourceFilter>({ searchTerm: "", type: "all" });
@@ -250,7 +250,7 @@ export const DisplayStudyDashboard = () => {
                   variant="secondary"
                   className="bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground border-0"
                   // onClick={() => onNavigate("timer")}
-                  onClick={() => { setShowPomodoro(showPomodoro == "true" ? "false" : "true"); localStorage.setItem("showPomodoro", JSON.stringify(showPomodoro == "true" ? false : true)) }}
+                  onClick={() => timer.setVisible(!timer.visible)}
                 >
                   <Timer className="h-4 w-4" />
                 </Button>
@@ -308,11 +308,6 @@ export const DisplayStudyDashboard = () => {
           </CardContent>
         </Card>
       </motion.div>
-
-      {/* Pomodoro */}
-      {showPomodoro == "true" && <div className="px-6 md:px-0 my-2">
-        <PomodoroTimerCondensed />
-      </div>}
 
       {showSearch == "true" && <form className="my-2 px-6 md:px-0 grid grid-cols-5 *:items-center gap-2">
         <div className="col-span-3 h-full">

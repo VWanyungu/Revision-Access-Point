@@ -291,7 +291,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle }: QuizSys
   };
 
   return (
-    <div className="min-h-[calc(100dvh-4rem)] bg-surface font-geist text-ink">
+    <div className="-mt-[60px] min-h-dvh bg-surface pt-[60px] font-geist text-ink md:-mt-16 md:pt-16">
       <AnimatePresence mode="wait">
         <motion.div
           key={stage}
@@ -308,7 +308,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle }: QuizSys
 };
 
 const Frame = ({ children, keyed }: { children: React.ReactNode; keyed?: number }) => (
-  <div key={keyed} className="px-5 pb-44 pt-8 md:mx-auto md:max-w-[480px] md:px-0 md:pb-24 md:pt-12">{children}</div>
+  <div key={keyed} className="px-5 pb-44 pt-8 md:mx-auto md:max-w-[480px] md:px-0 md:pb-24 md:pt-10">{children}</div>
 );
 
 const Answer = ({ label, tone, i, text }: { label: string; tone: "right" | "wrong"; i: number; text: string }) => {

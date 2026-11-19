@@ -8,7 +8,7 @@ import { getResources } from "@/database/utils";
 import { supabase } from "@/database/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { EASE, formatDate } from "@/components/pay/PayKit";
-import PomodoroTimerCondensed from "./PomodoroTimerCondensed";
+import { useTimer } from "@/context/TimerContext";
 import unitHero from "@/assets/study/unit-hero.png";
 import { getProgress, getTopics, recordOpen, type Progress } from "@/database/progress";
 import { toast } from "sonner";
@@ -35,7 +35,7 @@ interface Props {
   onNavigate: (page: string) => void;
   onGenerateQuiz: (resourceUrl: string, resourceTitle: string) => void;
   onGenerateAnswers: (resourceUrl: string, resourceTitle: string) => void;
-  onViewResource: (url: string, title?: string) => void;
+  onViewResource: (url: string, title?: string, resourceTypeId?: number) => void;
   /** Called with the new selection from the inline unit panel. When missing, "Change unit" is hidden. */
   onChangeUnit?: (selection: { school: string; department: string; year: number; semester: number; unit: string }) => void;
 }
@@ -45,6 +45,8 @@ interface Resource {
   resource_type_id: number; created_at: string; updated_at?: string;
   /** The topic a note belongs to (topics table); null for notes outside any topic. */
   topic_id?: number | null;
+  /** Optional cover photo (e.g. a book cover) uploaded by the admin. */
+  cover_url?: string | null;
 }
 
 /** A group of notes. Complete once every note in it has been read. */
@@ -109,6 +111,16 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
     enabled: !!unitId,
   });
 
+  // Optional banner from the admin app. Errors (e.g. the column not added yet) just mean the default artwork.
+  const { data: banner } = useQuery({
+    queryKey: ["unit-banner", unitId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("units").select("banner_url").eq("id", unitId).maybeSingle();
+      return error ? null : (data?.banner_url as string | null) ?? null;
+    },
+    enabled: !!unitId,
+  });
+
   const { data: pass } = useQuery({
     queryKey: ["pass", user?.id, selection?.department, selection?.year, selection?.semester],
     queryFn: async () => {
@@ -131,20 +143,26 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   const queryClient = useQueryClient();
   const { data: progress, isError: progressFailed } = useQuery({ queryKey: ["progress", user?.id], queryFn: () => getProgress(user!.id), enabled: !!user, retry: false });
   useEffect(() => { if (progressFailed) toast.error("Couldn't load your reading progress.", { id: "progress-load" }); }, [progressFailed]);
-  const { data: topicRows = [] } = useQuery({ queryKey: ["topics", unitId], queryFn: () => getTopics(unitId), enabled: !!unitId, retry: false });
+  const { data: topicRows = [], isFetched: topicsFetched } = useQuery({ queryKey: ["topics", unitId], queryFn: () => getTopics(unitId), enabled: !!unitId, retry: false });
   const read = useMemo(() => Object.keys(progress?.opens ?? {}).map(Number), [progress]);
   const [picked, setPicked] = useState<number | null>(null);
   const [tab, setTab] = useState<"notes" | "tutorials" | "quiz">("notes");
   const [sheet, setSheet] = useState(false);
   const [query, setQuery] = useState("");
-  const [timerOn, setTimerOn] = useState(localStorage.getItem("showPomodoro") === "true");
+  const timer = useTimer();
   const [view, setView] = useState<View>("syllabus");
+  const [libType, setLibType] = useState<"all" | "notes" | "papers" | "videos">("all");
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   useOutsideClick(pickerRef, () => setPickerOpen(false));
 
-  // Topics come from the topics table. Notes outside any topic, or a unit with no topics yet, show one topic per note.
+  // A unit with no topics has no syllabus: nothing is grouped, and every resource is listed in the Library instead.
+  const noSyllabus = topicsFetched && topicRows.length === 0;
+  useEffect(() => { if (noSyllabus) setView((v) => (v === "syllabus" ? "library" : v)); }, [noSyllabus]);
+
+  // Topics come from the topics table. Notes outside any topic show one topic per note.
   const topics: Topic[] = useMemo(() => {
+    if (topicRows.length === 0) return [];
     const known = new Set(topicRows.map((t) => t.id));
     const grouped: Topic[] = topicRows
       .map((t) => ({ id: `t${t.id}`, title: t.title, description: t.description ?? undefined, notes: notes.filter((n) => n.topic_id === t.id) }))
@@ -174,7 +192,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
         toast.error("Couldn't save your progress, so it won't be remembered next time.", { id: "progress-save" });
       });
     }
-    onViewResource(r.public_access_url, r.name);
+    onViewResource(r.public_access_url, r.name, r.resource_type_id);
   };
 
   // Most recently opened note or paper (tutorials are videos, so they do not count).
@@ -234,10 +252,14 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
 
   const noteRow = (r: Resource, i: number) => (
     <motion.article key={r.id} {...rise(i)} className="flex gap-5 border-b border-line py-6 first:pt-0 last:border-b-0 md:gap-6">
-      <div className="flex h-[84px] w-[60px] shrink-0 flex-col justify-between rounded-xl border border-line bg-field p-2 md:h-[92px] md:w-[72px]">
-        <span className="font-literata text-xs">Note {i + 1}</span>
-        <span className="font-geist-mono text-xs text-ink-muted">PDF</span>
-      </div>
+      {r.cover_url ? (
+        <img src={r.cover_url} alt="" loading="lazy" className="h-[84px] w-[60px] shrink-0 rounded-xl border border-line object-cover md:h-[92px] md:w-[72px]" />
+      ) : (
+        <div className="flex h-[84px] w-[60px] shrink-0 flex-col justify-between rounded-xl border border-line bg-field p-2 md:h-[92px] md:w-[72px]">
+          <span className="font-literata text-xs">Note {i + 1}</span>
+          <span className="font-geist-mono text-xs text-ink-muted">PDF</span>
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <h3 className="font-literata text-lg font-medium md:text-xl">{r.name}</h3>
         <p className="mt-1 font-geist-mono text-sm text-ink-muted">Updated {formatDate(new Date(r.updated_at ?? r.created_at))}{isRead(r) ? " · Read" : ""}</p>
@@ -250,20 +272,71 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
     </motion.article>
   );
 
+  // YouTube videos are embedded in place (privacy-enhanced, no related videos, loaded when scrolled near); anything else opens in a new tab.
+  const player = (t: Resource, id: string) => (
+    <iframe
+      src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1`}
+      loading="lazy"
+      title={t.name}
+      allow="encrypted-media; picture-in-picture; fullscreen"
+      allowFullScreen
+      className="absolute inset-0 size-full border-0"
+    />
+  );
+
   const tutorialCard = (t: Resource, i: number) => {
     const id = youtubeId(t.public_access_url);
     const url = youtubeUrl(t.public_access_url) ?? t.public_access_url;
-    return (
-      <motion.a key={t.id} {...rise(i)} href={url} target="_blank" rel="noreferrer" className="group block">
-        <div className="relative aspect-video overflow-hidden bg-field">
-          {id && <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" className="size-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.03]" />}
-          <PlayCircle size={40} weight="fill" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow" />
-        </div>
+    const body = (
+      <>
         <p className="mt-3 font-geist-mono text-sm text-ink-muted">Video</p>
         <p className="mt-1 text-base font-medium">{t.name}</p>
-      </motion.a>
+        {t.description && <p className="mt-1 line-clamp-2 text-sm text-ink-muted">{t.description}</p>}
+      </>
+    );
+    if (!id) {
+      return (
+        <motion.a key={t.id} {...rise(i)} href={url} target="_blank" rel="noreferrer" className="group block">
+          <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-field">
+            <PlayCircle size={40} weight="fill" className="text-white drop-shadow" />
+          </div>
+          {body}
+        </motion.a>
+      );
+    }
+    return (
+      <motion.div key={t.id} {...rise(i)} className="block">
+        <div className="relative aspect-video overflow-hidden bg-field">{player(t, id)}</div>
+        {body}
+      </motion.div>
     );
   };
+
+  // Library for a unit without a syllabus: every resource, with only the type filters that have something in them.
+  const typeLabel = (r: Resource) => r.resource_type_id === NOTES ? "Note" : r.resource_type_id === EXAMS ? "Exam" : r.resource_type_id === CATS ? "CAT" : r.resource_type_id === TUTORIALS ? "Video" : "File";
+  const libGroups = { notes, papers, videos: tutorials } as const;
+  const libItems: Resource[] = libType === "all" ? [...notes, ...papers, ...tutorials, ...resources.filter((r) => ![NOTES, EXAMS, CATS, TUTORIALS].includes(r.resource_type_id))] : [...libGroups[libType]];
+  const libraryRow = (r: Resource) => (
+    <li key={r.id} className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-line py-4 first:pt-0">
+      <span className="mt-0.5 w-12 shrink-0 font-geist-mono text-xs text-ink-muted">{typeLabel(r)}</span>
+      <div className="min-w-0 flex-1 basis-48">
+        <p className="text-base font-medium">{r.name}</p>
+        {r.description && <p className="mt-1 line-clamp-2 text-sm text-ink-muted">{r.description}</p>}
+      </div>
+      <div className="flex items-center gap-5">
+        {r.resource_type_id === TUTORIALS
+          ? (youtubeId(r.public_access_url)
+            ? <a className={link} href={youtubeUrl(r.public_access_url)!} target="_blank" rel="noreferrer">YouTube <ArrowUpRight size={14} /></a>
+            : <a className={link} href={r.public_access_url} target="_blank" rel="noreferrer">Watch <ArrowUpRight size={14} /></a>)
+          : <button className={link} onClick={() => open(r)}>Open <ArrowUpRight size={14} /></button>}
+        {r.resource_type_id === NOTES && <button className={`${link} text-brand`} onClick={() => onGenerateQuiz(r.public_access_url, r.name)}>Quiz me <ArrowRight size={14} /></button>}
+        {(r.resource_type_id === EXAMS || r.resource_type_id === CATS) && <button className={`${link} text-brand`} onClick={() => onGenerateAnswers(r.public_access_url, r.name)}>Model answers <ArrowRight size={14} /></button>}
+      </div>
+      {r.resource_type_id === TUTORIALS && youtubeId(r.public_access_url) && (
+        <div className="relative mt-2 aspect-video w-full basis-full overflow-hidden bg-field">{player(r, youtubeId(r.public_access_url)!)}</div>
+      )}
+    </li>
+  );
 
   const tabs: { id: View; label: string; Icon: typeof ListChecks }[] = [
     { id: "all", label: "All", Icon: SquaresFour },
@@ -295,10 +368,12 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
         {/* Clipping lives on the image layer only, so the unit panel below can open past the hero's edge. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           {/* The paper-texture photo is light, so in dark mode it is inverted and dimmed into a faint line drawing. */}
-          <img src={unitHero} alt="" className="size-full object-cover dark:opacity-[0.14] dark:invert" />
+          {banner
+            ? <img src={banner} alt="" className="size-full object-cover dark:opacity-40" />
+            : <img src={unitHero} alt="" className="size-full object-cover dark:opacity-[0.14] dark:invert" />}
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 via-[42%] to-background/20" />
         </div>
-        <div className="relative mx-auto flex max-w-[1200px] flex-col gap-6 px-5 pb-12 pt-[116px] md:flex-row md:items-end md:justify-between md:px-10 md:pb-14 md:pt-[136px]">
+        <div className="relative mx-auto flex max-w-[1200px] flex-col gap-6 px-5 pb-12 pt-[120px] md:flex-row md:items-end md:justify-between md:px-10 md:pb-14 md:pt-[152px]">
           <div ref={pickerRef} className="relative" onKeyDown={(e) => e.key === "Escape" && setPickerOpen(false)}>
             <motion.h1 {...rise(0)} className="font-literata text-3xl md:text-4xl">
               {unit?.name?.trim() || (isLoading ? " " : "Your unit")}
@@ -354,15 +429,13 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             </button>
           ))}
           <button
-            onClick={() => { const v = !timerOn; setTimerOn(v); localStorage.setItem("showPomodoro", String(v)); }}
-            aria-pressed={timerOn}
-            className={`ml-auto flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-base transition-colors duration-300 ${timerOn ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+            onClick={() => timer.setVisible(!timer.visible)}
+            aria-pressed={timer.visible}
+            className={`ml-auto flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-base transition-colors duration-300 ${timer.visible ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
           >
             <Timer size={18} /> <span className="hidden sm:inline">Timer</span>
           </button>
         </div>
-
-        {timerOn && <div className="mt-4"><PomodoroTimerCondensed /></div>}
 
         <form onSubmit={(e) => e.preventDefault()} className="mt-5 flex h-[52px] items-center rounded-full bg-field pl-5 pr-1.5 transition-shadow duration-300 focus-within:ring-2 focus-within:ring-brand-solid">
           <input
@@ -431,7 +504,16 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
           )}
 
           {/* Syllabus */}
-          <section id="syllabus" hidden={!show("all", "syllabus")} className="scroll-mt-32">
+          {noSyllabus && (
+            <section id="syllabus" hidden={!show("all", "syllabus")} className="scroll-mt-32">
+              <div className="mx-auto max-w-[1200px] px-5 py-12 md:px-10 md:py-16">
+                <h2 className="font-literata text-2xl">No syllabus</h2>
+                <p className="mt-3 max-w-[560px] text-base text-ink-muted">This unit has no syllabus yet, so its resources are not grouped into topics. Everything uploaded for it is in the Library.</p>
+                <button className={`${link} mt-4`} onClick={() => setView("library")}>Open the library <ArrowUpRight size={14} /></button>
+              </div>
+            </section>
+          )}
+          <section id="syllabus" hidden={noSyllabus || !show("all", "syllabus")} className="scroll-mt-32">
             <div className="mx-auto grid max-w-[1200px] px-5 py-12 md:grid-cols-[340px_minmax(0,1fr)] md:px-10 md:py-16">
               <aside className="hidden md:block md:pr-8">
                 <div className="sticky top-24">{topics.length ? topicList((i) => { setPicked(i); setTab("notes"); }) : <p className="text-base text-ink-muted">No notes uploaded yet.</p>}</div>
@@ -533,9 +615,29 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             )}
           </Section>}
 
-          {/* Library (videos; the database has no other library items yet) */}
+          {/* Library: videos, or every resource when the unit has no syllabus */}
           {show("all", "library") && <Section id="library" title="Library">
-            {tutorials.length === 0 ? (
+            {noSyllabus ? (
+              resources.length === 0 ? (
+                <p className="text-base text-ink-muted">Nothing has been uploaded for this unit yet.</p>
+              ) : (
+                <>
+                  <div role="group" aria-label="Filter by type" className="mb-6 flex flex-wrap gap-2">
+                    {([["all", "All", resources.length], ["notes", "Notes", notes.length], ["papers", "Papers", papers.length], ["videos", "Videos", tutorials.length]] as const)
+                      .filter(([k, , n]) => k === "all" || n > 0)
+                      .map(([k, label, n]) => (
+                        <button
+                          key={k} aria-pressed={libType === k} onClick={() => setLibType(k)}
+                          className={`h-9 rounded-full px-4 text-sm transition-colors duration-300 ${libType === k ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+                        >
+                          {label} <span className="ml-1 font-geist-mono text-xs text-ink-muted">{n}</span>
+                        </button>
+                      ))}
+                  </div>
+                  <ul>{libItems.map(libraryRow)}</ul>
+                </>
+              )
+            ) : tutorials.length === 0 ? (
               <p className="text-base text-ink-muted">Nothing in the library for this unit yet.</p>
             ) : (
               <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">{tutorials.map(tutorialCard)}</div>

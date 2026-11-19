@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Pencil, Trash2, FileText, LayoutGrid, Filter, Search, Layers, Grid } from 'lucide-react';
+import { Loader2, Upload, Plus, Pencil, Trash2, FileText, LayoutGrid, Filter, Search, Layers, Grid, ListTree } from 'lucide-react';
 import { Combobox } from '@/components/shared/Combobox';
+import { InlineText } from '@/components/shared/InlineText';
+import { INSTITUTION_COLUMN } from '@/components/shared/institutionColumn';
+import { useFieldSaver } from '@/hooks/useFieldSaver';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { FormModal } from '@/components/shared/FormModal';
 import { BulkCreateEntityModal } from '@/components/shared/BulkCreateEntityModal';
+import { SyllabusModal } from '@/components/shared/SyllabusModal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,19 +23,23 @@ import {
 } from '@/components/ui/select';
 import { Unit } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
-import { getRecords, addRecord, updateRecord, deleteRecord } from '@/data/db';
+import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
+import { getRecords, addRecord, updateRecord, deleteRecord, uploadImage } from '@/data/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const Units = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [syllabusUnit, setSyllabusUnit] = useState<Unit | null>(null);
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null);
-  const [filter, setFilter] = useState({ department_id: 0 });
-  const [formData, setFormData] = useState({ id: 0, name: '', code: '', department_id: 0, year_of_study: '1', semester_of_study: '1' });
+  const [filter, setFilter] = useState({ department_id: 0, institution_id: 0 });
+  const [formInstitution, setFormInstitution] = useState(0);
+  const [formData, setFormData] = useState({ id: 0, name: '', code: '', department_id: 0, year_of_study: '1', semester_of_study: '1', banner_url: '' });
   const { toast } = useToast();
 
   const [search, setSearch] = useState('');
@@ -55,22 +63,40 @@ const Units = () => {
   const meta = unitsData?.meta;
 
   const { data: departmentsData, isLoading: departmentsLoading } = useQuery({
-    queryKey: ['departments'],
+    queryKey: ['departments', filter.institution_id],
     queryFn: async () => {
-      return await getRecords('departments', { pageSize: 100 })
+      return await getRecords('departments', { pageSize: 100, institution_id: filter.institution_id })
     },
   });
 
   const departments = departmentsData?.data || [];
 
+  // Only touch banner_url when there is one to set or clear, so saving works before the column exists.
+  const bannerField = formData.banner_url || (editingUnit as any)?.banner_url ? { banner_url: formData.banner_url || null } : {};
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const handleBanner = async (file: File) => {
+    setBannerUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setFormData((f) => ({ ...f, banner_url: url }));
+    } catch {
+      toast({ title: 'Banner upload failed', variant: 'destructive' });
+    } finally {
+      setBannerUploading(false);
+    }
+  };
+
   const handleOpenCreate = () => {
     setEditingUnit(null);
-    setFormData({ id: 0, name: '', code: '', department_id: 0, year_of_study: '1', semester_of_study: '1' });
+    setFormInstitution(0);
+    setFormData({ id: 0, name: '', code: '', department_id: 0, year_of_study: '1', semester_of_study: '1', banner_url: '' });
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (unit: Unit) => {
     setEditingUnit(unit);
+    setFormInstitution(Number((unit as any).institutions?.id ?? 0));
     setFormData({
       id: Number(unit.id),
       name: unit.name,
@@ -78,6 +104,7 @@ const Units = () => {
       department_id: Number(unit.departments.id),
       year_of_study: unit.year_of_study.toString(),
       semester_of_study: unit.semester_of_study.toString(),
+      banner_url: (unit as any).banner_url ?? '',
     });
     setIsFormOpen(true);
   };
@@ -91,6 +118,7 @@ const Units = () => {
       department_id: Number(unit.departments.id),
       year_of_study: unit.year_of_study.toString(),
       semester_of_study: unit.semester_of_study.toString(),
+      banner_url: '',
     });
     setIsDeleteOpen(true);
   };
@@ -100,7 +128,7 @@ const Units = () => {
     const course = departments.find(c => Number(c.id) === formData.department_id);
 
     if (editingUnit) {
-      const { status, error, data } = await updateRecord('units', formData.id, { name: formData.name, code: formData.code, department_id: formData.department_id, year_of_study: Number(formData.year_of_study), semester_of_study: Number(formData.semester_of_study) });
+      const { status, error, data } = await updateRecord('units', formData.id, { name: formData.name, code: formData.code, department_id: formData.department_id, year_of_study: Number(formData.year_of_study), semester_of_study: Number(formData.semester_of_study), ...bannerField });
       if (status === 'success'){
         toast({ title: 'Unit updated successfully' });
         queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
@@ -108,7 +136,7 @@ const Units = () => {
       else
         toast({ title: 'Error updating unit', variant: 'destructive' });
     } else {
-      const { status, error, data } = await addRecord('units', { name: formData.name, code: formData.code, department_id: formData.department_id, year_of_study: Number(formData.year_of_study), semester_of_study: Number(formData.semester_of_study) });
+      const { status, error, data } = await addRecord('units', { name: formData.name, code: formData.code, department_id: formData.department_id, year_of_study: Number(formData.year_of_study), semester_of_study: Number(formData.semester_of_study), ...bannerField });
       if (status === 'success'){
         toast({ title: 'Unit created successfully' })
         queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
@@ -134,17 +162,19 @@ const Units = () => {
     setDeletingUnit(null);
   };
 
+  const saveField = useFieldSaver('units');
+
   const columns: Column<Unit>[] = [
     {
       key: 'name',
       header: 'Unit Name',
       render: (unit) => (
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2 rounded-full bg-field">
             <Layers className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="font-medium">{unit.name}</p>
+            <InlineText value={unit.name} onSave={(v) => saveField(unit.id, { name: v })} className="font-medium" />
             <p className="text-xs text-muted-foreground">{unit.code}</p>
           </div>
         </div>
@@ -174,12 +204,22 @@ const Units = () => {
         <Badge variant="outline">Semester {unit.semester_of_study}</Badge>
       ),
     },
+    INSTITUTION_COLUMN,
     {
       key: 'actions',
       header: '',
       className: 'text-right',
       render: (unit) => (
         <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Syllabus"
+            aria-label="Syllabus"
+            onClick={() => setSyllabusUnit(unit)}
+          >
+            <ListTree className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -233,7 +273,7 @@ const Units = () => {
 
         {/* Filter */}
         <div className="flex items-center gap-2 col-span-2">
-          {/* <Filter className="h-4 w-4 text-muted-foreground" /> */}
+          <InstitutionFilter value={filter.institution_id} onChange={(id) => { setFilter({ department_id: 0, institution_id: id }); setPage(1); }} />
           <Combobox
             options={[
               { value: "all", label: "All departments" },
@@ -286,15 +326,40 @@ const Units = () => {
               maxLength={10}
             />
           </div>
+          <InstitutionSelect value={formInstitution} onChange={(id) => { setFormInstitution(id); setFormData((f) => ({ ...f, department_id: 0 })); }} />
           <div className="space-y-2">
             <Label>Department</Label>
             <Combobox
-              options={departments.map((dept: any) => ({ value: String(dept.id), label: dept.name }))}
+              options={departments.filter((d: any) => !formInstitution || d.institution_id === formInstitution).map((dept: any) => ({ value: String(dept.id), label: dept.name }))}
               value={String(formData.department_id)}
               onChange={(value) => setFormData({ ...formData, department_id: Number(value) })}
               placeholder="Select Department"
               searchPlaceholder="Search departments..."
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Banner <span className="font-normal text-muted-foreground">(optional, shown behind the unit title)</span></Label>
+            <input
+              type="file"
+              accept="image/*"
+              ref={bannerInputRef}
+              className="hidden"
+              onChange={(e) => { if (e.target.files?.[0]) handleBanner(e.target.files[0]); e.target.value = ''; }}
+            />
+            <button
+              type="button"
+              onClick={() => bannerInputRef.current?.click()}
+              aria-label="Choose banner image"
+              className="flex aspect-[16/5] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed text-muted-foreground transition-colors hover:border-primary/50"
+            >
+              {formData.banner_url ? <img src={formData.banner_url} alt="" className="size-full object-cover" /> : bannerUploading ? <Loader2 className="size-5 animate-spin" /> : <span className="flex items-center gap-2 text-sm"><Upload className="size-4" /> Upload banner</span>}
+            </button>
+            {formData.banner_url && (
+              <div className="flex gap-4 text-sm">
+                <button type="button" className="text-primary" onClick={() => bannerInputRef.current?.click()}>Replace</button>
+                <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setFormData({ ...formData, banner_url: '' })}>Remove</button>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="year">Year of Study</Label>
@@ -350,6 +415,8 @@ const Units = () => {
           queryClient.invalidateQueries({ queryKey: ['units'] });
         }}
       />
+
+      <SyllabusModal unit={syllabusUnit} onClose={() => setSyllabusUnit(null)} />
 
       {/* Delete Confirmation */}
       <ConfirmDialog

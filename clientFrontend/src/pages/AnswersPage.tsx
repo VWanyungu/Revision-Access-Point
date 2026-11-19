@@ -68,7 +68,7 @@ const badge = "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-me
 const outline = "inline-flex items-center gap-2 rounded-full border border-line-soft bg-surface px-4 text-sm font-medium text-ink transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-field-soft active:scale-[0.98]";
 
 const Generating = ({ title, onBack }: { title: string; onBack: () => void }) => (
-  <div className="mx-auto max-w-[560px] px-5 pb-24 pt-10 font-geist text-ink md:pt-20">
+  <div className="mx-auto max-w-[560px] px-5 pb-24 pt-10 md:pt-14 font-geist text-ink">
     <h1 className="text-2xl font-medium">Writing model answers</h1>
     <p className="mt-3 text-base text-ink-muted">
       {title ? `${title}. ` : ""}This usually takes under a minute. You can go back to the paper; we will keep working and save the answers for next time.
@@ -219,7 +219,7 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
 
   if (!data) {
     return (
-      <div className="mx-auto max-w-[560px] px-5 pb-24 pt-16 font-geist text-ink">
+      <div className="mx-auto max-w-[560px] px-5 pb-24 pt-10 md:pt-14 font-geist text-ink">
         <h1 className="text-2xl font-medium">No answers yet</h1>
         <p className="mt-3 text-base text-ink-muted">Open a past paper and choose Model answers.</p>
         <QuietButton tone="soft" className="mt-6" onClick={onBack}>Back</QuietButton>
@@ -258,7 +258,7 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
     <div className="font-geist text-ink">
       <PageCrumbs onHome={onBack} trail={[{ label: heading, onClick: onOpenPaper }]} current="Model answers" />
 
-      <div className="mx-auto max-w-[1200px] px-4 pb-28 pt-10 md:px-8 md:pb-32 md:pt-16">
+      <div className="mx-auto max-w-[1200px] px-4 pb-28 pt-8 md:px-8 md:pb-32 md:pt-10">
         <header>
           <h1 className="max-w-[18ch] text-balance text-3xl font-medium md:text-4xl">{heading}</h1>
 

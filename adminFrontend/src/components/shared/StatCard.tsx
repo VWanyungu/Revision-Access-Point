@@ -18,7 +18,7 @@ export const StatCard = ({ title, value, icon, trend, className }: StatCardProps
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-semibold mt-2">{value}</p>
+          <p className="text-2xl font-semibold mt-2">{value}</p>
           {trend && (
             <p className={cn(
               "text-xs mt-2 font-medium",
@@ -28,7 +28,7 @@ export const StatCard = ({ title, value, icon, trend, className }: StatCardProps
             </p>
           )}
         </div>
-        <div className="p-3 rounded-lg bg-primary/10 text-primary">
+        <div className="p-3 rounded-full bg-field text-brand">
           {icon}
         </div>
       </div>

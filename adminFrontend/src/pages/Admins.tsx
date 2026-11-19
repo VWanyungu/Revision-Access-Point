@@ -15,18 +15,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
+import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
 import { admins as initialAdmins, schools, departments, Admin } from '@/data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { getRecords } from '@/data/db';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const roleConfig = {
   super_admin: { label: 'Super Admin', color: 'bg-action/10 text-action border-action/20' },
+  institution_admin: { label: 'Institution Admin', color: 'bg-field text-ink border-line' },
   school_admin: { label: 'School Admin', color: 'bg-primary/10 text-primary border-primary/20' },
   course_admin: { label: 'Course Admin', color: 'bg-info/10 text-info border-info/20' },
 };
 
 const Admins = () => {
-  const [admins, setAdmins] = useState(initialAdmins);
+  const [allAdmins, setAdmins] = useState(initialAdmins);
+  const [institutionId, setInstitutionId] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
@@ -37,8 +43,14 @@ const Admins = () => {
     role: 'course_admin' as Admin['role'],
     scopeType: 'platform',
     scopeId: '',
+    institutionId: 0,
   });
   const { toast } = useToast();
+  const { data: instData } = useQuery({ queryKey: ['institutions', 'all'], queryFn: () => getRecords('institutions', { pageSize: 100 }) });
+  const institutions = instData?.data ?? [];
+  // Admins are still mock rows; only an institution admin's scope names its institution, so that is what the filter can match.
+  const picked = institutions.find((i: any) => i.id === institutionId);
+  const admins = institutionId ? allAdmins.filter((a) => a.scope === picked?.short_name || a.scope === picked?.name || a.scope.startsWith(`${picked?.short_name} · `)) : allAdmins;
 
   const getScopeLabel = (admin: Admin) => {
     return admin.scope;
@@ -46,7 +58,7 @@ const Admins = () => {
 
   const handleOpenCreate = () => {
     setEditingAdmin(null);
-    setFormData({ name: '', email: '', role: 'course_admin', scopeType: 'platform', scopeId: '' });
+    setFormData({ name: '', email: '', role: 'course_admin', scopeType: 'platform', scopeId: '', institutionId: 0 });
     setIsFormOpen(true);
   };
 
@@ -56,8 +68,9 @@ const Admins = () => {
       name: admin.name,
       email: admin.email,
       role: admin.role,
-      scopeType: admin.role === 'super_admin' ? 'platform' : admin.role === 'school_admin' ? 'school' : 'course',
+      scopeType: admin.role === 'super_admin' ? 'platform' : admin.role === 'institution_admin' ? 'institution' : admin.role === 'school_admin' ? 'school' : 'course',
       scopeId: '',
+      institutionId: 0,
     });
     setIsFormOpen(true);
   };
@@ -71,14 +84,16 @@ const Admins = () => {
     e.preventDefault();
     
     let scope = 'Platform';
-    if (formData.role === 'school_admin' && formData.scopeId) {
-      scope = schools.find(s => s.id === formData.scopeId)?.name || 'Unknown School';
+    if (formData.role === 'institution_admin' && formData.scopeId) {
+      scope = institutions.find((i: any) => String(i.id) === formData.scopeId)?.short_name || 'Unknown Institution';
+    } else if (formData.role === 'school_admin' && formData.scopeId) {
+      scope = `${institutions.find((i: any) => i.id === formData.institutionId)?.short_name ?? ''} · ${schools.find(s => s.id === formData.scopeId)?.name || 'Unknown School'}`.replace(/^ · /, '');
     } else if (formData.role === 'course_admin' && formData.scopeId) {
-      scope = departments.find(c => c.id === formData.scopeId)?.name || 'Unknown Course';
+      scope = `${institutions.find((i: any) => i.id === formData.institutionId)?.short_name ?? ''} · ${departments.find(c => c.id === formData.scopeId)?.name || 'Unknown Course'}`.replace(/^ · /, '');
     }
     
     if (editingAdmin) {
-      setAdmins(admins.map(a => 
+      setAdmins(allAdmins.map(a => 
         a.id === editingAdmin.id 
           ? { ...a, name: formData.name, email: formData.email, role: formData.role, scope }
           : a
@@ -94,7 +109,7 @@ const Admins = () => {
         createdAt: new Date().toISOString().split('T')[0],
         lastActive: new Date().toISOString().split('T')[0],
       };
-      setAdmins([...admins, newAdmin]);
+      setAdmins([...allAdmins, newAdmin]);
       toast({ title: 'Admin created successfully' });
     }
     
@@ -103,7 +118,7 @@ const Admins = () => {
 
   const handleDelete = () => {
     if (deletingAdmin) {
-      setAdmins(admins.filter(a => a.id !== deletingAdmin.id));
+      setAdmins(allAdmins.filter(a => a.id !== deletingAdmin.id));
       toast({ title: 'Admin removed successfully', variant: 'destructive' });
     }
     setIsDeleteOpen(false);
@@ -201,8 +216,8 @@ const Admins = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-card rounded-lg border p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-action/10">
+        <div className="bg-surface rounded-3xl ring-1 ring-line p-4 flex items-center gap-4">
+          <div className="p-3 rounded-full bg-action/10">
             <Shield className="h-5 w-5 text-action" />
           </div>
           <div>
@@ -212,8 +227,8 @@ const Admins = () => {
             <p className="text-sm text-muted-foreground">Super Admins</p>
           </div>
         </div>
-        <div className="bg-card rounded-lg border p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-primary/10">
+        <div className="bg-surface rounded-3xl ring-1 ring-line p-4 flex items-center gap-4">
+          <div className="p-3 rounded-full bg-field">
             <Users className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -223,8 +238,8 @@ const Admins = () => {
             <p className="text-sm text-muted-foreground">School Admins</p>
           </div>
         </div>
-        <div className="bg-card rounded-lg border p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-info/10">
+        <div className="bg-surface rounded-3xl ring-1 ring-line p-4 flex items-center gap-4">
+          <div className="p-3 rounded-full bg-info/10">
             <Users className="h-5 w-5 text-info" />
           </div>
           <div>
@@ -234,6 +249,10 @@ const Admins = () => {
             <p className="text-sm text-muted-foreground">Course Admins</p>
           </div>
         </div>
+      </div>
+
+      <div className="mb-4">
+        <InstitutionFilter value={institutionId} onChange={setInstitutionId} />
       </div>
 
       <DataTable
@@ -283,12 +302,29 @@ const Admins = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="super_admin">Super Admin</SelectItem>
+                <SelectItem value="institution_admin">Institution Admin</SelectItem>
                 <SelectItem value="school_admin">School Admin</SelectItem>
                 <SelectItem value="course_admin">Course Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
+          {formData.role === 'institution_admin' && (
+            <div className="space-y-2">
+              <Label>Assign to Institution</Label>
+              <Select value={formData.scopeId} onValueChange={(value) => setFormData({ ...formData, scopeId: value })}>
+                <SelectTrigger><SelectValue placeholder="Select an institution" /></SelectTrigger>
+                <SelectContent>
+                  {institutions.map((i: any) => <SelectItem key={i.id} value={String(i.id)}>{i.short_name} - {i.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {(formData.role === 'school_admin' || formData.role === 'course_admin') && (
+            <InstitutionSelect value={formData.institutionId} onChange={(id) => setFormData({ ...formData, institutionId: id, scopeId: '' })} />
+          )}
+
           {formData.role === 'school_admin' && (
             <div className="space-y-2">
               <Label htmlFor="scope">Assign to School</Label>

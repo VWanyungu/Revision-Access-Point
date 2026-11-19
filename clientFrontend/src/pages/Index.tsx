@@ -9,6 +9,7 @@ import ProgressDashboard from "@/components/study/ProgressDashboard";
 import StudyCalendar from "@/components/study/StudyCalendar";
 import QuizSystem from "@/components/study/QuizSystem";
 import SubscriptionsPage from "@/components/study/SubscriptionsPage";
+import ProfilePage from "@/components/study/ProfilePage";
 import PdfViewerPage from "./PdfViewerPage";
 import AnswersPage, { type AnswersData } from "./AnswersPage";
 import { supabase } from "@/database/supabase";
@@ -28,6 +29,7 @@ const Index = () => {
   const [selectedResourceTitle, setSelectedResourceTitle] = useState<string>();
   const [selectedPdfUrl, setSelectedPdfUrl] = useState<string>("");
   const [selectedPdfTitle, setSelectedPdfTitle] = useState<string>("");
+  const [selectedPdfType, setSelectedPdfType] = useState<number | null>(null);
   const [answersSource, setAnswersSource] = useState<{ url: string; title: string } | null>(null);
   const [currentUser, setCurrentUser] = useState<Record<string, any>>({});
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -118,7 +120,7 @@ const Index = () => {
     setCurrentPage("dashboard");
   };
 
-  const handleSearch = async (selection: { school: string; department: string; year: number; semester: number; unit: string }) => {
+  const handleSearch = async (selection: { institution?: string; school: string; department: string; year: number; semester: number; unit: string }) => {
     const { data: { user } } = await supabase.auth.getUser();
 
     const sbTokenStr = localStorage.getItem("sb-ptktlornnngqvzbbisaq-auth-token");
@@ -137,7 +139,9 @@ const Index = () => {
         return;
       }
 
+      // A pass is for one department at one institution: MMUST Computer Science never unlocks KU Computer Science.
       const hasAccess = subs.some((sub: Record<string, any>) =>
+        (!selection.institution || !sub.institution_id || String(selection.institution) === String(sub.institution_id)) &&
         String(selection.department) === String(sub.department_id) &&
         Number(selection.year) === Number(sub.year_of_study) &&
         Number(selection.semester) === Number(sub.semester_of_study)
@@ -160,10 +164,17 @@ const Index = () => {
     setCurrentPage("dashboard");
   };
 
-  const openPaper = (url: string, title?: string) => {
+  // The viewer offers Quiz for notes and Model answers for past papers, so it needs the resource type. Callers that
+  // only have a URL get it looked up.
+  const openPaper = (url: string, title?: string, resourceTypeId?: number) => {
     setSelectedPdfUrl(url);
     setSelectedPdfTitle(title ?? "");
+    setSelectedPdfType(resourceTypeId ?? null);
     setCurrentPage("pdf");
+    if (resourceTypeId == null) {
+      supabase.from("resources").select("resource_type_id").eq("public_access_url", url).limit(1).maybeSingle()
+        .then(({ data }) => setSelectedPdfType(data?.resource_type_id ?? null));
+    }
   };
 
   const handleGenerateQuiz = (publicAccessUrl: string, title: string) => {
@@ -318,9 +329,13 @@ const Index = () => {
             url={selectedPdfUrl}
             title={selectedPdfTitle}
             onBack={() => setCurrentPage("dashboard")}
+            kind={selectedPdfType === 1 ? "note" : selectedPdfType === 2 || selectedPdfType === 3 ? "paper" : null}
+            onQuiz={() => handleGenerateQuiz(selectedPdfUrl, selectedPdfTitle)}
             onModelAnswers={() => handleGenerateAnswers(selectedPdfUrl, selectedPdfTitle)}
           />
         );
+      case "profile":
+        return <ProfilePage onNavigate={setCurrentPage} />;
       case "subscriptions":
         return <SubscriptionsPage onNavigate={setCurrentPage} />;
       case "answers":

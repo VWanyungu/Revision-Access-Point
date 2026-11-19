@@ -1,638 +1,344 @@
-import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import SiteFooter, { SOCIALS } from "@/components/layout/SiteFooter";
+import { EASE, Reveal } from "@/components/layout/Reveal";
+import logoInk from "@/assets/auth/logo-ink.svg";
 import {
-  BookOpen, Brain, Timer, FileText, ArrowRight, Check,
-  PlayCircle, GraduationCap, Play, ChevronLeft, ChevronRight,
-  Database, Banknote, Sparkles, Shield, ArrowUpRight, Linkedin, Twitter, Quote
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useState, useRef } from "react";
-import { ModeToggle } from "@/components/mode-toggle";
-import { DisplayStudyDashboard } from "@/components/study/StudyDashboard";
+  ArrowRight,
+  ArrowUp,
+  ArrowCounterClockwise,
+  CaretRight,
+  FileText,
+  ListChecks,
+  Pause,
+} from "@phosphor-icons/react";
 
 interface LandingPageProps {
-  onNavigateLogin: () => void;
   onNavigateSignUp: () => void;
 }
 
-// ─── Animation variants ──────────────────────────────────────────────────────
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: (delay = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] },
-  }),
-};
 
-const staggerContainer = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.1, delayChildren: 0.05 },
-  },
-};
+// ─── Button-in-button CTA ────────────────────────────────────────────────────
 
-const staggerItem = {
-  hidden: { opacity: 0, y: 32 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-  },
-};
+const PillCta = ({ label, onClick }: { label: string; onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className="group inline-flex items-center gap-4 rounded-full bg-card py-2 pl-7 pr-2 text-lg font-medium text-foreground transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+  >
+    {label}
+    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-solid text-white transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-px group-hover:translate-x-1 group-hover:scale-105">
+      <ArrowRight size={20} weight="light" />
+    </span>
+  </button>
+);
 
-// ─── Reusable scroll-triggered wrapper ───────────────────────────────────────
+// ─── Double-bezel plate ──────────────────────────────────────────────────────
 
-interface FadeInProps {
-  children: React.ReactNode;
-  delay?: number;
-  className?: string;
-  direction?: "up" | "left" | "right" | "none";
-}
-
-const FadeIn: React.FC<FadeInProps> = ({
-  children,
-  delay = 0,
-  className = "",
-  direction = "up",
-}) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const shouldReduce = useReducedMotion();
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-
-  const initial = shouldReduce
-    ? { opacity: 0 }
-    : direction === "up"
-      ? { opacity: 0, y: 40 }
-      : direction === "left"
-        ? { opacity: 0, x: -40 }
-        : direction === "right"
-          ? { opacity: 0, x: 40 }
-          : { opacity: 0 };
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={initial}
-      animate={inView ? { opacity: 1, x: 0, y: 0 } : initial}
-      transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-
-const pillars = [
-  {
-    icon: FileText,
-    title: "Notes",
-    tagline: "Smart notes, smarter study.",
-    description:
-      "Access clean, structured lecture notes for every unit on your course. Annotate, bookmark, and organise them your way. Then go further — generate AI-powered quizzes directly from any note to test your understanding and lock in what you've learned.",
-    accent: "primary",
-    badge: "Quiz Generator",
-  },
-  {
-    icon: BookOpen,
-    title: "CATs",
-    tagline: "Practice. Predict. Pass.",
-    description:
-      "Browse a curated library of Continuous Assessment Tests from previous semesters. Study the patterns, understand what lecturers value, and use our AI answer generator to produce model answers that guide your own revision.",
-    accent: "primary-foreground",
-    badge: "AI Answers",
-  },
-  {
-    icon: GraduationCap,
-    title: "Exams",
-    tagline: "Past papers. Perfect prep.",
-    description:
-      "Every past exam paper, sorted by unit and year. Go deep into question trends, simulate exam conditions, and generate comprehensive model answers with step-by-step reasoning — so you know not just the what, but the why.",
-    accent: "primary",
-    badge: "AI Answers",
-  },
-  {
-    icon: Play,
-    title: "Tutorials",
-    tagline: "Learn at your own pace.",
-    description:
-      "Video and written tutorials curated for your specific course units. Whether you're covering a concept for the first time or revisiting before an exam, tutorials give you the guided explanation notes alone can't always provide.",
-    accent: "primary-foreground",
-    badge: "Guided Learning",
-  },
-];
-
-const whyCards = [
-  {
-    icon: Database,
-    title: "Everything in One Place",
-    body: "No more hunting across WhatsApp groups, random drives and scattered PDFs. RAP centralises every resource you need: notes, CATs, exams, and tutorials, for your exact units, in one clean, searchable platform.",
-    featured: false,
-  },
-  {
-    icon: Banknote,
-    title: "Priced for Students",
-    body: "We built RAP for university students. Our pricing reflects that. Access a full semester's worth of resources for the cost of a matatu ride. Premium knowledge, genuinely affordable.",
-    featured: false,
-  },
-  {
-    icon: Sparkles,
-    title: "AI That Actually Helps You Study",
-    body: "Generate quizzes from your own notes. Get model answers for past papers.",
-    featured: true,
-  },
-  {
-    icon: Shield,
-    title: "Always Current",
-    body: "Stale resources are worse than no resources. We maintain an up-to-date library refreshed each semester, with contributions verified by students who've sat the very papers you're preparing for.",
-    featured: false,
-  },
-];
-
-const testimonialCards = [
-  {
-    name: "Elon Ogonji",
-    role: "Student",
-    org: "Masinde Muliro University of Science and Technology",
-    title: "Student at Masinde Muliro University of Science and Technology",
-    quote: "This app has made studying much easier. I no longer spend hours looking for notes or past papers because everything is organized in one place. The AI quizzes are also a great way to test my understanding before exams."
-  },
-  {
-    name: "Sarah Sofia",
-    role: "Student",
-    org: "Masinde Muliro University of Science and Technology",
-    title: "Student at Masinde Muliro University of Science and Technology",
-    quote: "The collection of notes, CATs, tutorials, and past exams has been incredibly helpful throughout the semester. I especially like the AI-generated answers because they help me understand how to approach different types of questions."
-  },
-  {
-    name: "Emmanuel Sila",
-    role: "Student",
-    org: "Masinde Muliro University of Science and Technology",
-    title: "Student at Masinde Muliro University of Science and Technology",
-    quote: "What stands out for me is how much time this app saves. Instead of searching through different groups for study materials, I can access everything in one platform. The AI quizzes make revision more engaging and help me identify topics I need to improve."
-  }
-]
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-const LandingPage = ({ onNavigateLogin, onNavigateSignUp }: LandingPageProps) => {
-  const shouldReduce = useReducedMotion();
-
-  // Hero entrance animation — runs on load, not scroll
-  const heroVariants = {
-    hidden: { opacity: 0, filter: shouldReduce ? "blur(0px)" : "blur(8px)", y: shouldReduce ? 0 : 24 },
-    visible: {
-      opacity: 1,
-      filter: "blur(0px)",
-      y: 0,
-      transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] },
-    },
-  };
-
-  const heroMockupVariants = {
-    hidden: { opacity: 0, scale: 0.92, y: shouldReduce ? 0 : 30 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: { duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] },
-    },
-  };
-
-  return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-sans">
-
-      {/* ── Navbar ────────────────────────────────────────────────────────── */}
-      <header className="py-2 sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 w-full">
-        <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-6 md:px-8">
-          <h1 className="hidden md:block font-extrabold text-base md:text-lg tracking-tight">Revision Access Point</h1>
-          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-end">
-            <ModeToggle />
-            <div className="sm:flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onNavigateLogin}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Login
-              </Button>
-              <Button size="sm" onClick={onNavigateSignUp} className="shadow-sm hidden md:block">
-                Sign Up
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Hero — full viewport height ───────────────────────────────────── */}
-      <section className="h-[calc(100vh-100px)] md:min-h-screen flex items-start md:items-center max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 px-6 md:px-8 py-20">
-
-        {/* Left — text */}
-        <motion.div
-          id="heroText"
-          className="flex flex-col"
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.p
-            variants={staggerItem}
-            id="heroFaintAccentText"
-            className="accent-text text-xs md:text-sm"
-          >
-            REVISION ACCESS POINT
-          </motion.p>
-
-          <motion.div variants={staggerItem} className="flex flex-col">
-            <h1 className="text-3xl md:text-4xl font-extralight leading-tight">
-              Your<span className="font-extrabold ml-3">revision</span>
-            </h1>
-            <h1 className="text-4xl md:text-5xl birthstone-regular text-primary leading-none">
-              Reimagined
-            </h1>
-          </motion.div>
-
-          <motion.p
-            variants={staggerItem}
-            className="text-base md:text-lg text-muted-foreground w-full md:w-3/4 mt-6 mb-8 leading-relaxed"
-          >
-            Notes, CATs, past exams and tutorials, all organised around your units, not against
-            them. One quiet, focused place to actually get the work done.
-          </motion.p>
-
-          <motion.div variants={staggerItem} className="flex items-center gap-3 flex-wrap">
-            <Button
-              size="lg"
-              onClick={onNavigateSignUp}
-              className="shadow-sm h-12 px-6 text-base"
-            >
-              Get started
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-            {/* <Button
-              size="lg"
-              variant="outline"
-              className="hover:text-foreground border-destructive text-destructive h-12 px-6 text-base"
-            >
-              <a href="#preview">See how it works</a>
-            </Button> */}
-          </motion.div>
-        </motion.div>
-
-        {/* Right — app mockup */}
-        <motion.div
-          variants={heroMockupVariants}
-          initial="hidden"
-          animate="visible"
-          className="relative hidden md:block"
-        >
-          <motion.div
-            animate={shouldReduce ? {} : { y: [-6, 6, -6] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <AppMockup />
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* ── Feature Showcase / Pillars ────────────────────────────────────── */}
-      <section id="features" className="border-t py-6 md:py-16 max-w-7xl mx-auto px-6 md:px-8">
-        <FadeIn>
-          <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">What we offer</p>
-          <div className="flex flex-col mb-8">
-            <h2 className="text-2xl md:text-3xl font-extralight leading-tight">
-              Our four <span className="text-primary font-bold">pillars</span>
-            </h2>
-          </div>
-        </FadeIn>
-
-        <PillarsSection />
-      </section>
-
-      {/* ── Product Preview ───────────────────────────────────────────────── */}
-      <section id="preview" className="py-12 md:py-16" />
-
-      {/* ── Why Us ────────────────────────────────────────────────────────── */}
-      <section className="border-t pt-6 pb-12 md:py-16 max-w-7xl mx-auto px-6 md:px-8">
-        <FadeIn>
-          <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">Why choose us</p>
-          <div className="flex flex-col mb-8">
-            <h2 className="text-2xl md:text-3xl font-extralight leading-tight">
-              Why <span className="text-primary font-bold">us</span>
-            </h2>
-          </div>
-        </FadeIn>
-
-        <WhySection />
-      </section>
-
-      {/* testimonials */}
-      <section className="border-t pt-6 pb-12 md:py-16 max-w-7xl mx-auto px-6 md:px-8">
-        <FadeIn>
-          <p id="heroFaintAccentText" className="accent-text text-xs md:text-sm">testimonials</p>
-          <div className="flex flex-col mb-8">
-            <h2 className="text-2xl md:text-3xl font-extralight leading-tight">
-              What our <span className="text-primary font-bold">users</span> say
-            </h2>
-          </div>
-        </FadeIn>
-
-        <TestimonialsSection />
-      </section>
-
-      {/* ── Contact — full viewport height ────────────────────────────────── */}
-      <section
-        id="contact"
-        className="relative min-h-screen w-full overflow-hidden flex items-center"
-      >
-        {/* Map background */}
-        <img
-          src="/world.svg"
-          alt="World map"
-          className="absolute inset-0 w-full h-full object-cover z-0 select-none pointer-events-none"
-        />
-
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent dark:from-background dark:via-background/80 z-10" />
-
-        {/* Content */}
-        <motion.div
-          className="relative z-20 max-w-7xl mx-auto px-8 md:px-8 w-full"
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <motion.p
-            variants={staggerItem}
-            id="heroFaintAccentText"
-            className="accent-text text-xs md:text-sm"
-          >
-            contact us
-          </motion.p>
-
-          <motion.div variants={staggerItem} className="mb-8">
-            <h2 className="text-3xl md:text-4xl font-extralight leading-tight">
-              <span className="text-primary font-bold">Hello!</span>
-            </h2>
-          </motion.div>
-
-          <motion.div variants={staggerItem} className="mb-2">
-            <p className="accent-text text-xs md:text-sm">email</p>
-            <p className="text-base md:text-lg font-semibold mt-1">vwanyungu254@gmail.com</p>
-          </motion.div>
-
-          <motion.div variants={staggerItem} className="mt-6">
-            <p className="accent-text text-xs md:text-sm mb-3">social</p>
-            <div className="flex justify-start gap-4">
-              <Button size="icon" variant="outline">
-                <Twitter className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="outline">
-                <Linkedin className="h-4 w-4" />
-              </Button>
-            </div>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="relative border-t border-border/40 bg-background/50 backdrop-blur py-4">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <p className="text-xs text-muted-foreground font-medium text-center w-full">
-            © {new Date().getFullYear()} All rights reserved.
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
-};
-
-// ─── App Mockup ───────────────────────────────────────────────────────────────
-
-const AppMockup = () => (
-  <div className="p-8 border border-dashed border-primary/30 rounded-2xl">
-    <div
-      className="rounded-2xl overflow-hidden shadow-2xl border bg-surface"
-      style={{ boxShadow: "0 32px 80px rgba(13,27,42,0.18)" }}
-    >
-      <div className="px-5 py-3 flex items-center justify-between border-b bg-primary">
-        <div className="flex gap-1.5">
-          {["#ff5f57", "#ffbd2e", "#28ca42"].map((c) => (
-            <div key={c} className="w-3 h-3 rounded-full" style={{ background: c }} />
-          ))}
-        </div>
-        <div className="text-xs font-medium text-white opacity-70">Revision Access Point</div>
-        <div />
-      </div>
-      <DisplayStudyDashboard />
-    </div>
+const Plate = ({ children }: { children: React.ReactNode }) => (
+  <div className="rounded-3xl border border-line/60 bg-card p-6 transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 md:p-8">
+    <div className="flex flex-col gap-4">{children}</div>
   </div>
 );
 
-// ─── Pillars Section ──────────────────────────────────────────────────────────
+// ─── Plates (product vignettes) ──────────────────────────────────────────────
 
-const PillarsSection = () => {
-  const [active, setActive] = useState(0);
-  const shouldReduce = useReducedMotion();
+const PaperCell = ({ pages }: { pages?: string }) =>
+  pages ? (
+    <div className="flex h-[84px] flex-col justify-center gap-2 whitespace-nowrap rounded-xl border border-line-soft bg-card p-3">
+      <div className="flex items-center gap-2">
+        <FileText size={16} weight="light" />
+        <span className="flex-1 text-sm font-medium">Paper</span>
+        <span className="text-sm text-muted-foreground">{pages}</span>
+      </div>
+      <div className="flex items-center gap-2 text-sm font-medium text-brand">
+        <ListChecks size={16} weight="light" />
+        Model answers
+      </div>
+    </div>
+  ) : (
+    <div className="flex h-[84px] items-center rounded-xl bg-muted p-3 text-sm text-muted-foreground">
+      Not uploaded
+    </div>
+  );
 
-  const next = () => setActive((p) => (p + 1) % pillars.length);
-  const prev = () => setActive((p) => (p - 1 + pillars.length) % pillars.length);
-  const p = pillars[active];
-
-  return (
-    <div className="grid md:grid-cols-2 gap-12 items-center">
-      {/* Left — content */}
-      <div>
-        <div className="flex gap-3 mb-10 flex-wrap">
-          {pillars.map((pillar, index) => (
-            <motion.button
-              key={pillar.title}
-              onClick={() => setActive(index)}
-              className={`text-sm font-medium px-5 py-2 border transition-all 
-                ${index === active ? "border-primary bg-primary text-white" : "border-border text-foreground"}`}
-              whileHover={{ scale: shouldReduce ? 1 : 1.03 }}
-              whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
-            >
-              {pillar.title}
-            </motion.button>
+const PastPapersPlate = () => (
+  <Plate>
+    <div className="rounded-xl bg-band-raised px-5 py-3.5 text-band-fg">
+      <p className="text-base font-medium">Software Project Management</p>
+      <p className="text-sm text-band-muted">BCS 412 · Year 4, Semester 1</p>
+    </div>
+    {[
+      { year: "2025/26", cells: ["4 pages", "6 pages", "9 pages"] },
+      { year: "2024/25", cells: ["3 pages", undefined, "8 pages"] },
+    ].map((row) => (
+      <div key={row.year} className="flex flex-col gap-2">
+        <p className="text-base font-medium">{row.year}</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {row.cells.map((c, i) => (
+            <PaperCell key={i} pages={c} />
           ))}
         </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={{ opacity: 0, y: shouldReduce ? 0 : 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: shouldReduce ? 0 : -20 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-xs font-semibold px-3 py-1 rounded-full border border-border text-foreground">
-                {p.badge}
-              </span>
-            </div>
-
-            <h3 className="text-2xl font-black mb-2 text-primary">{p.title}</h3>
-
-            <p className="text-base italic mb-4 text-muted-foreground">{p.tagline}</p>
-
-            <p className="text-base leading-relaxed text-foreground/50">{p.description}</p>
-
-            <div className="flex gap-3 mt-8">
-              <motion.button
-                onClick={prev}
-                className="w-11 h-11 border rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
-                whileTap={{ scale: shouldReduce ? 1 : 0.95 }}
-              >
-                <ChevronLeft size={18} />
-              </motion.button>
-              <motion.button
-                onClick={next}
-                className="w-11 h-11 border rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
-                whileTap={{ scale: shouldReduce ? 1 : 0.95 }}
-              >
-                <ChevronRight size={18} />
-              </motion.button>
-              <div className="flex items-center gap-2 ml-2">
-                {pillars.map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className={`h-1.5 transition-all rounded-full ${i === active ? "bg-primary" : "bg-muted/30"}`}
-                    animate={{ width: i === active ? 20 : 6 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
       </div>
+    ))}
+  </Plate>
+);
 
-      {/* Right — visual card */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={active}
-          initial={{ opacity: 0, scale: shouldReduce ? 1 : 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: shouldReduce ? 1 : 0.95 }}
-          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="relative rounded overflow-hidden aspect-[4/3] flex flex-col justify-end p-8 bg-primary/10"
-          style={{ boxShadow: `0 24px 60px rgba(var(--primary), 0.15)` }}
+const AnswersPlate = () => (
+  <Plate>
+    <div className="flex justify-between text-xs font-medium text-muted-foreground">
+      <span>Question 1(b)</span>
+      <span className="font-geist-mono text-sm font-normal">10 marks</span>
+    </div>
+    <p className="text-base font-medium">
+      Draw the activity-on-node network, then identify the critical path and the minimum project
+      duration.
+    </p>
+    <div className="rounded-xl bg-brand/10 px-4 py-3">
+      <p className="mb-1.5 text-xs font-medium text-brand">Model answer</p>
+      <p className="text-base">
+        Critical path A, B, D, E. Minimum duration 3 + 4 + 6 + 3 = 16 days. C has 2 days of float.
+      </p>
+    </div>
+    {[
+      ["Draws the network correctly", 4],
+      ["Finds the critical path", 4],
+      ["States the duration", 2],
+    ].map(([t, m]) => (
+      <div key={t} className="flex justify-between border-b border-line-soft pb-2 text-sm">
+        <span>{t}</span>
+        <span className="font-geist-mono">{m}</span>
+      </div>
+    ))}
+  </Plate>
+);
+
+const QuizPlate = () => (
+  <Plate>
+    <p className="text-xs font-medium text-muted-foreground">Lecture 3 quiz · Question 4 of 10</p>
+    <p className="text-lg font-medium">Which process group produces the project charter?</p>
+    {["Planning", "Initiating", "Executing", "Monitoring and controlling"].map((t, i) => {
+      const selected = i === 1;
+      return (
+        <div
+          key={t}
+          className={`flex items-center gap-3 rounded-xl bg-card px-4 py-3.5 ${
+            selected ? "border-2 border-brand-solid" : "border border-line"
+          }`}
         >
-          <div className="absolute top-8 right-8 w-32 h-32 rounded-full border-2 opacity-20 border-primary" />
-          <div className="absolute top-4 right-4 w-48 h-48 rounded-full border opacity-10 border-primary" />
-          <p.icon size={80} className="absolute top-14 right-14 opacity-20 text-primary" />
-
-          <div>
-            <div className="text-xs uppercase tracking-widest mb-2 text-muted-foreground">
-              Pillar {active + 1} of 4
-            </div>
-            <div className="text-2xl font-black mb-1 text-primary">{p.title}</div>
-            <div className="text-base italic text-muted-foreground">{p.tagline}</div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// ─── Why Section ──────────────────────────────────────────────────────────────
-
-const WhySection = () => {
-  const shouldReduce = useReducedMotion();
-
-  return (
-    <div className="grid md:grid-cols-2 gap-6">
-      {whyCards.map((card, i) => (
-        <FadeIn key={card.title} delay={i * 0.1}>
-          <motion.div
-            className={`rounded p-8 h-full border flex flex-col gap-5 transition-all
-              ${card.featured ? "bg-primary border-primary" : "bg-background light:border-border/80"}`}
-            style={{
-              boxShadow: card.featured ? "0 20px 60px rgba(13,27,42,0.25)" : "none",
-            }}
-            whileHover={
-              shouldReduce
-                ? {}
-                : {
-                  y: -4,
-                  boxShadow: card.featured
-                    ? "0 28px 70px rgba(13,27,42,0.3)"
-                    : "0 12px 40px rgba(13,27,42,0.1)",
-                }
-            }
-            transition={{ duration: 0.25 }}
+          <span
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-medium ${
+              selected ? "bg-brand-solid text-white" : "border border-line"
+            }`}
           >
-            <div
-              className={`w-12 h-12 flex items-center justify-center bg-${card.featured ? "white/10" : "primary/20"}`}
-            // style={{
-            //   background: card.featured ? "rgba(255,255,255,0.12)" : "rgba(13,27,42,0.06)",
-            // }}
-            >
-              <card.icon
-                size={22}
-                className={card.featured ? "text-white" : "text-primary"}
-              />
-            </div>
+            {"ABCD"[i]}
+          </span>
+          <span className="text-base">{t}</span>
+        </div>
+      );
+    })}
+  </Plate>
+);
 
-            <div>
-              <h3 className={`text-lg md:text-xl font-bold mb-3 ${card.featured ? "text-white" : "text-primary"}`}>
-                {card.title}
-              </h3>
-              <p className={`text-sm md:text-base leading-relaxed ${card.featured ? "text-white/70" : "text-muted-foreground"}`}>
-                {card.body}
-              </p>
-            </div>
-
-            {card.featured && (
-              <motion.a
-                href="#signup"
-                className="border rounded-full mt-auto inline-flex items-center justify-start gap-2 text-sm font-semibold py-3 px-6 text-white bg-primary hover:bg-primary-foreground hover:text-primary transition-colors w-max"
-                whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
-              >
-                Sign Up Free <ArrowUpRight size={14} />
-              </motion.a>
-            )}
-          </motion.div>
-        </FadeIn>
-      ))}
+const TimerPlate = () => (
+  <Plate>
+    <div className="flex justify-between">
+      <p className="text-lg font-medium">Focus timer</p>
+      <p className="text-sm text-muted-foreground">Session 2 of 4</p>
     </div>
-  );
-};
+    <p className="font-geist-mono text-5xl font-medium">18:42</p>
+    <div className="flex gap-2">
+      <span className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-solid px-[18px] text-sm font-medium text-white">
+        <Pause size={18} weight="light" /> Pause
+      </span>
+      <span className="inline-flex h-10 items-center gap-2 rounded-full px-[18px] text-sm font-medium">
+        <ArrowCounterClockwise size={18} weight="light" /> Reset
+      </span>
+    </div>
+    <div className="flex items-center gap-3 border-b border-line-soft pb-3">
+      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+        <FileText size={20} weight="light" />
+      </span>
+      <div className="flex-1">
+        <p className="text-base font-medium">Critical path method, step by step</p>
+        <p className="text-sm text-muted-foreground">YouTube · 18 min</p>
+      </div>
+      <CaretRight size={16} weight="light" />
+    </div>
+  </Plate>
+);
 
-const TestimonialsSection = () => {
-  const shouldReduce = useReducedMotion();
+// ─── What's inside ───────────────────────────────────────────────────────────
+
+const features = [
+  {
+    n: "01",
+    eyebrow: "Sorted by year and sitting",
+    title: "Past papers and CATs",
+    body: "Every sitting we have for your unit, in one grid. Gaps are marked, not hidden, so you know what to ask your class rep for.",
+    link: "See the register",
+    plate: <PastPapersPlate />,
+  },
+  {
+    n: "02",
+    title: "Model answers",
+    body: "Worked answers for any CAT or exam, with how each mark is earned. Check them against your lecture notes.",
+    link: "Open a sample answer",
+    brand: true,
+    plate: <AnswersPlate />,
+  },
+  {
+    n: "03",
+    title: "Notes and quizzes",
+    body: "Read the notes, then tap Quiz me for 5 to 15 questions and a review of the ones you missed.",
+    link: "Try a quiz",
+    plate: <QuizPlate />,
+  },
+  {
+    n: "04",
+    title: "Tutorials and a focus timer",
+    body: "Short videos chosen for the unit, and a Pomodoro timer that stays on when you open a paper.",
+    link: "See the timer",
+    plate: <TimerPlate />,
+  },
+];
+
+const Feature = ({ f, flip }: { f: (typeof features)[number]; flip: boolean }) => (
+  <div className="relative grid items-center gap-8 md:grid-cols-12 md:gap-12">
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute -top-16 select-none font-light [font-size:8.75rem] leading-none tracking-tighter text-transparent [-webkit-text-stroke:1px_hsl(var(--line))] max-md:hidden ${
+        flip ? "left-0" : "right-0"
+      }`}
+    >
+      {f.n}
+    </span>
+    <Reveal className={`md:col-span-7 ${flip ? "md:order-2" : ""}`}>{f.plate}</Reveal>
+    <Reveal delay={0.15} className={`flex flex-col gap-2.5 md:col-span-5 md:px-6 ${flip ? "md:order-1" : ""}`}>
+      {f.eyebrow && <p className="text-xs font-medium text-muted-foreground">{f.eyebrow}</p>}
+      <h3 className="text-xl font-semibold">{f.title}</h3>
+      <p className="text-base text-muted-foreground">{f.body}</p>
+      <span
+        className={`mt-1.5 inline-flex items-center gap-2.5 text-sm font-medium ${
+          f.brand ? "text-brand" : "text-foreground"
+        }`}
+      >
+        {f.link} <ArrowRight size={18} weight="light" />
+      </span>
+    </Reveal>
+  </div>
+);
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
+const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
+  const reduce = useReducedMotion();
+  const heroRef = useRef<HTMLElement>(null);
+  const [showTop, setShowTop] = useState(false);
+
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setShowTop(!e.isIntersecting), { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <div className="grid md:grid-cols-3 gap-6">
-      {testimonialCards.map((card, i) => (
-        <FadeIn key={i} delay={i * 0.1}>
-         <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.7 + i * 0.15 }}
-              className="bg-background p-8 flex flex-col justify-between group hover:bg-card transition-all duration-400"
+    <div className="min-h-[100dvh] overflow-x-hidden bg-muted font-sans text-foreground">
+      {/* Scroll-to-top, shown once the hero is out of view */}
+      <motion.button
+        aria-label="Scroll to top"
+        onClick={() => window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" })}
+        initial={false}
+        animate={{ opacity: showTop ? 1 : 0, y: showTop ? 0 : 16, scale: showTop ? 1 : 0.9 }}
+        transition={{ duration: 0.7, ease: EASE }}
+        style={{ pointerEvents: showTop ? "auto" : "none" }}
+        className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-ink text-ink-fg shadow-[0_10px_32px_hsl(var(--ink)/0.2)] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
+      >
+        <ArrowUp size={20} weight="light" />
+      </motion.button>
+
+      {/* Hero */}
+      <section id="top" ref={heroRef} className="min-h-[100dvh]">
+        <div className="relative flex min-h-[100dvh] flex-col justify-end overflow-hidden bg-band p-6 md:p-12">
+          <motion.img
+            src="/landing/hero.png"
+            alt=""
+            onError={(e) => (e.currentTarget.style.display = "none")}
+            initial={{ scale: reduce ? 1 : 1.08 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 2.4, ease: EASE }}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-band/25 via-band/20 to-band/90" />
+
+          <motion.img
+            src={logoInk}
+            alt="Revision Access Point"
+            initial={{ opacity: 0, y: reduce ? 0 : -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.1, ease: EASE }}
+            className="absolute left-6 top-6 h-9 w-auto md:left-12 md:top-8"
+          />
+
+          <div className="absolute right-6 top-6 flex flex-col items-end gap-2.5 md:right-12 md:top-8">
+            <p className="text-base font-medium text-white">Follow us</p>
+            <div className="flex gap-2">
+              {SOCIALS.map(({ label, logo, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  aria-label={label}
+                  className="flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 active:scale-95"
+                >
+                  <img src={logo} alt="" className="size-6" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+            <motion.div
+              className="flex flex-col gap-6"
+              initial={{ opacity: 0, y: reduce ? 0 : 32, filter: "blur(8px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 1, delay: 0.2, ease: EASE }}
             >
-              <div>
-                <Quote size={28} className="text-primary/30 mb-4" />
-                <p className="text-sm md:text-base text-muted-foreground leading-relaxed mb-6 font-editorial">
-                  "{card.quote}"
-                </p>
-              </div>
-              <div className="border-t border-border pt-4">
-                <p className="text-sm font-semibold text-muted-foreground">{card.name}</p>
-                <p className="text-xs text-muted-foreground">{card.role}, {card.org}</p>
-              </div>
+              <h1 className="text-3xl font-semibold text-white sm:text-4xl md:text-5xl">
+                Revise with the
+                <br />
+                <span className="text-brand-light">real past papers.</span>
+              </h1>
+              <p className="max-w-[520px] text-lg text-white/80">
+                Past papers, model answers, notes and quizzes for your exact unit. KSH 300 a
+                semester.
+              </p>
             </motion.div>
-        </FadeIn>
-      ))}
+            <motion.div
+              initial={{ opacity: 0, y: reduce ? 0 : 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.5, ease: EASE }}
+            >
+              <PillCta label="Get started" onClick={onNavigateSignUp} />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* What's inside */}
+      <section id="get" className="mx-auto max-w-[1200px] px-4 py-24 md:px-[120px] md:py-32">
+        <Reveal>
+          <h2 className="mb-24 text-2xl font-semibold md:text-4xl">What you get.</h2>
+        </Reveal>
+        <div className="flex flex-col gap-24 md:gap-32">
+          {features.map((f, i) => (
+            <Feature key={f.n} f={f} flip={i % 2 === 1} />
+          ))}
+        </div>
+      </section>
+
+      <SiteFooter showCta />
     </div>
   );
 };

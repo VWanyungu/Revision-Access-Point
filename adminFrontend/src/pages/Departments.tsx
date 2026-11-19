@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, BookOpen, Filter, Grid, Search } from 'lucide-react';
 import { Combobox } from '@/components/shared/Combobox';
+import { InlineText } from '@/components/shared/InlineText';
+import { INSTITUTION_COLUMN } from '@/components/shared/institutionColumn';
+import { useFieldSaver } from '@/hooks/useFieldSaver';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { FormModal } from '@/components/shared/FormModal';
@@ -12,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Department } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/data/db';
 
 const Departments = () => {
@@ -24,8 +29,10 @@ const Departments = () => {
   const [deletingDepartment, setDeletingDepartment] = useState<Department | null>(null);
   const [filterSchool, setFilterSchool] = useState<string>('all');
   const [formData, setFormData] = useState({ id: '', name: '', code: '', school_id: '' });
+  const [formInstitution, setFormInstitution] = useState(0);
   const { toast } = useToast();
 
+  const [institutionId, setInstitutionId] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -36,9 +43,9 @@ const Departments = () => {
   }, [search]);
 
   const { data: departmentsData, isLoading: departmentsLoading } = useQuery({
-    queryKey: ['departments', page, debouncedSearch],
+    queryKey: ['departments', page, debouncedSearch, institutionId],
     queryFn: async () => {
-      return await getRecords('departments', { page, pageSize: 10, search: debouncedSearch })
+      return await getRecords('departments', { page, pageSize: 10, search: debouncedSearch, institution_id: institutionId })
     },
     placeholderData: (previousData) => previousData,
   });
@@ -62,11 +69,13 @@ const Departments = () => {
   const handleOpenCreate = () => {
     setEditingDepartment(null);
     setFormData({ id: '', name: '', code: '', school_id: '' });
+    setFormInstitution(0);
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (department: Department) => {
     setEditingDepartment(department);
+    setFormInstitution(Number((department as any).institutions?.id ?? 0));
     setFormData({ id: department.id, name: department.name, code: department.code, school_id: String(department.schools.id) });
     setIsFormOpen(true);
   };
@@ -116,17 +125,19 @@ const Departments = () => {
     setDeletingDepartment(null);
   };
 
+  const saveField = useFieldSaver('departments');
+
   const columns: Column<Department>[] = [
     {
       key: 'name',
       header: 'Department Name',
       render: (department) => (
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2 rounded-full bg-field">
             <BookOpen className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <p className="font-medium">{department.name}</p>
+            <InlineText value={department.name} onSave={(v) => saveField(department.id, { name: v })} className="font-medium" />
             <p className="text-xs text-muted-foreground">{department.code}</p>
           </div>
         </div>
@@ -140,6 +151,7 @@ const Departments = () => {
         <span className="context-badge">{department.schools.name}</span>
       ),
     },
+    INSTITUTION_COLUMN,
     {
       key: 'actions',
       header: '',
@@ -199,7 +211,7 @@ const Departments = () => {
 
         {/* Filter */}
         <div className="flex items-center gap-2 sm:w-auto col-span-2">
-          {/* <Filter className="h-4 w-4 text-muted-foreground" /> */}
+          <InstitutionFilter value={institutionId} onChange={(id) => { setInstitutionId(id); setPage(1); }} />
           <Combobox
             options={[
               { value: "all", label: "All Schools" },
@@ -252,10 +264,11 @@ const Departments = () => {
               maxLength={5}
             />
           </div>
+          <InstitutionSelect value={formInstitution} onChange={(id) => { setFormInstitution(id); setFormData((f) => ({ ...f, school_id: '' })); }} />
           <div className="space-y-2">
             <Label htmlFor="school">School</Label>
             <Combobox
-              options={schools.map((s: any) => ({ value: String(s.id), label: s.name }))}
+              options={schools.filter((s: any) => !formInstitution || s.institution_id === formInstitution).map((s: any) => ({ value: String(s.id), label: s.name }))}
               value={formData.school_id}
               onChange={(value) => setFormData({ ...formData, school_id: value })}
               placeholder="Select School"

@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import SiteFooter from "@/components/layout/SiteFooter";
 
 const NotFound = () => {
   const location = useLocation();
@@ -9,7 +10,8 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
+    <div className="bg-muted">
+    <div className="flex min-h-[70vh] items-center justify-center">
       <div className="text-center">
         <h1 className="mb-4 text-2xl font-bold">404</h1>
         <p className="mb-4 text-lg text-muted-foreground">Oops! Page not found</p>
@@ -17,6 +19,8 @@ const NotFound = () => {
           Return to Home
         </a>
       </div>
+    </div>
+    <SiteFooter />
     </div>
   );
 };

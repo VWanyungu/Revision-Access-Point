@@ -8,7 +8,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileX } from 'lucide-react';
+
+const pagerButton = 'flex size-10 items-center justify-center rounded-full bg-field text-ink ring-1 ring-line transition-[background-color,transform] duration-300 hover:bg-field-strong active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40';
 
 export interface Column<T> {
   key: string;
@@ -48,7 +50,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-3xl bg-surface ring-1 ring-line">
         <Table>
           <TableHeader>
             <TableRow>
@@ -77,7 +79,7 @@ export function DataTable<T>({
 
   if (data.length === 0 && !isLoading) {
     return (
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-3xl bg-surface ring-1 ring-line">
         <Table>
           <TableHeader>
             <TableRow>
@@ -99,7 +101,7 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="rounded-3xl bg-surface ring-1 ring-line overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -126,33 +128,17 @@ export function DataTable<T>({
         </Table>
       </div>
 
-      {/* Pagination Controls */}
-      {meta && onPageChange && (
-        <div className="flex flex-col items-start gap-3 px-2">
-          <div className="flex items-center w-full justify-between">
-            <button
-              className="px-3 py-1 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => onPageChange(meta.page - 1)}
-              disabled={meta.page <= 1}
-            >
-              Previous
-            </button>
-            <div className="text-sm font-medium">
-              Page {meta.page} of {meta.lastPage}
-            </div>
-            <button
-              className="px-3 py-1 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => onPageChange(meta.page + 1)}
-              disabled={meta.page >= meta.lastPage}
-            >
-              Next
-            </button>
+      {meta && onPageChange && meta.lastPage > 1 && (
+        <nav aria-label="Pages" className="flex items-center justify-between gap-4 px-2">
+          <span className="text-sm tabular-nums text-ink-muted">
+            {(meta.page - 1) * meta.pageSize + 1}–{Math.min(meta.page * meta.pageSize, meta.total)} of {meta.total}
+          </span>
+          <div className="flex items-center gap-2">
+            <button aria-label="Previous page" disabled={meta.page <= 1} onClick={() => onPageChange(meta.page - 1)} className={pagerButton}><ChevronLeft size={16} /></button>
+            <span className="min-w-[4.5rem] text-center text-sm tabular-nums text-ink">{meta.page} / {meta.lastPage}</span>
+            <button aria-label="Next page" disabled={meta.page >= meta.lastPage} onClick={() => onPageChange(meta.page + 1)} className={pagerButton}><ChevronRight size={16} /></button>
           </div>
-          <div className="text-sm text-muted-foreground">
-            Showing {((meta.page - 1) * meta.pageSize) + 1} to {Math.min(meta.page * meta.pageSize, meta.total)} of {meta.total} entries
-            {/* {meta.total} entries */}
-          </div>
-        </div>
+        </nav>
       )}
     </div>
   );

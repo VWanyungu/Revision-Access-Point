@@ -1,96 +1,26 @@
-import { useState } from "react"
-import { Check, ChevronsUpDown, X } from "lucide-react"
-
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-
-interface ComboboxOption {
-    value: string;
-    label: string;
-}
+import { Dropdown } from '@/components/ui/dropdown';
 
 interface ComboboxProps {
-    options: ComboboxOption[];
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-    searchPlaceholder?: string;
-    className?: string;
-    disabled?: boolean;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  className?: string;
+  disabled?: boolean;
 }
 
-export function Combobox({
-    options,
-    value,
-    onChange,
-    placeholder = "Select item...",
-    searchPlaceholder = "Search...",
-    className,
-    disabled = false
-}: ComboboxProps) {
-    const [open, setOpen] = useState(false)
-
-    const selectedOption = options.find((option) => option.value === value)
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className={cn("w-full justify-between", className)}
-                    disabled={disabled}
-                >
-                    {selectedOption ? (
-                        <span className="truncate">{selectedOption.label.substring(0, 30) + '...'}</span>
-                    ) : (
-                        <span className="text-muted-foreground">{placeholder}</span>
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full p-0" align="start">
-                <Command>
-                    <CommandInput placeholder={searchPlaceholder} />
-                    <CommandList>
-                        <CommandEmpty>No item found.</CommandEmpty>
-                        <CommandGroup>
-                            {options.map((option) => (
-                                <CommandItem
-                                    key={option.value}
-                                    value={option.label}
-                                    onSelect={() => {
-                                        onChange(option.value === value ? "" : option.value)
-                                        setOpen(false)
-                                    }}
-                                >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            value === option.value ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    {option.label}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    )
+/** Kept for its call sites: a full-width Dropdown (searchable once the list is long). */
+export function Combobox({ options, value, onChange, placeholder = 'Select item...', className, disabled }: ComboboxProps) {
+  return (
+    <Dropdown
+      block
+      disabled={disabled}
+      className={className}
+      placeholder={placeholder}
+      items={options.map((o) => ({ id: o.value, name: o.label }))}
+      selectedId={value}
+      onSelect={onChange}
+    />
+  );
 }

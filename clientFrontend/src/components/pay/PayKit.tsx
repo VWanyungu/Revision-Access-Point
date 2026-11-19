@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ArrowLeft } from "@phosphor-icons/react";
+import PageCrumbs, { type Crumb } from "@/components/layout/PageCrumbs";
 import logoLight from "@/assets/auth/logo-light.svg";
 import { Dropdown } from "@/components/ui/dropdown";
 
@@ -7,7 +7,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 export const EASE = [0.32, 0.72, 0, 1] as const;
 
 export const PayPage = ({ children }: { children: ReactNode }) => (
-  <div className="min-h-[100dvh] bg-surface font-geist text-ink">{children}</div>
+  <div className="min-h-[100dvh] bg-background font-geist text-ink">{children}</div>
 );
 
 /** Logo and a quiet text action. Desktop shows the full lockup, phones fit it in 28px. */
@@ -26,20 +26,9 @@ export const PayHeader = ({ action }: { action?: { label: string; onClick: () =>
   </header>
 );
 
-export const PayTopBar = ({ title = "Payment", onBack }: { title?: string; onBack?: () => void }) => (
-  <div className="flex h-14 items-center gap-3 border-b border-line pl-3 pr-5 md:px-12 xl:px-36">
-    {onBack && (
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label="Back"
-        className="flex size-10 items-center justify-center rounded-full transition-colors duration-300 hover:bg-field active:scale-95"
-      >
-        <ArrowLeft size={20} />
-      </button>
-    )}
-    <p className={`text-base font-medium ${onBack ? "" : "pl-2 md:pl-0"}`}>{title}</p>
-  </div>
+/** Payment breadcrumb: the same floating card as every other page. Without `onHome` (after paying) the house is just an icon. */
+export const PayTopBar = ({ trail = [], current = "Payment", onHome }: { trail?: Crumb[]; current?: string; onHome?: () => void }) => (
+  <PageCrumbs onHome={onHome} trail={trail} current={current} />
 );
 
 /**
@@ -48,7 +37,7 @@ export const PayTopBar = ({ title = "Payment", onBack }: { title?: string; onBac
  */
 export const PayBottomBar = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
   <div
-    className={`fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 border-t border-line bg-surface px-5 pb-6 pt-4 md:static md:border-0 md:px-0 md:pb-0 md:pt-8 ${className}`}
+    className={`fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 border-t border-line bg-background px-5 pb-6 pt-4 md:static md:border-0 md:px-0 md:pb-0 md:pt-8 ${className}`}
   >
     {children}
   </div>

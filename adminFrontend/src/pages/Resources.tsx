@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Pencil, Trash2, FileText, Upload, Filter, BookOpen, ClipboardList, GraduationCap, Lightbulb, Grid, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, Upload, Filter, BookOpen, ClipboardList, GraduationCap, Lightbulb, Grid, Search, Loader2 } from 'lucide-react';
 import { Combobox } from '@/components/shared/Combobox';
+import { InlineText } from '@/components/shared/InlineText';
+import { INSTITUTION_COLUMN } from '@/components/shared/institutionColumn';
+import { useFieldSaver } from '@/hooks/useFieldSaver';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { FormModal } from '@/components/shared/FormModal';
@@ -8,6 +11,7 @@ import { BulkUploadModal } from '@/components/shared/BulkUploadModal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,14 +25,16 @@ import {
 import { Resource } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { getRecords, addRecord, updateRecord, deleteRecord, uploadFile } from '@/data/db';
+import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
+import { getRecords, addRecord, updateRecord, deleteRecord, uploadFile, uploadImage, getTopics } from '@/data/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 let resourceTypeConfig = {
   notes: { icon: BookOpen, label: 'Notes', color: 'bg-info/10 text-info', id: 0 },
   cats: { icon: ClipboardList, label: 'CATs', color: 'bg-warning/10 text-warning', id: 0 },
-  exams: { icon: GraduationCap, label: 'Exams', color: 'bg-action/10 text-action', id: 0 },
+  exams: { icon: GraduationCap, label: 'Exams', color: 'bg-brand/10 text-brand', id: 0 },
   tutorials: { icon: Lightbulb, label: 'Tutorials', color: 'bg-success/10 text-success', id: 0 },
 };
 
@@ -43,13 +49,14 @@ const Resources = () => {
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
   const [activeTab, setActiveTab] = useState<string>('all');
-  const [formData, setFormData] = useState({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', uploaded_by: '' });
+  const [formInstitution, setFormInstitution] = useState(0);
+  const [formData, setFormData] = useState({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: '', cover_url: '' });
   const [uploadType, setUploadType] = useState<string>('link');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
-  const [filter, setFilter] = useState<{ unit_id: number, resource_type_id: number }>({ unit_id: 0, resource_type_id: 0 });
+  const [filter, setFilter] = useState<{ unit_id: number, resource_type_id: number, institution_id: number }>({ unit_id: 0, resource_type_id: 0, institution_id: 0 });
   const [filterUnit, setFilterUnit] = useState<number>(0);
   const [filterResourceType, setFilterResourceType] = useState<number>(0);
 
@@ -84,22 +91,28 @@ const Resources = () => {
   const schools = schoolsData?.data || [];
 
   const { data: departmentsData, isLoading: departmentsLoading } = useQuery({
-    queryKey: ['departments'],
+    queryKey: ['departments', filter.institution_id],
     queryFn: async () => {
-      return await getRecords('departments', { pageSize: 100 })
+      return await getRecords('departments', { pageSize: 100, institution_id: filter.institution_id })
     },
   });
 
   const departments = departmentsData?.data || [];
 
   const { data: unitsData, isLoading: unitsLoading } = useQuery({
-    queryKey: ['units'],
+    queryKey: ['units', filter.institution_id],
     queryFn: async () => {
-      return await getRecords('units', { pageSize: 100 })
+      return await getRecords('units', { pageSize: 100, institution_id: filter.institution_id })
     },
   });
 
   const units = unitsData?.data || [];
+
+  const { data: topics = [] } = useQuery({
+    queryKey: ['topics', formData.unit_id],
+    enabled: formData.unit_id > 0,
+    queryFn: () => getTopics(formData.unit_id),
+  });
 
   const { data: resourceTypes = [], isLoading: typesLoading } = useQuery({
     queryKey: ['resource_types'],
@@ -109,21 +122,39 @@ const Resources = () => {
       resourceTypeConfig = {
         notes: { icon: BookOpen, label: 'Notes', color: 'bg-info/10 text-info', id: data.find((r: any) => r.name === 'notes')?.id },
         cats: { icon: ClipboardList, label: 'CATs', color: 'bg-warning/10 text-warning', id: data.find((r: any) => r.name === 'cats')?.id },
-        exams: { icon: GraduationCap, label: 'Exams', color: 'bg-action/10 text-action', id: data.find((r: any) => r.name === 'exams')?.id },
+        exams: { icon: GraduationCap, label: 'Exams', color: 'bg-brand/10 text-brand', id: data.find((r: any) => r.name === 'exams')?.id },
         tutorials: { icon: Lightbulb, label: 'Tutorials', color: 'bg-success/10 text-success', id: data.find((r: any) => r.name === 'tutorials')?.id },
       };
       return data;
     },
   });
 
+  // Only touch cover_url when there is one to set or clear, so saving works before the column exists.
+  const coverField = formData.cover_url || (editingResource as any)?.cover_url ? { cover_url: formData.cover_url || null } : {};
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const handleCover = async (file: File) => {
+    setCoverUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setFormData((f) => ({ ...f, cover_url: url }));
+    } catch {
+      toast({ title: 'Cover photo upload failed', variant: 'destructive' });
+    } finally {
+      setCoverUploading(false);
+    }
+  };
+
   const handleOpenCreate = () => {
     setEditingResource(null);
-    setFormData({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email })
+    setFormInstitution(0);
+    setFormData({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email, cover_url: '' })
     setIsFormOpen(true);
   };
 
   const handleOpenEdit = (resource: Resource) => {
     setEditingResource(resource);
+    setFormInstitution(Number((resource as any).institutions?.id ?? 0));
     setFormData({
       id: Number(resource.id),
       resource_type_id: resource.resource_type_id,
@@ -133,6 +164,8 @@ const Resources = () => {
       name: resource.name,
       description: resource.description,
       public_access_url: resource.public_access_url,
+      topic_id: Number(resource.topic_id) || 0,
+      cover_url: (resource as any).cover_url ?? '',
       uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email
     });
     setIsFormOpen(true);
@@ -148,6 +181,8 @@ const Resources = () => {
       school_id: 0, name: '',
       description: '',
       public_access_url: '',
+      topic_id: 0,
+      cover_url: '',
       uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email
     });
     setIsDeleteOpen(true);
@@ -175,7 +210,7 @@ const Resources = () => {
     }
 
     if (editingResource) {
-      const { status, error, data } = await updateRecord('resources', formData.id, { name: formData.name, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, uploaded_by: formData.uploaded_by });
+      const { status, error, data } = await updateRecord('resources', formData.id, { name: formData.name, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, topic_id: formData.topic_id || null, uploaded_by: formData.uploaded_by, ...coverField });
 
       if (status === 'success') {
         toast({ title: 'Resource updated successfully' });
@@ -186,7 +221,7 @@ const Resources = () => {
       }
 
     } else {
-      const { status, error, data } = await addRecord('resources', { name: formData.name, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, uploaded_by: formData.uploaded_by });
+      const { status, error, data } = await addRecord('resources', { name: formData.name, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, topic_id: formData.topic_id || null, uploaded_by: formData.uploaded_by, ...coverField });
 
       if (status === 'success'){
         toast({ title: 'Resource uploaded successfully' });
@@ -237,6 +272,8 @@ const Resources = () => {
     if (droppedFile) handleFile(droppedFile)
   }
 
+  const saveField = useFieldSaver('resources');
+
   const columns: Column<Resource>[] = [
     {
       key: 'name',
@@ -250,7 +287,7 @@ const Resources = () => {
               <Icon className="h-4 w-4" />
             </div>
             <div>
-              <p className="font-medium">{resource.name}</p>
+              <InlineText value={resource.name} onSave={(v) => saveField(resource.id, { name: v })} className="font-medium" />
               <p className="text-xs text-muted-foreground">{resource.units.name}</p>
             </div>
           </div>
@@ -292,6 +329,7 @@ const Resources = () => {
         </div>
       ),
     },
+    INSTITUTION_COLUMN,
     {
       key: 'actions',
       header: '',
@@ -355,7 +393,7 @@ const Resources = () => {
             
             {/* Filter */}
             <div className="flex items-center gap-2 col-span-2">
-              {/* <Filter className="h-4 w-4 text-muted-foreground" /> */}
+              <InstitutionFilter value={filter.institution_id} onChange={(id) => { setFilter({ ...filter, unit_id: 0, institution_id: id }); setPage(1); }} />
               <Combobox
                 options={[
                   { value: "all", label: "All Units" },
@@ -423,6 +461,43 @@ const Resources = () => {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="description">Description <span className="font-normal text-muted-foreground">(optional, shown to students)</span></Label>
+              <Textarea
+                id="description"
+                rows={3}
+                placeholder="What this resource covers"
+                value={formData.description ?? ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cover photo <span className="font-normal text-muted-foreground">(optional, e.g. a book cover)</span></Label>
+              <input
+                type="file"
+                accept="image/*"
+                ref={coverInputRef}
+                className="hidden"
+                onChange={(e) => { if (e.target.files?.[0]) handleCover(e.target.files[0]); e.target.value = ''; }}
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  className="flex h-24 w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed text-muted-foreground transition-colors hover:border-primary/50"
+                  aria-label="Choose cover photo"
+                >
+                  {formData.cover_url ? <img src={formData.cover_url} alt="" className="size-full object-cover" /> : coverUploading ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}
+                </button>
+                <div className="flex flex-col items-start gap-1 text-sm">
+                  <button type="button" className="text-primary" onClick={() => coverInputRef.current?.click()}>{formData.cover_url ? 'Replace photo' : 'Upload photo'}</button>
+                  {formData.cover_url && <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setFormData({ ...formData, cover_url: '' })}>Remove</button>}
+                  <span className="text-xs text-muted-foreground">JPG or PNG</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="resource_type_id">Resource Type</Label>
               <Select
                 value={String(formData.resource_type_id)}
@@ -440,6 +515,8 @@ const Resources = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <InstitutionSelect value={formInstitution} onChange={(id) => { setFormInstitution(id); setFormData((f) => ({ ...f, school_id: 0, department_id: 0, unit_id: 0, topic_id: 0 })); }} />
 
             <div className="space-y-2">
               <Label htmlFor="school">School</Label>
@@ -462,7 +539,7 @@ const Resources = () => {
                   <SelectValue placeholder="Select a school" />
                 </SelectTrigger>
                 <SelectContent>
-                  {schools.map((school) => (
+                  {schools.filter((s) => !formInstitution || s.institution_id === formInstitution).map((school) => (
                     <SelectItem key={school.id} value={String(school.id)}>
                       {school.code} - {school.name}
                     </SelectItem>
@@ -499,11 +576,30 @@ const Resources = () => {
                   label: `${unit.code} - ${unit.name}`
                 }))}
                 value={String(formData.unit_id)}
-                onChange={(value) => setFormData({ ...formData, unit_id: Number(value) })}
+                onChange={(value) => setFormData({ ...formData, unit_id: Number(value), topic_id: 0 })}
                 placeholder="Select a unit"
                 searchPlaceholder="Search units..."
                 className=''
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Topic (syllabus)</Label>
+              <Select
+                value={String(formData.topic_id)}
+                onValueChange={(value) => setFormData({ ...formData, topic_id: Number(value) })}
+                disabled={!formData.unit_id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={formData.unit_id ? 'No topic' : 'Select a unit first'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">No topic</SelectItem>
+                  {topics.map((t: any) => (
+                    <SelectItem key={t.id} value={String(t.id)}>{t.position}. {t.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -549,7 +645,7 @@ const Resources = () => {
                 }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={onDrop}
-                className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                className="border-2 border-dashed rounded-3xl p-6 text-center hover:border-primary/50 transition-colors cursor-pointer"
               >
                 {file ? (
                   <>

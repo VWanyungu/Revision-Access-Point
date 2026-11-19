@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { EnvelopeSimple } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
-import { getSchools, getDepartmentsBySchoolId } from "@/database/utils";
+import { getInstitutions, getSchools, getDepartmentsBySchoolId } from "@/database/utils";
 import MpesaPaymentDialog from "@/components/payment/MpesaPaymentDialog";
 import { useSemesterPreview } from "@/components/pay/useSemesterPreview";
 import {
@@ -35,12 +35,19 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
   const { signOut } = useAuth();
   const reduce = useReducedMotion();
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [institution, setInstitution] = useState("");
   const [school, setSchool] = useState("");
   const [department, setDepartment] = useState("");
   const [year, setYear] = useState("");
   const [semester, setSemester] = useState("");
 
-  const { data: schools = [] } = useQuery({ queryKey: ["schools"], queryFn: async () => (await getSchools()) ?? [] });
+  const { data: institutions = [] } = useQuery({ queryKey: ["institutions"], queryFn: async () => (await getInstitutions()) ?? [] });
+  const institutionId = institution || (institutions[0] ? String(institutions[0].id) : "");
+  const { data: schools = [] } = useQuery({
+    queryKey: ["schools", institutionId],
+    queryFn: async () => (await getSchools(institutionId)) ?? [],
+    enabled: !!institutionId,
+  });
   const schoolId = school || (schools[0] ? String(schools[0].id) : "");
   const { data: departments = [] } = useQuery({
     queryKey: ["departments", schoolId],
@@ -100,7 +107,7 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
     <PayPage>
       {!onCancel && <PayHeader action={{ label: "Log out", onClick: handleLogout }} />}
 
-      <div className="px-5 pb-44 pt-8 md:flex md:px-12 md:pb-24 md:pt-16 xl:px-36">
+      <div className={`px-5 pb-44 md:flex md:px-12 md:pb-24 xl:px-36 ${onCancel ? "pt-10 md:pt-14" : "pt-8 md:pt-16"}`}>
         {/* Choose */}
         <section className="flex flex-col gap-8 md:w-[504px] md:shrink-0 md:pr-16">
           <Title subDesktopOnly sub="Choose the course you are studying. Everything included appears on the right before you pay.">
@@ -108,6 +115,10 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
           </Title>
 
           <div className="flex flex-col gap-5">
+            <SelectField
+              label="Institution" value={institutionId} onChange={(v) => { setInstitution(v); setSchool(""); setDepartment(""); }}
+              options={institutions.map((i: any) => ({ value: String(i.id), label: i.name }))}
+            />
             <SelectField
               label="School" value={schoolId} onChange={(v) => { setSchool(v); setDepartment(""); }}
               options={schools.map((s: any) => ({ value: String(s.id), label: s.name }))}
