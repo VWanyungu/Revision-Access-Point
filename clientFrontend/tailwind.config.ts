@@ -42,11 +42,11 @@ export default {
     extend: {
       fontFamily: {
         // Geist is the single app font (matches the Enterprise frontend); serif/literata stay as aliases so old classes resolve to it.
-        sans: ['Geist', 'system-ui', 'sans-serif'],
-        serif: ['Geist', 'system-ui', 'sans-serif'],
-        geist: ['Geist', 'system-ui', 'sans-serif'],
-        'geist-mono': ['Geist Mono', 'ui-monospace', 'monospace'],
-        literata: ['Geist', 'system-ui', 'sans-serif'],
+        sans: ['Geist Variable', 'Geist', 'system-ui', 'sans-serif'],
+        serif: ['Geist Variable', 'Geist', 'system-ui', 'sans-serif'],
+        geist: ['Geist Variable', 'Geist', 'system-ui', 'sans-serif'],
+        'geist-mono': ['Geist Mono Variable', 'Geist Mono', 'ui-monospace', 'monospace'],
+        literata: ['Geist Variable', 'Geist', 'system-ui', 'sans-serif'],
       },
       colors: {
         // Theme-aware tokens for the study screens (values in index.css, light and dark). Prefer these to hex.

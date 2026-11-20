@@ -26,6 +26,22 @@ const TYPES = ["image/jpeg", "image/png", "image/webp"];
 const primary = btnPrimary;
 const quiet = btnQuietSoft;
 
+const MAX_EDGE = 1600;
+/** Shrinks a large photo before upload (phone cameras give 4000px+). Falls back to the original if the browser cannot decode it. */
+const downscale = async (f: File): Promise<{ blob: Blob; type: string }> => {
+  try {
+    const bmp = await createImageBitmap(f);
+    const k = Math.min(1, MAX_EDGE / Math.max(bmp.width, bmp.height));
+    if (k === 1) { bmp.close(); return { blob: f, type: f.type }; }
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+    bmp.close();
+    const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, "image/jpeg", 0.85));
+    return blob ? { blob, type: "image/jpeg" } : { blob: f, type: f.type };
+  } catch { return { blob: f, type: f.type }; }
+};
+
 /** A photo the student attached, shown through a short-lived link because the bucket is private. */
 const Thumb = ({ path, onRemove }: { path: string; onRemove: () => void }) => {
   const [url, setUrl] = useState("");
@@ -200,8 +216,9 @@ const Runner = ({ attempt, unitId, kind, userId, onClose, onSubmit }: { attempt:
     for (const f of files) {
       if (!TYPES.includes(f.type)) { setNote("Photos must be JPG, PNG or WEBP."); continue; }
       if (f.size > MAX_BYTES) { setNote("Each photo must be under 5 MB."); continue; }
-      const path = `${userId}/${unitId}/${kind}/${attempt.paper_serial}/${q.number}-${Date.now()}-${added.length}.${f.type.split("/")[1]}`;
-      const { error } = await supabase.storage.from("practice-attachments").upload(path, f, { contentType: f.type });
+      const { blob, type } = await downscale(f);
+      const path = `${userId}/${unitId}/${kind}/${attempt.paper_serial}/${q.number}-${Date.now()}-${added.length}.${type.split("/")[1]}`;
+      const { error } = await supabase.storage.from("practice-attachments").upload(path, blob, { contentType: type });
       if (error) setNote("A photo could not be uploaded. Please try again."); else added.push(path);
     }
     setUploading(false);

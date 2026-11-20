@@ -1,7 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400;500&display=swap');
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
 /* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:wght@400;500;600&display=swap'); */
-@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Birthstone&display=swap');
 @import "katex/dist/katex.min.css";
 
 @tailwind base;
@@ -36,11 +35,6 @@
   margin-top: 1em;
 }
 
-.birthstone-regular {
-  font-family: "Birthstone", cursive;
-  font-weight: 400;
-  font-style: normal;
-}
 
 
 

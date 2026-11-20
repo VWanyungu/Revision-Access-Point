@@ -87,6 +87,27 @@ const classify = (r: Resource) => {
 };
 
 const youtubeId = (html: string) => html.match(/embed\/([\w-]{11})/)?.[1] ?? html.match(/(?:v=|youtu\.be\/)([\w-]{11})/)?.[1];
+/** A thumbnail until tapped, so a page of tutorials does not download a player per video. */
+const VideoPlayer = ({ id, title }: { id: string; title: string }) => {
+  const [on, setOn] = useState(false);
+  return on ? (
+    <iframe
+      src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&autoplay=1`}
+      title={title}
+      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+      allowFullScreen
+      className="absolute inset-0 size-full border-0"
+    />
+  ) : (
+    <button type="button" onClick={() => setOn(true)} aria-label={`Play ${title}`} className="focus-ring group absolute inset-0 size-full">
+      <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+      <span className="absolute inset-0 flex items-center justify-center bg-black/10 transition-colors duration-500 group-hover:bg-black/20">
+        <PlayCircle size={48} weight="fill" className="text-white drop-shadow transition-transform duration-500 ease-house group-hover:scale-105" />
+      </span>
+    </button>
+  );
+};
+
 const youtubeUrl = (html: string) => { const id = youtubeId(html); return id ? `https://www.youtube.com/watch?v=${id}` : null; };
 
 /** Phones show two lines with a Read more toggle; from md up the text is shown in full. Short text gets no toggle. */
@@ -338,16 +359,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   );
 
   // YouTube videos are embedded in place (privacy-enhanced, no related videos, loaded when scrolled near); anything else opens in a new tab.
-  const player = (t: Resource, id: string) => (
-    <iframe
-      src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1`}
-      loading="lazy"
-      title={t.name}
-      allow="encrypted-media; picture-in-picture; fullscreen"
-      allowFullScreen
-      className="absolute inset-0 size-full border-0"
-    />
-  );
+  const player = (t: Resource, id: string) => <VideoPlayer id={id} title={t.name} />;
 
   const tutorialCard = (t: Resource, i: number) => {
     const id = youtubeId(t.public_access_url);
