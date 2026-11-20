@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import SiteFooter, { SOCIALS } from "@/components/layout/SiteFooter";
 import { EASE, Reveal } from "@/components/layout/Reveal";
@@ -261,7 +262,7 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
 
       {/* Hero */}
       <section id="top" ref={heroRef} className="min-h-[100dvh]">
-        <div className="relative flex min-h-[100dvh] flex-col justify-end overflow-hidden bg-band p-6 md:p-12">
+        <div className="relative flex min-h-[100dvh] flex-col justify-center overflow-hidden bg-band px-6 pb-[18dvh] pt-28 md:px-12 md:pb-[14dvh]">
           <motion.img
             src="/landing/hero.png"
             alt=""
@@ -273,14 +274,19 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-band/25 via-band/20 to-band/90" />
 
-          <motion.img
-            src={logoInk}
-            alt="Revision Access Point"
-            initial={{ opacity: 0, y: reduce ? 0 : -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.1, ease: EASE }}
-            className="absolute left-6 top-6 h-9 w-auto md:left-12 md:top-8"
-          />
+          <div className="absolute left-6 top-6 flex items-center gap-3 md:left-12 md:top-8">
+            <motion.img
+              src={logoInk}
+              alt="Revision Access Point"
+              initial={{ opacity: 0, y: reduce ? 0 : -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
+              className="h-9 w-auto"
+            />
+            <Link to="/login" className="focus-ring inline-flex h-11 items-center rounded-full bg-white/10 px-5 text-sm font-medium text-white ring-1 ring-white/25 transition-[transform,background-color] duration-500 ease-house hover:bg-white/20 active:scale-[0.98]">
+              Sign in
+            </Link>
+          </div>
 
           <div className="absolute right-6 top-6 flex flex-col items-end gap-2.5 md:right-12 md:top-8">
             <p className="hidden text-base font-medium text-white sm:block">Follow us</p>
@@ -301,9 +307,7 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
           <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <motion.div
               className="flex flex-col gap-6"
-              initial={{ opacity: 0, y: reduce ? 0 : 32, filter: "blur(8px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 1, delay: 0.2, ease: EASE }}
+              initial={false}
             >
               <h1 className="text-3xl font-semibold text-white sm:text-4xl md:text-5xl">
                 Revise with the
@@ -311,8 +315,7 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
                 <span className="text-brand-light">real past papers.</span>
               </h1>
               <p className="max-w-[520px] text-lg text-white/80">
-                Past papers, model answers, notes and quizzes for your exact unit. KSH 300 a
-                semester.
+                Past papers, model answers, notes and quizzes for your exact unit.
               </p>
             </motion.div>
             <motion.div
@@ -320,7 +323,14 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.5, ease: EASE }}
             >
-              <PillCta label="Get started" onClick={onNavigateSignUp} />
+              <div className="flex flex-col items-start gap-4 md:items-end">
+                <PillCta label="Get started" onClick={onNavigateSignUp} />
+                <p className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white ring-1 ring-white/20">
+                  <span className="font-medium tabular-nums">KSH 300 a semester</span>
+                  <span aria-hidden className="text-white/50">·</span>
+                  <span className="text-white/80">Pay with M-Pesa</span>
+                </p>
+              </div>
             </motion.div>
           </div>
         </div>

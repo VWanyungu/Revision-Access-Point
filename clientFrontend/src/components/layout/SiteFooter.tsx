@@ -123,13 +123,13 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
           <div className="flex min-h-[344px] flex-col justify-between gap-10 rounded-3xl bg-field p-7">
             <div className="flex gap-10 text-sm font-medium md:gap-20">
               <div className="flex flex-col whitespace-nowrap md:gap-2.5">
-                <p className="text-base font-normal text-ink-subtle">Navigation</p>
+                <p className="text-base font-normal text-ink-muted">Navigation</p>
                 <Link className={fl} to="/">Home</Link>
                 <a className={fl} href="/#get">What you get</a>
                 {user ? <Link className={fl} to="/app">Open app</Link> : <Link className={fl} to="/login">Sign in</Link>}
               </div>
               <div className="flex min-w-0 flex-col md:gap-2.5">
-                <p className="text-base font-normal text-ink-subtle">Company</p>
+                <p className="text-base font-normal text-ink-muted">Company</p>
                 <a className={fl} href="/terms-of-user.txt">Terms of use</a>
                 <a className={fl} href="/privacy-policy.txt">Privacy policy</a>
                 <a className={`${fl} [overflow-wrap:anywhere]`} href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL.split("@")[0]}@<wbr />{CONTACT_EMAIL.split("@")[1]}</a>
