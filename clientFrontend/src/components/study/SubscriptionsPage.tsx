@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight, CaretLeft, CaretRight, Receipt } from "@phosphor-icons/react";
+import { ArrowUpRight, CaretLeft, CaretRight, Receipt, Sparkle } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/database/supabase";
 import { useAuth } from "@/context/AuthContext";
 import PricingGate from "@/pages/PricingGate";
+import AiUpgradePage from "@/pages/AiUpgradePage";
 import { EASE, formatDate } from "@/components/pay/PayKit";
+import LoadFailed from "@/components/layout/LoadFailed";
 
 interface SubscriptionsPageProps {
   onNavigate: (page: string) => void;
@@ -13,6 +15,10 @@ interface SubscriptionsPageProps {
 
 interface Sub {
   id: number;
+  department_id: number;
+  institution_id?: number | null;
+  school_id?: number | null;
+  ai_access?: boolean;
   start_date: string;
   end_date: string;
   payment_ref: string;
@@ -52,12 +58,19 @@ const IslandButton = ({ children, onClick, tone = "ink", className = "" }: { chi
 const Fact = ({ name, value }: { name: string; value: React.ReactNode }) => (
   <div>
     <dt className={label}>{name}</dt>
-    <dd className="mt-1.5 text-lg font-medium tabular-nums text-ink">{value}</dd>
+    <dd className="mt-1 whitespace-nowrap text-sm font-medium tabular-nums text-ink md:text-base">{value}</dd>
   </div>
 );
 
+/** Marks a pass that includes the AI features. */
+const AiBadge = ({ className = "" }: { className?: string }) => (
+  <span className={`inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-xs font-medium text-brand ${className}`} title="Includes AI features">
+    <Sparkle size={13} weight="fill" aria-hidden /> AI
+  </span>
+);
+
 /** The pass in use: the one thing on this page that matters most, so it gets the room and the depth. */
-const ActivePass = ({ sub, index, onRenew }: { sub: Sub; index: number; onRenew: () => void }) => {
+const ActivePass = ({ sub, index, onRenew, onAddAi }: { sub: Sub; index: number; onRenew: () => void; onAddAi: () => void }) => {
   const reduce = useReducedMotion();
   const now = Date.now();
   const left = Math.max(0, Math.ceil((endOf(sub) - now) / DAY));
@@ -72,32 +85,35 @@ const ActivePass = ({ sub, index, onRenew }: { sub: Sub; index: number; onRenew:
       aria-label={`Active pass for ${sub.department_name ?? "your department"}`}
       className="rounded-[2rem] bg-field/60 p-1.5 ring-1 ring-line"
     >
-      <div className="rounded-[calc(2rem-0.375rem)] bg-surface p-6 shadow-[0_24px_48px_-28px_rgba(14,21,37,0.18)] md:p-10">
+      <div className="rounded-[calc(2rem-0.375rem)] bg-surface p-5 shadow-[0_24px_48px_-28px_rgba(14,21,37,0.18)] md:p-7">
         <div className="flex items-center justify-between gap-4">
-          <span className="inline-flex items-center gap-2 rounded-full bg-positive/10 px-3 py-1 text-xs font-medium text-positive">
-            Active
+          <span className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-positive/10 px-3 py-1 text-xs font-medium text-positive">
+              Active
+            </span>
+            {sub.ai_access && <AiBadge />}
           </span>
           <span className="text-sm text-ink-muted">Semester pass</span>
         </div>
 
-        <h2 className="mt-6 text-balance text-2xl font-medium text-ink md:text-3xl">{sub.department_name ?? "Your department"}</h2>
-        {(sub.institution_name || sub.school_name) && <p className="mt-2 text-base text-ink-muted">{[sub.institution_name, sub.school_name].filter(Boolean).join(" · ")}</p>}
+        <h2 className="mt-4 text-balance text-xl font-medium text-ink md:text-2xl">{sub.department_name ?? "Your department"}</h2>
+        {(sub.institution_name || sub.school_name) && <p className="mt-1 text-sm text-ink-muted">{[sub.institution_name, sub.school_name].filter(Boolean).join(" · ")}</p>}
 
-        <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
+        <dl className="mt-5 grid grid-cols-3 gap-x-4">
           <Fact name="Year" value={sub.year_of_study} />
           <Fact name="Semester" value={sub.semester_of_study} />
-          <div className="col-span-2 sm:col-span-1"><Fact name="Valid until" value={formatDate(new Date(sub.end_date))} /></div>
+          <Fact name="Valid until" value={formatDate(new Date(sub.end_date))} />
         </dl>
 
         {/* Time used, so "how long is left" is visible at a glance, not worked out from a date */}
-        <div className="mt-8">
+        <div className="mt-5">
           <div
             role="progressbar" aria-label="Time used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(elapsed * 100)}
             className="h-1.5 overflow-hidden rounded-full bg-field"
           >
             <div className={`h-full origin-left rounded-full ${endingSoon ? "bg-danger" : "bg-brand-solid"}`} style={{ transform: `scaleX(${elapsed})` }} />
           </div>
-          <div className="mt-3 flex items-center justify-between text-sm">
+          <div className="mt-2 flex items-center justify-between text-sm">
             <span className="tabular-nums text-ink-muted">{formatDate(new Date(sub.start_date))}</span>
             <span className={`font-medium tabular-nums ${endingSoon ? "text-danger" : "text-ink"}`}>
               {left === 0 ? "Ends today" : `${left} ${left === 1 ? "day" : "days"} left`}
@@ -105,9 +121,12 @@ const ActivePass = ({ sub, index, onRenew }: { sub: Sub; index: number; onRenew:
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 pt-2">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-ink-muted">Ref <span className="font-geist-mono text-ink">{sub.payment_ref}</span></p>
-          {endingSoon && <IslandButton tone="soft" onClick={onRenew}>Renew this pass</IslandButton>}
+          <div className="flex flex-wrap items-center gap-3">
+            {!sub.ai_access && <IslandButton tone="soft" onClick={onAddAi}>Add AI features</IslandButton>}
+            {endingSoon && <IslandButton tone="soft" onClick={onRenew}>Renew this pass</IslandButton>}
+          </div>
         </div>
       </div>
     </motion.article>
@@ -119,8 +138,12 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
   const reduce = useReducedMotion();
   const [isInitiating, setIsInitiating] = useState(false);
   const [page, setPage] = useState(0);
+  const [addAiTo, setAddAiTo] = useState<Sub | null>(null);
+  // The pass being renewed: its course is chosen already, so the student only confirms and pays.
+  const [renewing, setRenewing] = useState<Sub | null>(null);
+  const startNew = () => { setRenewing(null); setIsInitiating(true); };
 
-  const { data: subs = [], isLoading, refetch } = useQuery({
+  const { data: subs = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["user-subscriptions", user?.id],
     enabled: !!user,
     queryFn: async (): Promise<Sub[]> => {
@@ -129,13 +152,12 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
         .select("*, departments(school_id, name), institutions(name, short_name)")
         .eq("user_uuid", user!.id)
         .order("end_date", { ascending: false });
-      if (error) {
-        console.error(error);
-        return [];
-      }
+      // Throw, so a failed request shows "couldn't load" instead of "No passes yet" and a buy button.
+      if (error) throw error;
       const { data: schools } = await supabase.from("schools").select("id, name");
       return data.map((sub: any) => ({
         ...sub,
+        school_id: sub.departments?.school_id,
         department_name: sub.departments?.name,
         school_name: schools?.find((s) => s.id === sub.departments?.school_id)?.name,
         institution_name: sub.institutions?.short_name ?? sub.institutions?.name,
@@ -143,11 +165,25 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
     },
   });
 
+  if (addAiTo) {
+    return (
+      <AiUpgradePage
+        pass={{ departmentId: addAiTo.department_id, year: addAiTo.year_of_study, semester: addAiTo.semester_of_study }}
+        onBack={() => setAddAiTo(null)}
+        onDone={() => { setAddAiTo(null); refetch(); }}
+      />
+    );
+  }
+
   if (isInitiating) {
     return (
       <PricingGate
         onLogout={() => { }}
         onCancel={() => setIsInitiating(false)}
+        initial={renewing && renewing.institution_id && renewing.school_id ? {
+          institution: String(renewing.institution_id), school: String(renewing.school_id), department: String(renewing.department_id),
+          year: String(renewing.year_of_study), semester: String(renewing.semester_of_study),
+        } : undefined}
         onSubscribed={() => {
           setIsInitiating(false);
           refetch();
@@ -168,10 +204,12 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
       <div className="mx-auto max-w-3xl px-4 pb-28 pt-10 md:pt-14 md:px-6">
         <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <h1 className="text-2xl font-medium md:text-3xl">Subscriptions</h1>
-          <IslandButton className="max-md:w-full max-md:justify-between" onClick={() => setIsInitiating(true)}>New subscription</IslandButton>
+          <IslandButton className="max-md:w-full max-md:justify-between" onClick={startNew}>New subscription</IslandButton>
         </header>
 
-        {isLoading ? (
+        {isError ? (
+          <LoadFailed className="mt-10" title="Couldn't load your passes" message="Your passes are safe. Check your connection and try again before buying anything." onRetry={() => refetch()} />
+        ) : isLoading ? (
           <div className="mt-10 flex flex-col gap-4" role="status" aria-label="Loading your subscriptions">
             <div className="h-[22rem] animate-pulse rounded-[2rem] bg-field" />
             <div className="h-24 animate-pulse rounded-[1.5rem] bg-field" />
@@ -182,14 +220,14 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
               <span className="flex size-14 items-center justify-center rounded-full bg-field text-ink-muted"><Receipt size={26} /></span>
               <h2 className="mt-6 text-xl font-medium">No passes yet</h2>
               <p className="mt-2 max-w-sm text-base text-ink-muted">A semester pass opens every note, CAT and past paper for your unit. Pay once; nothing renews on its own.</p>
-              <div className="mt-8"><IslandButton onClick={() => setIsInitiating(true)}>See the semester pass</IslandButton></div>
+              <div className="mt-8"><IslandButton onClick={startNew}>See the semester pass</IslandButton></div>
             </div>
           </div>
         ) : (
           <>
             <section className="mt-10 flex flex-col gap-4" aria-label="Active passes">
               {active.length > 0 ? (
-                active.map((s, i) => <ActivePass key={s.id} sub={s} index={i} onRenew={() => setIsInitiating(true)} />)
+                active.map((s, i) => <ActivePass key={s.id} sub={s} index={i} onRenew={() => { setRenewing(s); setIsInitiating(true); }} onAddAi={() => setAddAiTo(s)} />)
               ) : (
                 <div className="rounded-[2rem] bg-field/60 p-1.5 ring-1 ring-line">
                   <div className="flex flex-col items-start gap-6 rounded-[calc(2rem-0.375rem)] bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-10">
@@ -197,7 +235,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
                       <h2 className="text-xl font-medium">No active pass</h2>
                       <p className="mt-2 text-base text-ink-muted">Your last pass ended on {formatDate(new Date(past[0].end_date))}. Get a new one to open your unit again.</p>
                     </div>
-                    <IslandButton onClick={() => setIsInitiating(true)}>Get a pass</IslandButton>
+                    <IslandButton onClick={startNew}>Get a pass</IslandButton>
                   </div>
                 </div>
               )}
@@ -224,6 +262,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
                         <p className="text-sm tabular-nums text-ink-muted">{formatDate(new Date(s.start_date))} – {formatDate(new Date(s.end_date))}</p>
                         <p className="flex items-center gap-2 text-xs text-ink-muted">
                           <span className="rounded-full bg-field px-2.5 py-1 font-medium">Expired</span>
+                          {s.ai_access && <AiBadge className="!px-2.5" />}
                           <span className="font-geist-mono">{s.payment_ref}</span>
                         </p>
                       </div>

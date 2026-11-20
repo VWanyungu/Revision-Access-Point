@@ -109,9 +109,9 @@ export const DetailRow = ({ label, value, total }: { label: string; value: React
 export const formatDate = (d: Date) =>
   d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-/** The semester pass lasts four months from today. */
+/** The semester pass lasts six months from the payment date (mpesa-payment-callback adds 6 months). */
 export const accessUntil = (from = new Date()) => {
   const d = new Date(from);
-  d.setMonth(d.getMonth() + 4);
+  d.setMonth(d.getMonth() + 6);
   return d;
 };

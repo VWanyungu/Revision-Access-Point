@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import PricingGate from "./PricingGate";
+import AiUpgradePage from "./AiUpgradePage";
 import AppLayout from "@/components/layout/AppLayout";
 import ResourceSearch from "@/components/study/ResourceSearch";
 import StudyDashboard from "@/components/study/StudyDashboard";
-import FlashcardSystem from "@/components/study/FlashcardSystem";
-import PomodoroTimer from "@/components/study/PomodoroTimer";
-import ProgressDashboard from "@/components/study/ProgressDashboard";
-import StudyCalendar from "@/components/study/StudyCalendar";
 import QuizSystem from "@/components/study/QuizSystem";
 import SubscriptionsPage from "@/components/study/SubscriptionsPage";
 import ProfilePage from "@/components/study/ProfilePage";
@@ -17,31 +16,71 @@ import { toast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { cleanAndParseText } from "@/lib/utils";
 import { Loader } from "lucide-react";
+import LoadFailed from "@/components/layout/LoadFailed";
 
-type AppState = "loading" | "pricing-gate" | "search" | "main";
+type AppState = "loading" | "error" | "pricing-gate" | "search" | "main";
+
+// Page names (used by the navbar and the pages) and the URLs they live at.
+const PATH_OF_PAGE: Record<string, string> = {
+  dashboard: "/app", resources: "/app", pdf: "/app/paper", answers: "/app/answers", quiz: "/app/quiz", subscriptions: "/app/billing", profile: "/app/profile",
+};
+const PAGE_OF_PATH: Record<string, string> = {
+  "/app/paper": "pdf", "/app/answers": "answers", "/app/quiz": "quiz", "/app/billing": "subscriptions", "/app/profile": "profile",
+};
+const TITLE_OF_PAGE: Record<string, string> = {
+  dashboard: "Unit", pdf: "Paper", answers: "Model answers", quiz: "Quiz", subscriptions: "Billing", profile: "Profile",
+};
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("loading");
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  // The page lives in the URL, so refresh, deep links and the back button work. The paper being read, the quiz source and the
+  // answers source live in the query string (?u=<file>&t=<title>&k=<resource type>) so a refresh of those pages still works.
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const queryClient = useQueryClient();
+  const currentPage = PAGE_OF_PATH[location.pathname.replace(/\/+$/, "")] ?? "dashboard";
+  const go = (page: string, search = "") => navigate(PATH_OF_PAGE[page] + search);
+  const setCurrentPage = (page: string) => go(page);
+  // Back goes to the previous screen; a deep link opened in a fresh tab has none, so it goes to the unit page.
+  const goBack = () => (location.key !== "default" ? navigate(-1) : navigate("/app", { replace: true }));
+  const link = (url: string, title?: string, extra: Record<string, string> = {}) =>
+    "?" + new URLSearchParams({ u: url, t: title ?? "", ...extra }).toString();
+
   const [studyContext, setStudyContext] = useState({ year: 1, unit: 0 });
-  const [quizReturnPage, setQuizReturnPage] = useState("dashboard");
-  const [selectedResourceUrl, setSelectedResourceUrl] = useState<string>();
-  const [selectedResourceTitle, setSelectedResourceTitle] = useState<string>();
-  const [selectedPdfUrl, setSelectedPdfUrl] = useState<string>("");
-  const [selectedPdfTitle, setSelectedPdfTitle] = useState<string>("");
-  const [selectedPdfType, setSelectedPdfType] = useState<number | null>(null);
-  const [answersSource, setAnswersSource] = useState<{ url: string; title: string } | null>(null);
+  const selectedResourceUrl = params.get("u") ?? undefined;
+  const selectedResourceTitle = params.get("t") ?? undefined;
+  const selectedPdfUrl = params.get("u") ?? "";
+  const selectedPdfTitle = params.get("t") ?? "";
+  const [lookedUpType, setLookedUpType] = useState<number | null>(null);
+  const kParam = params.get("k");
+  const selectedPdfType = kParam ? Number(kParam) : lookedUpType;
+  const answersSource = currentPage === "answers" && selectedPdfUrl ? { url: selectedPdfUrl, title: selectedPdfTitle } : null;
+  // "paper" shows a past paper's saved answers; "practice" shows the answers to a student's own practice paper.
+  const answersMode: "paper" | "practice" = params.get("practice") ? "practice" : "paper";
+  const [practiceTitle, setPracticeTitle] = useState("");
+  // Which file the answers in state belong to ("practice" for a practice paper), and why loading them failed.
+  const [answersFor, setAnswersFor] = useState<string | null>(null);
+  const [answersError, setAnswersError] = useState<string | null>(null);
+  // Bumped to restart the quiz after an AI upgrade.
+  const [quizRun, setQuizRun] = useState(0);
   const [currentUser, setCurrentUser] = useState<Record<string, any>>({});
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [answersData, setAnswersData] = useState<AnswersData | null>(null);
   const [isGeneratingAnswers, setIsGeneratingAnswers] = useState(false);
+  // Set when the student tries an AI feature their pass does not include: shows the AI add-on page. `retry` re-runs what they
+  // tried once the upgrade is paid.
+  const [upgrade, setUpgrade] = useState<{ unitId?: number; fileUrl?: string; retry?: () => void } | null>(null);
+  // Bumped by "Try again" to re-run the pass check.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    setAppState("loading");
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       const sbTokenStr = localStorage.getItem("sb-ptktlornnngqvzbbisaq-auth-token");
-      const sbToken = sbTokenStr ? JSON.parse(sbTokenStr) : null;
+      const sbToken = (() => { try { return sbTokenStr ? JSON.parse(sbTokenStr) : null; } catch { return null; } })();
       const targetUserId = sbToken?.user?.id || user?.id;
 
       if (targetUserId) {
@@ -51,11 +90,17 @@ const Index = () => {
         }
 
         // Real subscription check from database
-        const { data: subs } = await supabase
+        const { data: subs, error: subsError } = await supabase
           .from("subscriptions")
           .select("*")
           .eq("user_uuid", targetUserId)
           .gte("end_date", new Date().toISOString());
+
+        // A failed request is not "no pass": sending a paying student to the pricing gate risks a second payment.
+        if (subsError) {
+          setAppState("error");
+          return;
+        }
 
         const subscribed = subs && subs.length > 0;
         setIsSubscribed(subscribed);
@@ -93,6 +138,7 @@ const Index = () => {
           .eq("department_id", sub.department_id)
           .eq("year_of_study", sub.year_of_study)
           .eq("semester_of_study", sub.semester_of_study)
+          .order("code", { ascending: true })
           .limit(1);
 
         const unitId = units && units.length > 0 ? units[0].id : 0;
@@ -108,12 +154,38 @@ const Index = () => {
         setAppState("main");
       }
     };
-    checkUser();
-  }, []);
+    checkUser().catch(() => setAppState("error"));
+  }, [attempt]);
 
   // Pages are swapped in place, so the window keeps its scroll position; start each page at the top
   // or its first content slides under the floating navbar.
-  useEffect(() => { window.scrollTo(0, 0); }, [currentPage]);
+  useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
+  // The tab title names the page. Leaving the page also closes the AI add-on page that was open on top of it.
+  useEffect(() => {
+    document.title = `${TITLE_OF_PAGE[currentPage] ?? "Unit"} · Revision Access Point`;
+    setUpgrade(null);
+  }, [currentPage]);
+
+  // A paper opened by link or refresh has no resource type yet: look it up.
+  useEffect(() => {
+    if (currentPage !== "pdf" || !selectedPdfUrl || kParam) return;
+    supabase.from("resources").select("resource_type_id").eq("public_access_url", selectedPdfUrl).limit(1).maybeSingle()
+      .then(({ data }) => setLookedUpType(data?.resource_type_id ?? null));
+  }, [currentPage, selectedPdfUrl, kParam]);
+
+  // Answers opened by refresh, link or the back button: load the ones for this paper. Practice answers only live in memory, so
+  // a refresh of those returns to the Practice tab.
+  useEffect(() => {
+    if (appState !== "main" || currentPage !== "answers" || isGeneratingAnswers) return;
+    if (answersMode === "practice") {
+      if (answersFor !== "practice") navigate("/app?view=predictions", { replace: true });
+    } else if (selectedPdfUrl && answersFor !== selectedPdfUrl) {
+      handleGenerateAnswers(selectedPdfUrl, selectedPdfTitle);
+    } else if (!selectedPdfUrl) {
+      navigate("/app", { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState, currentPage, selectedPdfUrl, answersMode, answersFor, isGeneratingAnswers]);
 
   const handleLogout = () => {
     setStudyContext({ year: 1, unit: 0 });
@@ -124,7 +196,7 @@ const Index = () => {
     const { data: { user } } = await supabase.auth.getUser();
 
     const sbTokenStr = localStorage.getItem("sb-ptktlornnngqvzbbisaq-auth-token");
-    const sbToken = sbTokenStr ? JSON.parse(sbTokenStr) : null;
+    const sbToken = (() => { try { return sbTokenStr ? JSON.parse(sbTokenStr) : null; } catch { return null; } })();
     const targetUserId = sbToken?.user?.id || user?.id;
 
     if (targetUserId) {
@@ -167,22 +239,11 @@ const Index = () => {
   // The viewer offers Quiz for notes and Model answers for past papers, so it needs the resource type. Callers that
   // only have a URL get it looked up.
   const openPaper = (url: string, title?: string, resourceTypeId?: number) => {
-    setSelectedPdfUrl(url);
-    setSelectedPdfTitle(title ?? "");
-    setSelectedPdfType(resourceTypeId ?? null);
-    setCurrentPage("pdf");
-    if (resourceTypeId == null) {
-      supabase.from("resources").select("resource_type_id").eq("public_access_url", url).limit(1).maybeSingle()
-        .then(({ data }) => setSelectedPdfType(data?.resource_type_id ?? null));
-    }
+    setLookedUpType(null);
+    go("pdf", link(url, title, resourceTypeId != null ? { k: String(resourceTypeId) } : {}));
   };
 
-  const handleGenerateQuiz = (publicAccessUrl: string, title: string) => {
-    setSelectedResourceUrl(publicAccessUrl);
-    setSelectedResourceTitle(title);
-    setQuizReturnPage(currentPage);
-    setCurrentPage("quiz");
-  };
+  const handleGenerateQuiz = (publicAccessUrl: string, title: string) => go("quiz", link(publicAccessUrl, title));
 
   /**
    * Opens the student's saved answers for a paper. They are pinned to one saved version, so the content never changes while
@@ -196,8 +257,10 @@ const Index = () => {
     version?: number,
   ) => {
     const previous = answersData;
-    setAnswersSource({ url: fileUrl, title });
-    setCurrentPage("answers");
+    // Regenerating or switching version happens on the answers page already; opening from elsewhere adds a history entry.
+    if (!(currentPage === "answers" && selectedPdfUrl === fileUrl)) go("answers", link(fileUrl, title));
+    setAnswersFor(fileUrl);
+    setAnswersError(null);
     setAnswersData(null);
     setIsGeneratingAnswers(true);
     const started = Date.now();
@@ -213,14 +276,17 @@ const Index = () => {
       const raw = await res.json();
 
       if (!res.ok) {
-        toast({
-          title: action === "regenerate" ? "Could not regenerate" : "Error loading answers",
-          description: (raw as { error?: string }).error ?? "Something went wrong.",
-          variant: "destructive",
-        });
-        // A refused regenerate (for example the cap) leaves the student on the answers they were reading.
-        if (previous && action !== "get") setAnswersData(previous);
-        else setCurrentPage("dashboard");
+        if ((raw as { detail?: string }).detail === "ai_required") {
+          // After paying, the student comes back to these answers and the request runs again.
+          setUpgrade({ fileUrl, retry: () => handleGenerateAnswers(fileUrl, title, force, action, version) });
+          return;
+        }
+        const message = (raw as { error?: string }).error ?? "Something went wrong.";
+        // A refused regenerate (for example the cap) leaves the student on the answers they were reading, with a toast.
+        if (previous && action !== "get") {
+          setAnswersData(previous);
+          toast({ title: "Could not regenerate", description: message, variant: "destructive" });
+        } else setAnswersError(message);
         return;
       }
 
@@ -236,21 +302,41 @@ const Index = () => {
       // may have gone back to the paper while it ran).
       if (Date.now() - started > 4000) {
         sonnerToast.success("Model answers are ready", {
-          action: { label: "View", onClick: () => setCurrentPage("answers") },
+          action: { label: "View", onClick: () => go("answers", link(fileUrl, title)) },
         });
       }
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to load the answers. Please try again.",
-        variant: "destructive",
-      });
-      if (previous && action !== "get") setAnswersData(previous);
-      else setCurrentPage("dashboard");
+      const message = "We could not reach the server. Check your connection and try again.";
+      if (previous && action !== "get") {
+        setAnswersData(previous);
+        toast({ title: "Could not update the answers", description: message, variant: "destructive" });
+      } else setAnswersError(message);
     } finally {
       setIsGeneratingAnswers(false);
     }
   };
+
+  /** Opens a practice paper's model answers in the same screen as a past paper's. */
+  const openPracticeAnswers = (data: AnswersData, title: string) => {
+    setPracticeTitle(title);
+    setAnswersData(data);
+    setAnswersFor("practice");
+    setAnswersError(null);
+    setIsGeneratingAnswers(false);
+    go("answers", "?practice=1");
+  };
+
+  if (appState === "error") {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center px-5">
+        <LoadFailed
+          title="Couldn't check your pass"
+          message="We could not reach the server. Your pass is safe, and you do not need to pay again. Check your connection and try again."
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
+      </div>
+    );
+  }
 
   if (appState === "loading") {
     return (
@@ -288,6 +374,20 @@ const Index = () => {
     );
   }
 
+  // The AI add-on page replaces the app until the student pays or goes back.
+  if (upgrade) {
+    return (
+      <AiUpgradePage
+        unitId={upgrade.unitId}
+        fileUrl={upgrade.fileUrl}
+        // Cancelling from a page that was waiting on AI (answers, quiz) leaves it; from the unit page it just closes.
+        onBack={() => { setUpgrade(null); if (currentPage === "answers" || currentPage === "quiz") goBack(); }}
+        // Paid: the pass now has AI, so refresh it and run what the student tried.
+        onDone={() => { const retry = upgrade.retry; setUpgrade(null); queryClient.invalidateQueries({ queryKey: ["pass"] }); retry?.(); }}
+      />
+    );
+  }
+
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
@@ -300,15 +400,18 @@ const Index = () => {
             onGenerateAnswers={handleGenerateAnswers}
             onViewResource={openPaper}
             onChangeUnit={handleSearch}
+            onViewPracticeAnswers={openPracticeAnswers}
+            onUpgradeAi={() => setUpgrade({ unitId: Number(studyContext?.unit) })}
           />
         );
       case "quiz":
         return (
           <QuizSystem
-            key={selectedResourceUrl}
-            onClose={() => setCurrentPage(quizReturnPage)}
+            key={`${selectedResourceUrl}-${quizRun}`}
+            onClose={goBack}
             resourcePublicAccessUrl={selectedResourceUrl}
             resourceTitle={selectedResourceTitle}
+            onNeedAi={() => setUpgrade({ fileUrl: selectedResourceUrl, retry: () => setQuizRun((n) => n + 1) })}
           />
         );
       case "resources":
@@ -321,22 +424,16 @@ const Index = () => {
             onGenerateAnswers={handleGenerateAnswers}
             onViewResource={openPaper}
             onChangeUnit={handleSearch}
+            onViewPracticeAnswers={openPracticeAnswers}
+            onUpgradeAi={() => setUpgrade({ unitId: Number(studyContext?.unit) })}
           />
         );
-      case "flashcards":
-        return <FlashcardSystem />;
-      case "timer":
-        return <PomodoroTimer />;
-      case "progress":
-        return <ProgressDashboard />;
-      case "calendar":
-        return <StudyCalendar />;
       case "pdf":
         return (
           <PdfViewerPage
             url={selectedPdfUrl}
             title={selectedPdfTitle}
-            onBack={() => setCurrentPage("dashboard")}
+            onBack={goBack}
             kind={selectedPdfType === 1 ? "note" : selectedPdfType === 2 || selectedPdfType === 3 ? "paper" : null}
             onQuiz={() => handleGenerateQuiz(selectedPdfUrl, selectedPdfTitle)}
             onModelAnswers={() => handleGenerateAnswers(selectedPdfUrl, selectedPdfTitle)}
@@ -351,13 +448,16 @@ const Index = () => {
           <AnswersPage
             data={answersData}
             generating={isGeneratingAnswers}
-            title={answersSource?.title ?? selectedPdfTitle}
-            onBack={() => { setCurrentPage(answersSource ? "pdf" : "dashboard"); }}
-            onOpenPaper={() => { if (answersSource) openPaper(answersSource.url, answersSource.title); }}
-            onRegenerate={() => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title, true)}
-            onSwitchVersion={(v) => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title, false, "switch", v)}
-            onQuiz={() => answersSource && handleGenerateQuiz(answersSource.url, answersSource.title)}
-            downloadUrl={answersSource?.url}
+            title={answersMode === "practice" ? practiceTitle : answersSource?.title ?? selectedPdfTitle}
+            error={answersError}
+            onRetry={() => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title)}
+            onBack={goBack}
+            // The paper actions (open the PDF, regenerate, switch version, quiz, download) only make sense for a past paper.
+            onOpenPaper={answersMode === "paper" ? () => { if (answersSource) openPaper(answersSource.url, answersSource.title); } : undefined}
+            onRegenerate={answersMode === "paper" ? () => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title, true) : undefined}
+            onSwitchVersion={answersMode === "paper" ? (v) => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title, false, "switch", v) : undefined}
+            onQuiz={answersMode === "paper" ? () => answersSource && handleGenerateQuiz(answersSource.url, answersSource.title) : undefined}
+            downloadUrl={answersMode === "paper" ? answersSource?.url : undefined}
           />
         );
       default:
@@ -368,6 +468,8 @@ const Index = () => {
             onGenerateQuiz={handleGenerateQuiz}
             onGenerateAnswers={handleGenerateAnswers}
             onViewResource={openPaper}
+            onViewPracticeAnswers={openPracticeAnswers}
+            onUpgradeAi={() => setUpgrade({ unitId: Number(studyContext?.unit) })}
           />
         );
     }

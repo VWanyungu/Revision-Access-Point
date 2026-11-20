@@ -2,6 +2,7 @@ import { useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import SiteFooter from "./SiteFooter";
+import MobileTabBar from "./MobileTabBar";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,9 +17,11 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children, currentPage, onNavigate, onLogout, studyContext }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Phones get a tab bar on the unit, billing and profile pages; the paper, answers and quiz screens have their own bottom controls.
+  const showTabs = !!studyContext && ["dashboard", "resources", "subscriptions", "profile"].includes(currentPage);
 
   return (
-    <div className="w-screen min-h-screen bg-background">
+    <div className={`w-screen min-h-screen bg-background ${showTabs ? "pb-24 md:pb-0" : ""}`}>
       <Navbar
         studyContext={studyContext}
         currentPage={currentPage}
@@ -41,6 +44,7 @@ const AppLayout = ({ children, currentPage, onNavigate, onLogout, studyContext }
         </main>
       </div>
       <SiteFooter inApp />
+      {showTabs && <MobileTabBar />}
     </div>
   );
 };

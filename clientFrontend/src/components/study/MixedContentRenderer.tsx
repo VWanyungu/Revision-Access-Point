@@ -59,7 +59,7 @@ export const MixedContentRenderer = ({ text }: Props) => {
           <span key={i}>
             {blockParts.map((bp, j) => {
               if (bp.startsWith("$$") && bp.endsWith("$$")) {
-                return <BlockMath key={j} math={bp.slice(2, -2)} />;
+                return <span key={j} className="block max-w-full overflow-x-auto overflow-y-hidden"><BlockMath math={bp.slice(2, -2)} /></span>;
               }
 
               // INLINE MATH
@@ -69,7 +69,7 @@ export const MixedContentRenderer = ({ text }: Props) => {
                 <span key={j}>
                   {inlineParts.map((ip, k) => {
                     if (ip.startsWith("$") && ip.endsWith("$")) {
-                      return <InlineMath key={k} math={ip.slice(1, -1)} />;
+                      return <span key={k} className="inline-block max-w-full overflow-x-auto overflow-y-hidden align-bottom"><InlineMath math={ip.slice(1, -1)} /></span>;
                     }
                     return <span key={k}>{ip}</span>;
                   })}

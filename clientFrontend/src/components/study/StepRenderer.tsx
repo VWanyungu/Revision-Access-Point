@@ -27,7 +27,7 @@ export const StepRenderer = ({ step }: { step: Step }) => {
 
       {/* Math */}
       {step.latex && (
-        <div style={{ margin: "0.5rem 0" }}>
+        <div style={{ margin: "0.5rem 0", maxWidth: "100%", overflowX: "auto", overflowY: "hidden" }}>
           <BlockMath math={step.latex} />
         </div>
       )}

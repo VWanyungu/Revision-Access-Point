@@ -64,6 +64,17 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
     queryFn: () => getProgress(user!.id),
   });
 
+  // Marked practice papers are counted apart from the note quizzes.
+  const { data: practice } = useQuery({
+    queryKey: ["profile-practice", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("practice_attempts").select("result").eq("status", "marked");
+      const rows = (data ?? []).map((r) => r.result as { percent?: number } | null).filter((r): r is { percent: number } => typeof r?.percent === "number");
+      return { count: rows.length, average: rows.length ? Math.round(rows.reduce((n, r) => n + r.percent, 0) / rows.length) : null };
+    },
+  });
+
   const scores = Object.values(progress?.scores ?? {});
   const quizzes = scores.reduce((n, s) => n + s.attempts, 0);
   const average = scores.length ? Math.round((scores.reduce((n, s) => n + s.best / s.total, 0) / scores.length) * 100) : null;
@@ -83,6 +94,8 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
           { name: "Opened", value: Object.keys(progress?.opens ?? {}).length },
           { name: "Quizzes", value: quizzes },
           { name: "Avg best", value: average === null ? "–" : `${average}%` },
+          { name: "Papers marked", value: practice?.count ?? 0 },
+          { name: "Paper avg", value: practice?.average == null ? "–" : `${practice.average}%` },
         ]}
         email={user?.email}
         since={user?.created_at ? formatDate(new Date(user.created_at)) : undefined}
@@ -135,6 +148,8 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
             <Stat name="Opened" value={Object.keys(progress?.opens ?? {}).length} />
             <Stat name="Quizzes" value={quizzes} />
             <Stat name="Avg best" value={average === null ? "–" : `${average}%`} />
+            <Stat name="Papers marked" value={practice?.count ?? 0} />
+            <Stat name="Paper avg" value={practice?.average == null ? "–" : `${practice.average}%`} />
           </dl>
 
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-ink-muted">

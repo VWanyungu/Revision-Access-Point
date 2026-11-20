@@ -9,7 +9,7 @@ import { getInstitutions, getSchools, getDepartmentsBySchoolId, getUnitsByDepart
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/database/supabase";
 
-const years = ["1", "2", "3", "4"];
+const years = ["1", "2", "3", "4", "5", "6"];
 
 const semesters = ["1", "2", "3"];
 
@@ -173,7 +173,7 @@ const ResourceSearch = ({ onSearch, inline = false, currentUnitId }: ResourceSea
 
       <div className="space-y-2">
         <label className="text-sm font-medium">Unit</label>
-        <Dropdown fullWidth label="Unit" placeholder="Select your unit" items={units} selectedId={unit} onSelect={setUnit} disabled={!year || !semester} />
+        <Dropdown fullWidth label="Unit" placeholder="Select your unit" items={[...units].sort((a, b) => String(a.name).localeCompare(String(b.name)))} selectedId={unit} onSelect={setUnit} disabled={!year || !semester} />
       </div>
 
       <Button

@@ -95,7 +95,7 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
           </div>
         </Reveal>
         )}
-        <div className="grid gap-3 md:grid-cols-[384px_1fr]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-[384px_1fr]">
           <div className="flex min-h-[344px] flex-col justify-between rounded-3xl bg-gradient-to-b from-brand-solid to-brand-light p-6">
             <img src={logoInk} alt="Revision Access Point" className="h-7 w-auto self-start" />
             <div className="flex flex-col gap-7">
@@ -103,8 +103,8 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
                 Real past papers, for your exact unit and semester.
               </p>
               <div className="flex items-center justify-between">
-                <span className="text-lg text-white">Stay in touch!</span>
-                <div className="flex gap-1.5">
+                <span className="whitespace-nowrap text-lg text-white">Stay in touch!</span>
+                <div className="flex gap-0 md:gap-1.5">
                   {SOCIALS.map(({ label, logo, href }) => (
                     <a
                       key={label}
@@ -121,18 +121,18 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
           </div>
 
           <div className="flex min-h-[344px] flex-col justify-between gap-10 rounded-3xl bg-field p-7">
-            <div className="flex gap-16 whitespace-nowrap text-sm font-medium md:gap-20">
-              <div className="flex flex-col md:gap-2.5">
+            <div className="flex gap-10 text-sm font-medium md:gap-20">
+              <div className="flex flex-col whitespace-nowrap md:gap-2.5">
                 <p className="text-base font-normal text-ink-subtle">Navigation</p>
                 <Link className={fl} to="/">Home</Link>
                 <a className={fl} href="/#get">What you get</a>
                 {user ? <Link className={fl} to="/app">Open app</Link> : <Link className={fl} to="/login">Sign in</Link>}
               </div>
-              <div className="flex flex-col md:gap-2.5">
+              <div className="flex min-w-0 flex-col md:gap-2.5">
                 <p className="text-base font-normal text-ink-subtle">Company</p>
                 <a className={fl} href="/terms-of-user.txt">Terms of use</a>
                 <a className={fl} href="/privacy-policy.txt">Privacy policy</a>
-                <a className={fl} href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+                <a className={`${fl} [overflow-wrap:anywhere]`} href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL.split("@")[0]}@<wbr />{CONTACT_EMAIL.split("@")[1]}</a>
               </div>
             </div>
             <p className="max-w-[250px] text-sm text-muted-foreground">
@@ -141,12 +141,15 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
           </div>
         </div>
         </div>
-        <p
+        {/* Stretched to the footer's full width (textLength) and thickened with a same-colour stroke. */}
+        <svg
           aria-hidden
-          className="pointer-events-none relative z-0 -mb-[10vw] mt-[-2vw] select-none text-center text-[32vw] font-semibold leading-none tracking-tighter text-field"
+          viewBox="0 0 1000 290"
+          preserveAspectRatio="none"
+          className={`pointer-events-none relative z-0 -mb-[8vw] mt-[1vw] block h-auto w-[calc(100%+2rem)] -mx-4 select-none overflow-visible fill-field stroke-field ${inApp ? "md:w-[calc(100%+5rem)] md:-mx-10" : "md:w-[calc(100%+15rem)] md:-mx-[120px]"}`}
         >
-          RAP
-        </p>
+          <text x="0" y="290" fontSize="400" fontWeight="600" textLength="1000" lengthAdjust="spacingAndGlyphs" strokeWidth="22" strokeLinejoin="round" fontFamily="Geist, system-ui, sans-serif">RAP</text>
+        </svg>
       </footer>
   );
 };

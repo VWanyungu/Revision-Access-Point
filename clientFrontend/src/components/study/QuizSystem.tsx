@@ -12,6 +12,8 @@ interface QuizSystemProps {
   onClose: () => void;
   resourcePublicAccessUrl: string;
   resourceTitle: string;
+  /** Called when the student's pass does not include the AI add-on. */
+  onNeedAi?: () => void;
 }
 
 type Stage = "setup" | "playing" | "results" | "error";
@@ -54,7 +56,7 @@ const Switch = ({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   </button>
 );
 
-const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle }: QuizSystemProps) => {
+const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi }: QuizSystemProps) => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const reduce = useReducedMotion();
@@ -90,6 +92,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle }: QuizSys
         body: JSON.stringify({ fileUrl: resourcePublicAccessUrl, numberOfQuestions: count, difficulty: level }),
       });
       const data = await res.json();
+      if (data.detail === "ai_required" && onNeedAi) { onNeedAi(); return; }
       if (!res.ok || data.error || !Array.isArray(data.data) || data.data.length === 0) {
         setErrorText(typeof data.error === "string" ? data.error : "");
         setStage("error");

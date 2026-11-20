@@ -5,6 +5,8 @@ import { EnvelopeSimple } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 import { getInstitutions, getSchools, getDepartmentsBySchoolId } from "@/database/utils";
 import MpesaPaymentDialog from "@/components/payment/MpesaPaymentDialog";
+import AiAddOn from "@/components/pay/AiAddOn";
+import { ksh, usePrices } from "@/lib/pricing";
 import { useSemesterPreview } from "@/components/pay/useSemesterPreview";
 import {
   EASE, PayPage, PayHeader, PayBottomBar, Title, InkButton, QuietButton, SelectField, accessUntil, formatDate,
@@ -14,10 +16,10 @@ interface PricingGateProps {
   onLogout: () => void;
   onSubscribed?: () => void;
   onCancel?: () => void;
+  /** Renewing: the pass being renewed, so the course is already chosen. Ids are strings, as the selects use. */
+  initial?: { institution: string; school: string; department: string; year: string; semester: string };
 }
 
-// Falls back to 1 shilling when the env variable is missing or empty (the pipeline writes it empty if its secret is unset).
-const PRICE = `KSH ${import.meta.env.VITE_SEMESTER_PRICE || 1}`;
 const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL as string | undefined;
 const yearOptions = ["1", "2", "3", "4", "5", "6"].map((y) => ({ value: y, label: `Year ${y}` }));
 const semesterOptions = ["1", "2", "3"].map((s) => ({ value: s, label: `Semester ${s}` }));
@@ -31,15 +33,20 @@ const Stat = ({ value, children }: { value: number | null; children: React.React
   </div>
 );
 
-const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => {
+const PricingGate = ({ onLogout, onSubscribed, onCancel, initial }: PricingGateProps) => {
   const { signOut } = useAuth();
   const reduce = useReducedMotion();
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [institution, setInstitution] = useState("");
-  const [school, setSchool] = useState("");
-  const [department, setDepartment] = useState("");
-  const [year, setYear] = useState("");
-  const [semester, setSemester] = useState("");
+  // The AI add-on is optional; the price comes from the server, never from the browser.
+  const [withAi, setWithAi] = useState(false);
+  const { data: prices, isError: pricesFailed } = usePrices();
+  const total = prices ? prices.access + (withAi ? prices.ai : 0) : undefined;
+  const PRICE = total ? ksh(total) : "…";
+  const [institution, setInstitution] = useState(initial?.institution ?? "");
+  const [school, setSchool] = useState(initial?.school ?? "");
+  const [department, setDepartment] = useState(initial?.department ?? "");
+  const [year, setYear] = useState(initial?.year ?? "");
+  const [semester, setSemester] = useState(initial?.semester ?? "");
 
   const { data: institutions = [] } = useQuery({ queryKey: ["institutions"], queryFn: async () => (await getInstitutions()) ?? [] });
   // Nothing is preselected: a student picks their own institution, school and department.
@@ -66,7 +73,7 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
   const data = preview.data;
   const totalFiles = data ? data.totals.notes + data.totals.papers + data.totals.tutorials : 0;
   const nothingYet = picked && !!data && data.countsKnown && totalFiles === 0;
-  const canPay = picked && !!data && !nothingYet;
+  const canPay = picked && !!data && !nothingYet && !!prices;
 
   const handleLogout = async () => {
     localStorage.removeItem("user");
@@ -94,6 +101,7 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
         open
         onOpenChange={setPaymentOpen}
         price={PRICE}
+        ai={withAi}
         departmentId={department}
         year={year}
         semester={semester}
@@ -134,12 +142,25 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
             </div>
           </div>
 
+          <AiAddOn checked={withAi} onChange={setWithAi} price={prices?.ai} />
+          {pricesFailed && <p className="text-sm text-danger" role="alert">Prices could not be loaded. Please refresh the page.</p>}
+
           <div className="hidden flex-col gap-4 border-t border-line pt-8 md:flex">
             <div className="flex items-center justify-between">
               <span className="font-literata text-lg font-medium">Semester pass</span>
+              <span className="font-literata text-xl">{prices ? ksh(prices.access) : "…"}</span>
+            </div>
+            {withAi && prices && (
+              <div className="flex items-center justify-between">
+                <span className="text-base">AI features</span>
+                <span className="text-base tabular-nums">+ {ksh(prices.ai)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-line pt-3">
+              <span className="text-base font-medium">Total</span>
               <span className="font-literata text-xl">{PRICE}</span>
             </div>
-            <p className="text-sm text-ink-muted">Access until {until}.</p>
+            <p className="text-sm text-ink-muted">Access until {until}.{withAi ? "" : " Reading and viewing only; you can add AI features later."}</p>
             <InkButton arrow disabled={!canPay} onClick={() => setPaymentOpen(true)}>Continue to payment</InkButton>
             {onCancel && <QuietButton onClick={onCancel}>Cancel</QuietButton>}
           </div>
@@ -222,20 +243,15 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel }: PricingGateProps) => 
               </>
             )
           )}
-          {onCancel && (
-            <QuietButton className="w-fit md:hidden" onClick={onCancel}>Cancel</QuietButton>
-          )}
         </section>
       </div>
 
       <PayBottomBar className="md:hidden">
-        <div className="flex w-full items-center gap-4">
-          <div className="flex flex-col">
-            <span className="font-literata text-lg font-medium">{PRICE}</span>
-            <span className="text-sm text-ink-muted">Semester pass</span>
-          </div>
-          <InkButton arrow className="flex-1" disabled={!canPay} onClick={() => setPaymentOpen(true)}>
-            Continue to payment
+        <div className="flex w-full items-center gap-3">
+          <span className="font-literata text-lg font-medium">{PRICE}</span>
+          {onCancel && <QuietButton className="ml-auto" onClick={onCancel}>Cancel</QuietButton>}
+          <InkButton arrow className={onCancel ? "" : "flex-1"} disabled={!canPay} onClick={() => setPaymentOpen(true)}>
+            Continue
           </InkButton>
         </div>
       </PayBottomBar>

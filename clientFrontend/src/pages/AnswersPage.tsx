@@ -9,6 +9,8 @@ import PageCrumbs from "@/components/layout/PageCrumbs";
 import { QuestionMobile } from "@/components/study/AnswersMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { EASE, QuietButton, formatDate } from "@/components/pay/PayKit";
+import ConfirmAction from "@/components/ui/confirm-action";
+import LoadFailed from "@/components/layout/LoadFailed";
 
 interface MarksBreakdown {
   step: string;
@@ -65,6 +67,9 @@ interface AnswersPageProps {
   onSwitchVersion?: (version: number) => void;
   onQuiz?: () => void;
   downloadUrl?: string;
+  /** Why the answers could not be loaded; shows an in-page "Try again" instead of a toast. */
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 /*
@@ -197,7 +202,7 @@ const QuestionSection = ({ q, index, last, onNext, onQuiz }: {
   );
 };
 
-export default function AnswersPage({ data, generating, title, onBack, onOpenPaper, onRegenerate, onSwitchVersion, onQuiz, downloadUrl }: AnswersPageProps) {
+export default function AnswersPage({ data, generating, title, onBack, onOpenPaper, onRegenerate, onSwitchVersion, onQuiz, downloadUrl, error, onRetry }: AnswersPageProps) {
   const [active, setActive] = useState(0);
   const isMobile = useIsMobile(); // phones get their own, full-width question layout
   const reduce = useReducedMotion();
@@ -237,6 +242,14 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
   }, [active]);
 
   if (generating) return <Generating title={title} onBack={onBack} />;
+
+  if (error && onRetry) {
+    return (
+      <div className="px-5 pb-24 pt-10 font-geist md:pt-14">
+        <LoadFailed title="Couldn't load the answers" message={error} onRetry={onRetry} onBack={{ label: "Back to paper", onClick: onBack }} />
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -301,14 +314,21 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
             )}
             {downloadUrl && <a href={downloadUrl} target="_blank" rel="noreferrer" className={`${outline} hidden h-10 md:inline-flex`}>Download <DownloadSimple size={14} /></a>}
             {onRegenerate && (
-              <button
-                onClick={() => { if (window.confirm("This writes a new version of the answers for you. Your current version is kept and you can switch back. Continue?")) onRegenerate(); }}
-                disabled={data.regenerationsLeft === 0}
-                className={`${outline} h-10 text-ink-muted disabled:pointer-events-none disabled:opacity-40`}
-                title={data.regenerationsLeft === 0 ? "You have used your regenerations for this paper" : undefined}
-              >
-                Regenerate{data.regenerationsLeft !== undefined ? ` (${data.regenerationsLeft} left)` : ""} <ArrowsClockwise size={14} />
-              </button>
+              <ConfirmAction
+                title="Write a new version?"
+                description="This writes a new version of the answers for you. Your current version is kept and you can switch back."
+                confirmLabel="Write a new version"
+                onConfirm={onRegenerate}
+                trigger={
+                  <button
+                    disabled={data.regenerationsLeft === 0}
+                    className={`${outline} h-10 text-ink-muted disabled:pointer-events-none disabled:opacity-40`}
+                    title={data.regenerationsLeft === 0 ? "You have used your regenerations for this paper" : undefined}
+                  >
+                    Regenerate{data.regenerationsLeft !== undefined ? ` (${data.regenerationsLeft} left)` : ""} <ArrowsClockwise size={14} />
+                  </button>
+                }
+              />
             )}
           </div>
 
@@ -326,7 +346,7 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
         </header>
 
         {/* Split: a sticky index on the left, the cards on the right */}
-        <div className="mt-10 grid gap-0 md:mt-16 md:grid-cols-[280px_minmax(0,1fr)] md:gap-12 lg:gap-16">
+        <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-0 md:mt-16 md:grid-cols-[280px_minmax(0,1fr)] md:gap-12 lg:gap-16">
           <aside className="hidden md:block">
             <div className="sticky top-28">
               <div className="flex items-center justify-between px-3 pb-3">
