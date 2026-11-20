@@ -465,7 +465,7 @@ const Resources = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Cover photo <span className="font-normal text-muted-foreground">(optional, e.g. a book cover)</span></Label>
+              <Label htmlFor="cover">Cover photo <span className="font-normal text-muted-foreground">(optional, e.g. a book cover)</span></Label>
               <input
                 type="file"
                 accept="image/*"
@@ -475,6 +475,7 @@ const Resources = () => {
               />
               <div className="flex items-center gap-3">
                 <button
+                  id="cover"
                   type="button"
                   onClick={() => coverInputRef.current?.click()}
                   className="flex h-24 w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed text-muted-foreground transition-colors hover:border-primary/50"
@@ -499,7 +500,7 @@ const Resources = () => {
                   setFormData({ ...formData, resource_type_id: o.typeId, paper_kind: o.kind ?? '', academic_year: o.kind ? formData.academic_year : '' });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger id="resource_type_id">
                   <SelectValue placeholder="Select a type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -510,9 +511,9 @@ const Resources = () => {
 
             {paper && (
               <div className="space-y-2">
-                <Label>Academic year</Label>
+                <Label htmlFor="academic_year">Academic year</Label>
                 <Select value={formData.academic_year} onValueChange={(value) => setFormData({ ...formData, academic_year: value })}>
-                  <SelectTrigger><SelectValue placeholder="Select the academic year" /></SelectTrigger>
+                  <SelectTrigger id="academic_year"><SelectValue placeholder="Select the academic year" /></SelectTrigger>
                   <SelectContent>
                     {academicYears().map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                   </SelectContent>
@@ -537,7 +538,7 @@ const Resources = () => {
                 onValueChange={(value) => setFormData({ ...formData, school_id: Number(value) })}
                 required
               >
-                <SelectTrigger>
+                <SelectTrigger id="school">
                   <SelectValue placeholder="Select a school" />
                 </SelectTrigger>
                 <SelectContent>
@@ -557,7 +558,7 @@ const Resources = () => {
                 onValueChange={(value) => setFormData({ ...formData, department_id: Number(value) })}
                 required
               >
-                <SelectTrigger>
+                <SelectTrigger id="department">
                   <SelectValue placeholder="Select a department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -571,8 +572,9 @@ const Resources = () => {
             </div>
 
             <div className="space-y-2 flex flex-col w-full">
-              <Label>Unit</Label>
+              <Label htmlFor="unit">Unit</Label>
               <Combobox
+                id="unit"
                 options={units.filter(uni => Number(uni.departments.id) == formData.department_id).map((unit) => ({
                   value: String(unit.id),
                   label: `${unit.code} - ${unit.name}`
@@ -586,13 +588,13 @@ const Resources = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Topic (syllabus)</Label>
+              <Label htmlFor="topic">Topic (syllabus)</Label>
               <Select
                 value={String(formData.topic_id)}
                 onValueChange={(value) => setFormData({ ...formData, topic_id: Number(value) })}
                 disabled={!formData.unit_id}
               >
-                <SelectTrigger>
+                <SelectTrigger id="topic">
                   <SelectValue placeholder={formData.unit_id ? 'No topic' : 'Select a unit first'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -605,9 +607,9 @@ const Resources = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="resourceUpload">Resource Upload</Label>
+              <Label id="upload-label">Resource Upload</Label>
               <Tabs value={uploadType} onValueChange={setUploadType} className="mb-6">
-                <TabsList className='flex'>
+                <TabsList className='flex' aria-labelledby="upload-label">
                   <TabsTrigger value="link" className='flex-1'>Link</TabsTrigger>
                   <TabsTrigger value="file" className='flex-1'>Upload file</TabsTrigger>
                 </TabsList>
@@ -618,6 +620,7 @@ const Resources = () => {
               {/* <Label htmlFor="uploadLink">Link</Label> */}
               <Input
                 id="uploadLink"
+                aria-label="Link"
                 placeholder="https://example.com/resource.pdf"
                 value={formData.public_access_url}
                 onChange={(e) => setFormData({ ...formData, public_access_url: e.target.value })}

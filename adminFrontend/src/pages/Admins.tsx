@@ -239,9 +239,9 @@ const Admins = () => {
           </div>
 
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label htmlFor="role">Role</Label>
             <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as AdminRole, schoolIds: [], courseIds: [] })}>
-              <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+              <SelectTrigger id="role"><SelectValue placeholder="Select role" /></SelectTrigger>
               <SelectContent>
                 {roleOptions.map((r) => <SelectItem key={r} value={r}>{roleConfig[r].label}</SelectItem>)}
               </SelectContent>

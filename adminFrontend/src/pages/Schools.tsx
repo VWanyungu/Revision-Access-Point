@@ -197,8 +197,9 @@ const Schools = () => {
           </div>
           {me?.role === 'super_admin' && (
             <div className="space-y-2">
-              <Label>Institution</Label>
+              <Label htmlFor="institution">Institution</Label>
               <Combobox
+                id="institution"
                 options={institutions.map((i: any) => ({ value: String(i.id), label: `${i.short_name} - ${i.name}` }))}
                 value={String(formData.institution_id)}
                 onChange={(v) => setFormData({ ...formData, institution_id: Number(v) })}

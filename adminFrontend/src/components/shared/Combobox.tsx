@@ -1,6 +1,7 @@
 import { Dropdown } from '@/components/ui/dropdown';
 
 interface ComboboxProps {
+  id?: string;
   options: { value: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
@@ -11,9 +12,10 @@ interface ComboboxProps {
 }
 
 /** Kept for its call sites: a full-width Dropdown (searchable once the list is long). */
-export function Combobox({ options, value, onChange, placeholder = 'Select item...', className, disabled }: ComboboxProps) {
+export function Combobox({ id, options, value, onChange, placeholder = 'Select item...', className, disabled }: ComboboxProps) {
   return (
     <Dropdown
+      id={id}
       block
       disabled={disabled}
       className={className}

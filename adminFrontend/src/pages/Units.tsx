@@ -300,8 +300,9 @@ const Units = () => {
           </div>
           <InstitutionSelect value={formInstitution} onChange={(id) => { setFormInstitution(id); setFormData((f) => ({ ...f, department_id: 0 })); }} />
           <div className="space-y-2">
-            <Label>Department</Label>
+            <Label htmlFor="department">Department</Label>
             <Combobox
+              id="department"
               options={departments.filter((d: any) => !formInstitution || d.institution_id === formInstitution).map((dept: any) => ({ value: String(dept.id), label: dept.name }))}
               value={String(formData.department_id)}
               onChange={(value) => setFormData({ ...formData, department_id: Number(value) })}
@@ -310,7 +311,7 @@ const Units = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label>Banner <span className="font-normal text-muted-foreground">(optional, shown behind the unit title)</span></Label>
+            <Label htmlFor="banner">Banner <span className="font-normal text-muted-foreground">(optional, shown behind the unit title)</span></Label>
             <input
               type="file"
               accept="image/*"
@@ -319,6 +320,7 @@ const Units = () => {
               onChange={(e) => { if (e.target.files?.[0]) handleBanner(e.target.files[0]); e.target.value = ''; }}
             />
             <button
+              id="banner"
               type="button"
               onClick={() => bannerInputRef.current?.click()}
               aria-label="Choose banner image"
@@ -339,7 +341,7 @@ const Units = () => {
               value={String(formData.year_of_study)}
               onValueChange={(value) => setFormData({ ...formData, year_of_study: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="year">
                 <SelectValue placeholder="Select year" />
               </SelectTrigger>
               <SelectContent>
@@ -356,7 +358,7 @@ const Units = () => {
               value={String(formData.semester_of_study)}
               onValueChange={(value) => setFormData({ ...formData, semester_of_study: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="semester">
                 <SelectValue placeholder="Select semester" />
               </SelectTrigger>
               <SelectContent>

@@ -29,7 +29,7 @@ export const InlineText = ({ value, onSave, type = 'text', className, children, 
     return (
       <span className={cn('group inline-flex items-center gap-2', className)}>
         <span>{children ?? value}</span>
-        <button type="button" aria-label="Edit" onClick={() => { setDraft(value); setEditing(true); }} className="text-ink-muted opacity-0 transition-opacity hover:text-ink focus:opacity-100 group-hover:opacity-100">
+        <button type="button" aria-label="Edit" onClick={() => { setDraft(value); setEditing(true); }} className="relative text-ink-muted opacity-0 transition-opacity duration-fast hover:text-ink focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-60 before:absolute before:-inset-3 before:content-['']">
           <Pencil className="size-3.5" />
         </button>
       </span>

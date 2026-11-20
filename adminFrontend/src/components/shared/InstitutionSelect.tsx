@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +17,7 @@ interface Props {
 export const InstitutionSelect = ({ value, onChange, label = 'Institution *' }: Props) => {
   const { data } = useQuery({ queryKey: ['institutions', 'all'], queryFn: () => getRecords('institutions', { pageSize: 100 }) });
   const institutions: any[] = data?.data ?? [];
+  const id = useId();
 
   useEffect(() => {
     if (!value && institutions.length === 1) onChange(Number(institutions[0].id));
@@ -24,9 +25,9 @@ export const InstitutionSelect = ({ value, onChange, label = 'Institution *' }: 
 
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       <Select value={value ? String(value) : ''} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger><SelectValue placeholder="Select institution" /></SelectTrigger>
+        <SelectTrigger id={id}><SelectValue placeholder="Select institution" /></SelectTrigger>
         <SelectContent>
           {institutions.map((i) => <SelectItem key={i.id} value={String(i.id)}>{i.short_name ? `${i.short_name} · ${i.name}` : i.name}</SelectItem>)}
         </SelectContent>

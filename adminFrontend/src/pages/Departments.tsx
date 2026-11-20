@@ -239,6 +239,7 @@ const Departments = () => {
           <div className="space-y-2">
             <Label htmlFor="school">School</Label>
             <Combobox
+              id="school"
               options={schools.filter((s: any) => !formInstitution || s.institution_id === formInstitution).map((s: any) => ({ value: String(s.id), label: s.name }))}
               value={formData.school_id}
               onChange={(value) => setFormData({ ...formData, school_id: value })}
