@@ -204,7 +204,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
                 <button
                   key={i} role="radio" aria-checked={on}
                   onClick={() => setAnswers({ ...answers, [current]: i })}
-                  className={`flex items-center gap-4 rounded-[10px] px-3 py-3.5 text-left text-base transition-colors duration-300 ${on ? "bg-field-strong font-medium" : "hover:bg-field"}`}
+                  className={`flex items-center gap-4 rounded-lg px-3 py-3.5 text-left text-base transition-colors duration-300 ${on ? "bg-field-strong font-medium" : "hover:bg-field"}`}
                 >
                   <span className={`flex size-8 shrink-0 items-center justify-center rounded-full border text-sm transition-colors duration-300 ${on ? "border-brand bg-brand-solid text-white" : "border-line-strong"}`}>{letter(i)}</span>
                   {opt}

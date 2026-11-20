@@ -195,7 +195,7 @@ const MpesaPaymentDialog = ({
         <label className="mt-8 flex flex-col gap-2">
           <span className="text-sm font-medium">Phone number</span>
           <span
-            className={`flex h-[52px] items-center gap-3 rounded-[10px] bg-field px-4 transition-shadow duration-300 ${
+            className={`flex h-[52px] items-center gap-3 rounded-lg bg-field px-4 transition-shadow duration-300 ${
               error ? "ring-2 ring-danger" : "focus-within:ring-2 focus-within:ring-brand-solid"
             }`}
           >

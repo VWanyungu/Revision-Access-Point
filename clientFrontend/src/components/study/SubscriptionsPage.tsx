@@ -83,7 +83,7 @@ const ActivePass = ({ sub, index, onRenew, onAddAi }: { sub: Sub; index: number;
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       transition={{ duration: 0.8, ease: EASE, delay: index * 0.1 }}
       aria-label={`Active pass for ${sub.department_name ?? "your department"}`}
-      className="rounded-[2rem] bg-field/60 p-1.5 ring-1 ring-line"
+      className="rounded-tray bg-field/60 p-1.5 ring-1 ring-line"
     >
       <div className="rounded-[calc(2rem-0.375rem)] bg-surface p-5 shadow-[0_24px_48px_-28px_rgba(14,21,37,0.18)] md:p-7">
         <div className="flex items-center justify-between gap-4">
@@ -211,11 +211,11 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
           <LoadFailed className="mt-10" title="Couldn't load your passes" message="Your passes are safe. Check your connection and try again before buying anything." onRetry={() => refetch()} />
         ) : isLoading ? (
           <div className="mt-10 flex flex-col gap-4" role="status" aria-label="Loading your subscriptions">
-            <div className="h-[22rem] animate-pulse rounded-[2rem] bg-field" />
-            <div className="h-24 animate-pulse rounded-[1.5rem] bg-field" />
+            <div className="h-[22rem] animate-pulse rounded-tray bg-field" />
+            <div className="h-24 animate-pulse rounded-well bg-field" />
           </div>
         ) : subs.length === 0 ? (
-          <div className="mt-10 flex flex-col items-center rounded-[2rem] bg-field/60 p-1.5 ring-1 ring-line">
+          <div className="mt-10 flex flex-col items-center rounded-tray bg-field/60 p-1.5 ring-1 ring-line">
             <div className="flex w-full flex-col items-center rounded-[calc(2rem-0.375rem)] bg-surface px-6 py-16 text-center">
               <span className="flex size-14 items-center justify-center rounded-full bg-field text-ink-muted"><Receipt size={26} /></span>
               <h2 className="mt-6 text-xl font-medium">No passes yet</h2>
@@ -229,7 +229,7 @@ const SubscriptionsPage = (_props: SubscriptionsPageProps) => {
               {active.length > 0 ? (
                 active.map((s, i) => <ActivePass key={s.id} sub={s} index={i} onRenew={() => { setRenewing(s); setIsInitiating(true); }} onAddAi={() => setAddAiTo(s)} />)
               ) : (
-                <div className="rounded-[2rem] bg-field/60 p-1.5 ring-1 ring-line">
+                <div className="rounded-tray bg-field/60 p-1.5 ring-1 ring-line">
                   <div className="flex flex-col items-start gap-6 rounded-[calc(2rem-0.375rem)] bg-surface p-6 md:flex-row md:items-center md:justify-between md:p-10">
                     <div>
                       <h2 className="text-xl font-medium">No active pass</h2>

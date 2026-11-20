@@ -22,7 +22,7 @@ const chip = "block max-w-[14rem] truncate rounded-full bg-field px-3.5 py-1.5 t
 /** Floating breadcrumb card: home icon, then chip / chip / current page. Same width and floating look as the main navbar. */
 const PageCrumbs = ({ onHome, trail, current, right }: Props) => (
   <div className="px-3 pt-3 font-geist md:px-6">
-    <Breadcrumb className="mx-auto flex w-full max-w-3xl items-center gap-3 rounded-full bg-surface/85 p-1.5 pr-5 shadow-[0_8px_30px_-14px_rgba(14,21,37,0.18)] ring-1 ring-line backdrop-blur-xl">
+    <Breadcrumb className="mx-auto flex w-full max-w-3xl items-center gap-3 rounded-full bg-surface/85 p-1.5 pr-5 shadow-float ring-1 ring-line backdrop-blur-xl">
       <BreadcrumbList className="no-scrollbar min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto text-base text-ink-muted sm:gap-2">
         <BreadcrumbItem>
           {onHome ? (

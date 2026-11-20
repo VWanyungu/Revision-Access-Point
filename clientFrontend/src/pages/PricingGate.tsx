@@ -174,7 +174,7 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel, initial }: PricingGateP
             </p>
           ) : preview.isLoading ? (
             <div className="flex flex-col gap-3" role="status" aria-label="Loading">
-              {[0, 1, 2, 3].map((i) => <div key={i} className="h-10 animate-pulse rounded-[10px] bg-field" />)}
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-field" />)}
             </div>
           ) : nothingYet || (data && data.units.length === 0) ? (
             <div className="flex flex-col gap-3">

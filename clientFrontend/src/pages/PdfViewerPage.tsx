@@ -127,14 +127,14 @@ export default function PdfViewerPage({ url, title, onBack, kind, onQuiz, onMode
         <button
           onClick={exitFull}
           aria-label="Exit full screen"
-          className="fixed right-4 top-4 z-[70] flex size-11 items-center justify-center rounded-full bg-surface/60 text-ink shadow-[0_8px_30px_-12px_rgba(14,21,37,0.35)] ring-1 ring-white/40 backdrop-blur-xl transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-surface/80 active:scale-95"
+          className="fixed right-4 top-4 z-[70] flex size-11 items-center justify-center rounded-full bg-surface/60 text-ink shadow-float ring-1 ring-white/40 backdrop-blur-xl transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-surface/80 active:scale-95"
         >
           <ArrowsIn size={20} />
         </button>
       )}
       {/* Floating bar: same width and styling as the main navbar, 12px beneath it. The wrapper ignores the pointer so only the pill is clickable. */}
       <div className={full ? "hidden" : "pointer-events-none sticky top-[72px] z-40 px-3 pb-4 pt-3 md:top-[76px] md:px-6"}>
-        <div className="pointer-events-auto mx-auto flex w-full max-w-3xl items-center gap-1 rounded-full bg-surface/85 p-1.5 text-ink shadow-[0_8px_30px_-14px_rgba(14,21,37,0.18)] ring-1 ring-line backdrop-blur-xl">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-3xl items-center gap-1 rounded-full bg-surface/85 p-1.5 text-ink shadow-float ring-1 ring-line backdrop-blur-xl">
           <button onClick={onBack} aria-label="Back" className="flex size-11 shrink-0 md:size-9 items-center justify-center rounded-full hover:bg-field"><ArrowLeft size={18} /></button>
           <p className="min-w-0 flex-1 truncate px-1 text-base font-medium">
             {heading} <span className="ml-1 hidden font-geist-mono text-sm font-normal text-ink-muted lg:inline">{numPages} pages</span>

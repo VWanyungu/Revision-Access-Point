@@ -301,7 +301,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             <button
               onClick={() => onPick(i)}
               aria-current={i === current ? "true" : undefined}
-              className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-base transition-colors duration-300 ${
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-base transition-colors duration-300 ${
                 i === current ? "bg-field-strong font-medium" : state === "todo" ? "text-ink-muted hover:bg-field" : "hover:bg-field"
               }`}
             >
@@ -534,7 +534,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
         </div>
       ) : isLoading ? (
         <div className="mx-auto max-w-[1200px] px-5 py-16 md:px-10" role="status" aria-label="Loading">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="mb-3 h-12 animate-pulse rounded-[10px] bg-field" />)}
+          {[0, 1, 2, 3].map((i) => <div key={i} className="mb-3 h-12 animate-pulse rounded-lg bg-field" />)}
         </div>
       ) : (
         <>
