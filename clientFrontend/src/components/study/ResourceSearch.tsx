@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Landmark, Building2, BookOpen, GraduationCap, Calendar, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { Progress } from "@/components/ui/progress";
 import { getInstitutions, getSchools, getDepartmentsBySchoolId, getUnitsByDepartmentIdYearSemester } from "@/database/utils";
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from "@/database/supabase";
 
 const years = ["1", "2", "3", "4"];
 
@@ -16,9 +17,11 @@ interface ResourceSearchProps {
   onSearch: (selection: { institution: string; school: string; department: string; year: number; semester: number; unit: string }) => void;
   /** Render only the fields and button, for use inside a popover on the unit page. Without it, this is the full first-run page. */
   inline?: boolean;
+  /** The unit being viewed now. The form opens already set to it (institution to unit), so changing only needs the part that differs. */
+  currentUnitId?: number;
 }
 
-const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
+const ResourceSearch = ({ onSearch, inline = false, currentUnitId }: ResourceSearchProps) => {
     const [institution, setInstitution] = useState("");
     const [institutionName, setInstitutionName] = useState("");
     const [school, setSchool] = useState("");
@@ -28,6 +31,32 @@ const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
     const [year, setYear] = useState("");
     const [unit, setUnit] = useState("");
     const [semester, setSemester] = useState("");
+
+    // Where the current unit sits: its department, school and institution, year and semester.
+    const prefilled = useRef(false);
+    const { data: where } = useQuery({
+        queryKey: ["unit-location", currentUnitId],
+        enabled: !!currentUnitId,
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("units")
+                .select("id, department_id, year_of_study, semester_of_study, departments(school_id, schools(institution_id))")
+                .eq("id", currentUnitId)
+                .maybeSingle();
+            return data as unknown as { id: number; department_id: number; year_of_study: number; semester_of_study: number; departments: { school_id: number; schools: { institution_id: number } } } | null;
+        },
+    });
+    useEffect(() => {
+        if (!where || prefilled.current) return;
+        prefilled.current = true;
+        // The dropdowns compare ids with ===, so these keep the numeric ids the lists use; year and semester are strings there.
+        setInstitution(where.departments.schools.institution_id as unknown as string);
+        setSchool(where.departments.school_id as unknown as string);
+        setDepartment(where.department_id as unknown as string);
+        setYear(String(where.year_of_study));
+        setSemester(String(where.semester_of_study));
+        setUnit(where.id as unknown as string);
+    }, [where]);
 
     const progress = [institution, school, department, year, semester, unit].filter(Boolean).length * (100 / 6);
 
@@ -71,7 +100,7 @@ const ResourceSearch = ({ onSearch, inline = false }: ResourceSearchProps) => {
 
     const handleSearch = () => {
         if (institution && school && department && year && semester && unit) {
-            localStorage.setItem("resourceSelection", JSON.stringify({institution: institution, institutionName: institutionName, school: school, schoolName: schoolName, department: department, departmentName: departmentName, year: Number(year), semester: Number(semester), unit: unit}));
+            localStorage.setItem("resourceSelection", JSON.stringify({institution: institution, institutionName: institutionName || institutions.find((i) => i.id === institution)?.name, school: school, schoolName: schoolName || schools.find((x) => x.id === school)?.name, department: department, departmentName: departmentName || departments.find((d) => d.id === department)?.name, year: Number(year), semester: Number(semester), unit: unit}));
             onSearch({ institution, school, department, year: Number(year), semester: Number(semester), unit });
         }
     };

@@ -80,3 +80,40 @@ export const authorizeFile = async (req: Request, fileUrl: string) => {
 
   return { user, resource };
 };
+
+/**
+ * Same checks as authorizeFile, for a whole unit: signed in, and (for students) a current pass for the unit's
+ * department, year and semester. Admins may use any unit. Returns the user and the unit.
+ */
+export const authorizeUnit = async (req: Request, unitId: number) => {
+  const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+  if (!token) throw new HttpError(401, "Missing or invalid authorisation token");
+
+  const admin = adminClient();
+  const { data: { user }, error } = await admin.auth.getUser(token);
+  if (error || !user) throw new HttpError(401, "Missing or invalid authorisation token");
+
+  const { data: unit } = await admin
+    .from("units")
+    .select("id, name, department_id, year_of_study, semester_of_study")
+    .eq("id", unitId)
+    .maybeSingle();
+  if (!unit) throw new HttpError(404, "Unknown unit");
+
+  if (!user.app_metadata?.role) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: pass } = await admin
+      .from("subscriptions")
+      .select("id")
+      .eq("user_uuid", user.id)
+      .eq("department_id", unit.department_id)
+      .eq("year_of_study", unit.year_of_study)
+      .eq("semester_of_study", unit.semester_of_study)
+      .gte("end_date", today)
+      .limit(1)
+      .maybeSingle();
+    if (!pass) throw new HttpError(403, "You need a current semester pass for this unit");
+  }
+
+  return { user, unit };
+};

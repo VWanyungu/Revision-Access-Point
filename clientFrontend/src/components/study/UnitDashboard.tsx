@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowRight, ArrowUpRight, BookOpenText, CaretDown, Check, FileText, ListChecks, MagnifyingGlass, PlayCircle, SquaresFour, Timer, X,
+  ArrowRight, ArrowUpRight, BookOpenText, CaretDown, Check, FileText, ListChecks, MagnifyingGlass, PlayCircle, SquaresFour, Timer, TrendUp, X,
 } from "@phosphor-icons/react";
 import { getResources } from "@/database/utils";
 import { supabase } from "@/database/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { EASE, formatDate } from "@/components/pay/PayKit";
 import { useTimer } from "@/context/TimerContext";
+import PredictionsPanel from "./PredictionsPanel";
 import unitHero from "@/assets/study/unit-hero.png";
 import { getProgress, getTopics, recordOpen, type Progress } from "@/database/progress";
 import { toast } from "sonner";
@@ -56,7 +57,7 @@ interface Resource {
 interface Topic { id: string; title: string; description?: string; notes: Resource[] }
 
 const NOTES = 1, EXAMS = 2, CATS = 3, TUTORIALS = 4;
-type View = "all" | "syllabus" | "papers" | "library";
+type View = "all" | "syllabus" | "papers" | "library" | "predictions";
 const num = (i: number) => String(i + 1).padStart(2, "0");
 // 44px tall on phones so it is easy to tap; inline-sized on desktop.
 const link = "inline-flex items-center gap-1.5 text-sm font-medium transition-opacity duration-300 hover:opacity-60 max-md:min-h-11";
@@ -390,6 +391,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
     { id: "syllabus", label: "Syllabus", Icon: ListChecks },
     { id: "papers", label: "Past papers", Icon: FileText },
     { id: "library", label: "Library", Icon: BookOpenText },
+    { id: "predictions", label: "Predictions", Icon: TrendUp },
   ];
 
   const paperCell = (p: Resource | undefined, key: string) =>
@@ -446,7 +448,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                   className="absolute left-0 top-full z-30 mt-4 w-[min(520px,calc(100vw-2.5rem))] rounded-3xl bg-surface p-5 shadow-[0_16px_48px_-16px_rgba(14,21,37,0.18)] ring-1 ring-line md:p-6"
                 >
                   <p className="mb-4 text-base font-medium">Change unit</p>
-                  <ResourceSearch inline onSearch={(s) => { setPickerOpen(false); onChangeUnit(s); }} />
+                  <ResourceSearch inline currentUnitId={unitId} onSearch={(s) => { setPickerOpen(false); onChangeUnit(s); }} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -471,7 +473,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
               onClick={() => setView(id)}
               aria-label={label}
               aria-current={view === id ? "true" : undefined}
-              className={`flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-base transition-colors duration-300 ${view === id ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+              className={`flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-base md:px-4 transition-colors duration-300 ${view === id ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
             >
               <Icon size={18} /> <span className={view === id ? "" : "max-md:hidden"}>{label}</span>
             </button>
@@ -479,7 +481,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
           <button
             onClick={() => timer.setVisible(!timer.visible)}
             aria-pressed={timer.visible}
-            className={`ml-auto flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-base transition-colors duration-300 ${timer.visible ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+            className={`ml-auto flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-base md:px-4 transition-colors duration-300 ${timer.visible ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
           >
             <Timer size={18} /> <span className="hidden sm:inline">Timer</span>
           </button>
@@ -703,6 +705,9 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
               <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">{tutorials.map(tutorialCard)}</div>
             )}
           </Section>}
+
+          {/* Predictions: the topics the next CAT or exam is likely to cover */}
+          {view === "predictions" && <Section id="predictions" title="Predictions"><PredictionsPanel unitId={unitId} /></Section>}
         </>
       )}
 
