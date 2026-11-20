@@ -283,12 +283,13 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
               transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
               className="h-9 w-auto"
             />
-            <Link to="/login" className="focus-ring inline-flex h-11 items-center rounded-full bg-white/10 px-5 text-sm font-medium text-white ring-1 ring-white/25 transition-[transform,background-color] duration-500 ease-house hover:bg-white/20 active:scale-[0.98]">
+            <Link to="/login" className="focus-ring inline-flex h-11 items-center rounded-full bg-black/40 px-5 text-sm font-medium text-white ring-1 ring-white/30 backdrop-blur-md transition-[transform,background-color] duration-500 ease-house hover:bg-black/55 active:scale-[0.98]">
               Sign in
             </Link>
           </div>
 
-          <div className="absolute right-6 top-6 flex flex-col items-end gap-2.5 md:right-12 md:top-8">
+          {/* On phones the logo, Sign in and four icons do not fit in one row; the same links are in the footer. */}
+          <div className="absolute right-6 top-6 flex flex-col items-end gap-2.5 max-sm:hidden md:right-12 md:top-8">
             <p className="hidden text-base font-medium text-white sm:block">Follow us</p>
             <div className="flex gap-2">
               {SOCIALS.map(({ label, logo, href }) => (
@@ -325,10 +326,10 @@ const LandingPage = ({ onNavigateSignUp }: LandingPageProps) => {
             >
               <div className="flex flex-col items-start gap-4 md:items-end">
                 <PillCta label="Get started" onClick={onNavigateSignUp} />
-                <p className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white ring-1 ring-white/20">
+                <p className="flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-sm text-white ring-1 ring-white/30 backdrop-blur-md">
                   <span className="font-medium tabular-nums">KSH 300 a semester</span>
-                  <span aria-hidden className="text-white/50">·</span>
-                  <span className="text-white/80">Pay with M-Pesa</span>
+                  <span aria-hidden className="text-white/60">·</span>
+                  <span className="text-white/90">Pay with M-Pesa</span>
                 </p>
               </div>
             </motion.div>

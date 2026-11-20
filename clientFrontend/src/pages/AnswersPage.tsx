@@ -124,13 +124,13 @@ const QuestionSection = ({ q, index, last, onNext, onQuiz }: {
         {q.answer_type && <span className={`${badge} bg-field-soft capitalize text-ink-muted`}>{q.answer_type}</span>}
       </div>
 
-      {/* The question: largest text in the card */}
-      <h2 className="mt-5 text-balance text-xl font-medium text-ink md:text-2xl">{q.question_text}</h2>
+      {/* The question: context, so it is quieter than the answer below it */}
+      <h2 className="mt-4 max-w-[68ch] text-balance text-base font-medium text-ink-soft md:text-lg">{q.question_text}</h2>
 
-      {/* The answer: set apart on a flat warm panel */}
-      <div className="mt-8 rounded-lg bg-field-soft p-5 md:p-7">
+      {/* The answer is what the student came for: the strongest block in the card */}
+      <div className="mt-6 rounded-lg bg-field-soft p-5 ring-1 ring-line md:p-7">
         <p className={label}>Model answer</p>
-        <div className="mt-3 text-lg text-ink-soft md:text-lg [&_p:last-child]:mb-0 [&_p]:mb-4">
+        <div className="mt-3 text-lg text-ink [&_p:last-child]:mb-0 [&_p]:mb-4">
           <MixedContentRenderer text={q.answer.final_answer} />
         </div>
       </div>
@@ -298,18 +298,14 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
 
       <div className="mx-auto max-w-[1200px] px-4 pb-28 pt-8 md:px-8 md:pb-32 md:pt-10">
         <header ref={headerRef}>
-          <h1 className="max-w-[18ch] text-balance text-3xl font-medium md:text-4xl">{heading}</h1>
+          <h1 className="text-balance text-2xl font-medium md:text-3xl">{heading}</h1>
 
-          <dl className="mt-7 flex flex-wrap gap-x-10 gap-y-4">
-            {stats.map((s) => (
-              <div key={s.l}>
-                <dd className="text-xl font-medium tabular-nums">{s.n}</dd>
-                <dt className="mt-0.5 text-sm text-ink-muted">{s.l}</dt>
-              </div>
-            ))}
-          </dl>
+          {/* Facts about this set of answers: one quiet line, not three headline numbers */}
+          <p className="mt-2 text-sm tabular-nums text-ink-muted">
+            {stats.map((s) => (s.l === "version" ? s.n : s.l === "written" ? `written ${s.n}` : `${s.n} ${s.l}`)).join(" · ")}
+          </p>
 
-          <div className="mt-7 flex flex-wrap items-center gap-2">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             {onOpenPaper && (
               <button onClick={onOpenPaper} className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm md:h-10 font-medium text-primary-foreground transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary-dark active:scale-[0.98]">
                 Open the paper <ArrowUpRight size={14} />
@@ -342,14 +338,14 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
             </p>
           )}
 
-          <p className="mt-6 flex max-w-[60ch] items-start gap-2 text-sm text-ink-muted">
+          <p className="mt-4 flex max-w-[60ch] items-start gap-2 text-sm text-ink-muted">
             <Info size={16} className="mt-0.5 shrink-0" />
             Written by AI from the paper. Use these to check your method, then confirm facts against your lecture notes.
           </p>
         </header>
 
         {/* Split: a sticky index on the left, the cards on the right */}
-        <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-0 md:mt-16 md:grid-cols-[280px_minmax(0,1fr)] md:gap-12 lg:gap-16">
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-0 md:mt-10 md:grid-cols-[280px_minmax(0,1fr)] md:gap-12 lg:gap-16">
           <aside className="hidden md:block">
             <div className="sticky top-28">
               <div className="flex items-center justify-between px-3 pb-3">
