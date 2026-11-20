@@ -222,7 +222,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   const timer = useTimer();
   // The tab lives in the URL (?view=papers), so refresh, the back button and the phone tab bar all keep it.
   const [searchParams, setSearchParams] = useSearchParams();
-  const view: View = (["all", "syllabus", "papers", "library", "predictions"] as const).find((v) => v === searchParams.get("view")) ?? "syllabus";
+  const view: View = (["all", "syllabus", "papers", "library", "predictions"] as const).find((v) => v === searchParams.get("view")) ?? "papers";
   const setView = (v: View) => setSearchParams({ view: v }, { replace: true });
   // A pass without AI: Quiz me, Model answers and Predictions carry a small lock so the upgrade page is no surprise.
   const noAi = !!pass && !pass.ai_access;
@@ -456,6 +456,13 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
               )}
             </p>
 
+            {/* Under the Change unit row; the name is cut off with an ellipsis so a long note title cannot break the hero. */}
+            {resume && topics.length > 0 && (
+              <button className={`${link} mt-3 max-w-[min(26rem,100%)] max-md:min-h-11`} onClick={() => open(resume)} title={resume.name}>
+                <span className="truncate">Continue reading: {resume.name}</span> <ArrowUpRight size={14} className="shrink-0" />
+              </button>
+            )}
+
             {/* Opens in place under the link, like the navbar's dropdowns: no new page, no overlay. */}
             <AnimatePresence>
               {pickerOpen && onChangeUnit && (
@@ -474,14 +481,6 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
               )}
             </AnimatePresence>
           </div>
-          {topics.length > 0 && (
-            <div className="max-w-[340px] text-base md:rounded-tray md:bg-field/60 md:p-1.5 md:ring-1 md:ring-line md:backdrop-blur-md"><div className="md:rounded-core md:bg-surface md:p-4 md:shadow-float">
-              <p className="max-md:hidden">{doneCount} of {topics.length} {topics.length === 1 ? "topic" : "topics"} complete.{resume ? (last ? " Pick up where you stopped." : " Start with the first note.") : ""}</p>
-              {resume && (
-                <button className={`${link} md:mt-2`} onClick={() => open(resume)}>Continue reading <ArrowUpRight size={14} /></button>
-              )}
-            </div></div>
-          )}
         </div>
       </div>
 
@@ -502,7 +501,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
           <button
             onClick={() => timer.setVisible(!timer.visible)}
             aria-pressed={timer.visible}
-            className={`ml-auto flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-base md:px-4 transition-colors duration-300 ${timer.visible ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+            className={`ml-auto hidden h-11 shrink-0 items-center gap-2 rounded-full px-3 text-base md:flex md:px-4 transition-colors duration-300 ${timer.visible ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
           >
             <Timer size={18} /> <span className="hidden sm:inline">Timer</span>
           </button>
@@ -757,8 +756,10 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
       {/* Closing line */}
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-10 text-sm md:px-10">
-          <p className="text-ink-muted">{pass ? `Semester pass active until ${formatDate(new Date(pass.end_date))}` : "Semester pass"}</p>
-          <button className={link} onClick={() => onNavigate("subscriptions")}>Subscriptions <ArrowUpRight size={14} /></button>
+          <p className="whitespace-nowrap text-ink-muted">
+            {pass ? <><span className="max-sm:hidden">Semester pass active until</span><span className="sm:hidden">Active until</span> {formatDate(new Date(pass.end_date))}</> : "Semester pass"}
+          </p>
+          <button className={`${link} whitespace-nowrap`} onClick={() => onNavigate("subscriptions")}>Subscriptions <ArrowUpRight size={14} /></button>
         </div>
       </div>
 

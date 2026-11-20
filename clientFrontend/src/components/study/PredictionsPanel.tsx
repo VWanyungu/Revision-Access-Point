@@ -115,15 +115,23 @@ const LEVEL_LABEL: Record<ForecastTopic["level"], string> = { high: "High", medi
 
 /** Which topics the next paper is likely to cover, most likely first, each with the reason from the past papers. */
 const Likelihood = ({ forecast }: { forecast: Forecast }) => {
+  const [open, setOpen] = useState(false);
   const topics = [...forecast.topics].sort((a, b) => b.percent - a.percent);
   if (topics.length === 0) return null;
   return (
     <section aria-label="Topic likelihood" className="mb-12 max-w-[720px]">
-      <h3 className="font-literata text-xl">Likely topics</h3>
-      <p className="mt-2 text-sm text-ink-muted">
+      {/* Hidden until asked for: most students only want the practice paper below. */}
+      <button
+        type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls="likely-topics"
+        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-field px-5 text-base font-medium transition-colors duration-300 hover:bg-field-strong"
+      >
+        {open ? "Hide likely topics" : "Show likely topics"}
+      </button>
+      {open && <>
+      <p className="mt-4 text-sm text-ink-muted">
         An estimate from {forecast.based_on.length} past {forecast.based_on.length === 1 ? "paper" : "papers"}. It shows what is more likely, not what will come up.
       </p>
-      <ul className="mt-4 flex flex-col">
+      <ul id="likely-topics" className="mt-4 flex flex-col">
         {topics.map((t) => (
           <li key={t.topic_id} className="border-b border-line py-4 first:border-t">
             <div className="flex items-baseline justify-between gap-4">
@@ -137,6 +145,7 @@ const Likelihood = ({ forecast }: { forecast: Forecast }) => {
           </li>
         ))}
       </ul>
+      </>}
     </section>
   );
 };
