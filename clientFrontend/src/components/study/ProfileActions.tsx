@@ -49,7 +49,7 @@ const ProfileActions = ({ name }: { name: string }) => {
         <label className="sr-only" htmlFor="profile-name">Your name</label>
         <input
           id="profile-name" autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={80} autoComplete="name"
-          className="h-11 min-w-0 flex-1 rounded-full bg-field px-5 text-base outline-none focus-visible:ring-2 focus-visible:ring-brand-solid"
+          className="h-11 w-full min-w-0 shrink-0 rounded-full border-0 bg-field px-5 text-base outline-none focus-visible:ring-2 focus-visible:ring-brand-solid sm:flex-1"
         />
         <div className="flex gap-2">
           <InkButton type="submit" disabled={saving || !draft.trim()}>{saving ? "Saving…" : "Save"}</InkButton>
