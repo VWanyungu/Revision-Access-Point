@@ -22,10 +22,17 @@ export const DialogContent = ({ children, className }: { children: ReactNode; cl
   useEffect(() => {
     // On phones the panel is a fixed sheet, so the page behind should not scroll away from it.
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Keyboard users: move into the form on open, and back to the button that opened it on close.
+    const opener = document.activeElement as HTMLElement | null;
+    ref.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([type=file]), textarea, [role=combobox]')?.focus({ preventScroll: true });
+    return () => { if (opener?.isConnected) opener.focus({ preventScroll: true }); };
   }, []);
   const panel = (
     <section
       ref={ref}
+      role="dialog"
+      aria-labelledby="panel-title"
+      onKeyDown={(e) => { if (e.key === 'Escape') close(false); }}
       // Phones have no room beside the table, so the form becomes a full-height sheet over the page instead of landing at the bottom of a long list.
       className={cn('relative rounded-3xl bg-surface p-6 ring-1 ring-line animate-fade-in max-lg:fixed max-lg:inset-x-2 max-lg:bottom-2 max-lg:top-20 max-lg:z-40 max-lg:overflow-y-auto max-lg:shadow-[0_24px_64px_-16px_rgba(0,0,0,0.5)]', className?.includes('h-[') && 'min-h-[24rem]')}
     >
@@ -39,5 +46,5 @@ export const DialogContent = ({ children, className }: { children: ReactNode; cl
 };
 
 export const DialogHeader = ({ children, className }: { children: ReactNode; className?: string }) => <div className={cn('mb-4 pr-10', className)}>{children}</div>;
-export const DialogTitle = ({ children }: { children: ReactNode }) => <h2 className="text-xl font-semibold">{children}</h2>;
+export const DialogTitle = ({ children }: { children: ReactNode }) => <h2 id="panel-title" className="text-xl font-semibold">{children}</h2>;
 export const DialogDescription = ({ children }: { children: ReactNode }) => <p className="mt-1 text-sm text-ink-muted">{children}</p>;

@@ -276,7 +276,7 @@ These are the "go higher" moves, ordered by return.
 ### Client, verified live
 | # | Finding |
 |---|---|
-| L1 | **The unit page opens on the Library tab.** For a unit with no content (Computer Graphics) the student sees "Nothing has been uploaded for this unit yet." followed by a full footer. After searching "Software Project Management" it also opened on Library, which held only one video even though notes exist (1 of 14 topics complete). Default to All or Syllabus, and give an empty unit a real empty state. |
+| L1 | **~~The unit page opens on the Library tab.~~ Retracted.** The default tab is Syllabus (`UnitDashboard.tsx:201`). The Library tab I saw was remembered from earlier use in the same browser session (`sessionStorage`). What remains true: an empty unit shows only "Nothing has been uploaded for this unit yet." above a full footer, and the Library tab held one video although notes exist. |
 | L2 | **The first unit after sign-in is arbitrary.** The student landed on Computer Graphics, an empty unit, rather than the last-used or richest one. |
 | L3 | **The unit picker is rough.** The popover has six fields and runs off the bottom of an 800px screen, so "Search Resources" sits below the fold and the option list is clipped. Units are unsorted (Computer Forensics, Software Project Management, Machine Learning, …) and a Year 3 list shows duplicates ("Software Engineering" twice, "Advanced Java" and "Advanced Java Programming"). Year offers only 1-4. Add alphabetical or code order and tidy the duplicate unit records in the admin data. |
 | L4 | **Dropdown buttons are announced by their label only.** The accessibility tree shows "Institution", "Year of Study", "Unit", never the selected value. |
