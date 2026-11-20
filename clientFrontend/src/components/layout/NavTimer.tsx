@@ -5,7 +5,7 @@ import { TimerMode, useTimer } from "@/context/TimerContext";
 const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 const LABEL: Record<TimerMode, string> = { focus: "Focus", break: "Break" };
 const STEP_BTN =
-  "flex size-8 items-center justify-center rounded-full bg-field text-ink transition-[transform,background-color] duration-300 hover:bg-field-strong active:scale-95 disabled:pointer-events-none disabled:opacity-40";
+  "flex size-11 items-center justify-center rounded-full bg-field text-ink transition-[transform,background-color] duration-300 md:size-8 hover:bg-field-strong active:scale-95 disabled:pointer-events-none disabled:opacity-40";
 
 const Stepper = ({ label, mode }: { label: string; mode: TimerMode }) => {
   const { minutes, setMinutes } = useTimer();
@@ -37,14 +37,14 @@ const NavTimer = () => {
       <button
         onClick={t.toggle}
         aria-label={t.running ? "Pause timer" : "Start timer"}
-        className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-95"
+        className="flex size-11 items-center justify-center rounded-full bg-primary md:size-8 text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-95"
       >
         {t.running ? <Pause size={14} weight="fill" /> : <Play size={14} weight="fill" />}
       </button>
 
       <Popover>
         <PopoverTrigger asChild>
-          <button aria-label="Timer settings" className="flex size-8 items-center justify-center rounded-full text-ink-muted transition-colors duration-300 hover:text-ink">
+          <button aria-label="Timer settings" className="flex size-11 items-center justify-center rounded-full text-ink-muted transition-colors md:size-8 duration-300 hover:text-ink">
             <Gear size={16} />
           </button>
         </PopoverTrigger>
@@ -53,7 +53,7 @@ const NavTimer = () => {
             {(["focus", "break"] as TimerMode[]).map((m) => (
               <button
                 key={m} role="tab" aria-selected={t.mode === m} onClick={() => t.chooseMode(m)}
-                className={`h-8 flex-1 rounded-full text-sm transition-colors duration-300 ${t.mode === m ? "bg-surface font-medium shadow-sm ring-1 ring-line" : "text-ink-muted hover:text-ink"}`}
+                className={`h-11 flex-1 rounded-full text-sm md:h-8 transition-colors duration-300 ${t.mode === m ? "bg-surface font-medium shadow-sm ring-1 ring-line" : "text-ink-muted hover:text-ink"}`}
               >
                 {LABEL[m]}
               </button>
@@ -65,9 +65,9 @@ const NavTimer = () => {
           </div>
           <p className="mt-3 text-xs text-ink-muted">{t.done} {t.done === 1 ? "session" : "sessions"} done today</p>
           <div className="mt-4 flex items-center gap-1 border-t border-line pt-3">
-            <button onClick={t.reset} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-sm text-ink-muted transition-colors duration-300 hover:bg-field hover:text-ink"><ArrowCounterClockwise size={16} /> Reset</button>
-            <button onClick={t.skip} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-sm text-ink-muted transition-colors duration-300 hover:bg-field hover:text-ink"><SkipForward size={16} /> Skip</button>
-            <button onClick={() => t.setVisible(false)} className="ml-auto flex h-9 items-center gap-1.5 rounded-full px-3 text-sm text-ink-muted transition-colors duration-300 hover:bg-field hover:text-ink"><X size={16} /> Hide</button>
+            <button onClick={t.reset} className="flex h-11 items-center gap-1.5 rounded-full px-3 md:h-9 text-sm text-ink-muted transition-colors duration-300 hover:bg-field hover:text-ink"><ArrowCounterClockwise size={16} /> Reset</button>
+            <button onClick={t.skip} className="flex h-11 items-center gap-1.5 rounded-full px-3 md:h-9 text-sm text-ink-muted transition-colors duration-300 hover:bg-field hover:text-ink"><SkipForward size={16} /> Skip</button>
+            <button onClick={() => t.setVisible(false)} className="ml-auto flex h-11 items-center gap-1.5 rounded-full px-3 md:h-9 text-sm text-ink-muted transition-colors duration-300 hover:bg-field hover:text-ink"><X size={16} /> Hide</button>
           </div>
         </PopoverContent>
       </Popover>

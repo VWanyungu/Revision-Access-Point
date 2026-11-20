@@ -21,7 +21,7 @@ interface PdfViewerPageProps {
 const BASE_WIDTH = 720;
 const FULL_WIDTH = 960;
 const iconBtn =
-  "flex size-10 items-center justify-center rounded-full bg-field text-ink transition-[transform,background-color,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-field-strong active:scale-95 disabled:opacity-40 disabled:pointer-events-none";
+  "flex size-11 items-center justify-center rounded-full bg-field text-ink md:size-10 transition-[transform,background-color,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-field-strong active:scale-95 disabled:opacity-40 disabled:pointer-events-none";
 
 /** Renders its page only once it is near the screen, so a long paper opens fast. */
 const LazyPage = ({ index, width, rotation, onVisible, register }: {

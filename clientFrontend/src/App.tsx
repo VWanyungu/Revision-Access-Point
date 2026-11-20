@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { IconContext } from "@phosphor-icons/react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,6 +27,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <ThemeProvider defaultTheme="light" storageKey="rap-theme">
+    <IconContext.Provider value={{ weight: "light" }}>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -58,6 +60,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </IconContext.Provider>
   </ThemeProvider>
 );
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
@@ -214,6 +215,8 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   const [picked, setPicked] = useState<number | null>(null);
   const [tab, setTab] = useState<"notes" | "tutorials" | "quiz">("notes");
   const [sheet, setSheet] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(sheetRef, sheet);
   const [syllabusInView, setSyllabusInView] = useState(false);
   const [query, setQuery] = useState("");
   const timer = useTimer();
@@ -230,6 +233,8 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   ) : null;
   const [libType, setLibType] = useState<"all" | "notes" | "papers" | "videos">("all");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerPanelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(pickerPanelRef, pickerOpen, false);
   const pickerRef = useRef<HTMLDivElement>(null);
   useOutsideClick(pickerRef, () => setPickerOpen(false));
 
@@ -455,6 +460,8 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             <AnimatePresence>
               {pickerOpen && onChangeUnit && (
                 <motion.div
+                  ref={pickerPanelRef}
+                  role="dialog" aria-label="Change unit"
                   initial={reduce ? false : { opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduce ? undefined : { opacity: 0, y: -8 }}
@@ -691,7 +698,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                       .map(([k, label, n]) => (
                         <button
                           key={k} aria-pressed={libType === k} onClick={() => setLibType(k)}
-                          className={`h-9 rounded-full px-4 text-sm transition-colors duration-300 ${libType === k ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
+                          className={`h-11 rounded-full px-4 text-sm transition-colors duration-300 md:h-9 ${libType === k ? "bg-field font-medium" : "text-ink-muted hover:text-ink"}`}
                         >
                           {label} <span className="ml-1 font-geist-mono text-xs text-ink-muted">{n}</span>
                         </button>
@@ -727,7 +734,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
           </button>
 
           {sheet && (
-            <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Choose a topic" onKeyDown={(e) => e.key === "Escape" && setSheet(false)}>
+            <div ref={sheetRef} className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Choose a topic" onKeyDown={(e) => e.key === "Escape" && setSheet(false)}>
               <button aria-label="Close topic list" className="absolute inset-0 bg-ink/40" onClick={() => setSheet(false)} />
               <div className="absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col rounded-t-3xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_48px_-16px_rgba(14,21,37,0.3)]">
                 <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-line" aria-hidden />

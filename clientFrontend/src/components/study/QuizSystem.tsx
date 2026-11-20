@@ -38,7 +38,7 @@ const Chip = ({ active, children, ...rest }: { active: boolean } & React.ButtonH
   <button
     type="button"
     aria-pressed={active}
-    className={`h-10 rounded-full px-5 text-base capitalize transition-[background-color,color,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${
+    className={`h-11 rounded-full px-5 text-base capitalize md:h-10 transition-[background-color,color,transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.97] ${
       active ? "bg-field font-medium text-ink" : "text-ink-muted hover:text-ink"
     }`}
     {...rest}
@@ -51,7 +51,7 @@ const Switch = ({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   <button
     type="button" role="switch" aria-checked={on} aria-label={label}
     onClick={() => onChange(!on)}
-    className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300 ${on ? "bg-brand-solid" : "bg-line-strong"}`}
+    className={`relative h-7 w-12 shrink-0 rounded-full before:absolute before:-inset-x-1 before:-inset-y-2 before:content-[''] transition-colors duration-300 ${on ? "bg-brand-solid" : "bg-line-strong"}`}
   >
     <span className={`absolute left-1 top-1 size-5 rounded-full bg-surface transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${on ? "translate-x-5" : ""}`} />
   </button>

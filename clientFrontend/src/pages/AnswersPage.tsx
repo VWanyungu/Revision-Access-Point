@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, ArrowsClockwise, ArrowUpRight, ArrowUp, CaretDown, CircleHalf, DownloadSimple, Info, ListChecks, X,
@@ -187,12 +188,12 @@ const QuestionSection = ({ q, index, last, onNext, onQuiz }: {
       {(!last || onQuiz) && (
         <div className="mt-8 flex flex-wrap items-center gap-2">
           {onQuiz && (
-            <button onClick={onQuiz} className={`${badge} h-10 gap-2 bg-info-bg px-4 text-sm text-info-fg transition-[opacity,transform] duration-300 hover:opacity-80 active:scale-[0.98]`}>
+            <button onClick={onQuiz} className={`${badge} h-11 gap-2 md:h-10 bg-info-bg px-4 text-sm text-info-fg transition-[opacity,transform] duration-300 hover:opacity-80 active:scale-[0.98]`}>
               Quiz yourself <ArrowRight size={14} />
             </button>
           )}
           {!last && (
-            <button onClick={onNext} className={`${outline} h-10`}>
+            <button onClick={onNext} className={`${outline} h-11 md:h-10`}>
               Next: Question {index + 2} <ArrowRight size={14} />
             </button>
           )}
@@ -207,6 +208,8 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
   const isMobile = useIsMobile(); // phones get their own, full-width question layout
   const reduce = useReducedMotion();
   const [sheet, setSheet] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(sheetRef, sheet);
   const headerRef = useRef<HTMLElement>(null);
   const [pastHeader, setPastHeader] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -308,7 +311,7 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
 
           <div className="mt-7 flex flex-wrap items-center gap-2">
             {onOpenPaper && (
-              <button onClick={onOpenPaper} className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary-dark active:scale-[0.98]">
+              <button onClick={onOpenPaper} className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm md:h-10 font-medium text-primary-foreground transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-primary-dark active:scale-[0.98]">
                 Open the paper <ArrowUpRight size={14} />
               </button>
             )}
@@ -387,7 +390,7 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
         </div>
 
         {sheet && (
-          <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Jump to a question" onKeyDown={(e) => e.key === "Escape" && setSheet(false)}>
+          <div ref={sheetRef} className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Jump to a question" onKeyDown={(e) => e.key === "Escape" && setSheet(false)}>
             <button aria-label="Close question list" className="absolute inset-0 bg-ink/40" onClick={() => setSheet(false)} />
             <div className="absolute inset-x-0 bottom-0 flex max-h-[75dvh] flex-col rounded-t-3xl bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_48px_-16px_rgba(14,21,37,0.3)]">
               <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-line" aria-hidden />

@@ -305,6 +305,9 @@
   }
 }
 
+/* Lucide icons default to a 2px stroke; 1.5 matches the light Phosphor weight used elsewhere. */
+svg.lucide { stroke-width: 1.5; }
+
 @layer utilities {
   .focus-ring:focus-visible {
     outline: 2px solid hsl(var(--ring));
