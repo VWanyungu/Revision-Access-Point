@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { schools as initialSchools, School as SchoolType } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/data/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -81,7 +82,7 @@ const Schools = () => {
         queryClient.invalidateQueries({ queryKey: ['departments'] });
       }
       else
-        toast({ title: 'Error updating school', variant: 'destructive' });
+        { toast({ title: 'Could not update the school', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
     } else {
       const { status, error, data } = await addRecord('schools', { name: formData.name, code: formData.code, ...(formData.institution_id ? { institution_id: formData.institution_id } : {}) });
       if (status === 'success'){
@@ -89,17 +90,20 @@ const Schools = () => {
         queryClient.invalidateQueries({ queryKey: ['departments'] });
       }
       else
-        toast({ title: 'Error creating school', variant: 'destructive' });
+        { toast({ title: 'Could not create the school', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
     }
 
     setIsFormOpen(false);
   };
 
+  const [submit, saving] = useSubmitLock(handleSubmit);
+
+
   const handleDelete = async () => {
     if (deletingSchool) {
       const { status, error, data } = await deleteRecord('schools', deletingSchool.id);
       if (status === 'success'){
-        toast({ title: 'School deleted successfully', variant: 'destructive' });
+        toast({ title: 'School deleted' });
         queryClient.invalidateQueries({ queryKey: ['departments'] });
       }
       else
@@ -204,7 +208,7 @@ const Schools = () => {
         title={editingSchool ? 'Edit School' : 'Add School'}
         description={editingSchool ? 'Update school information' : 'Create a new school'}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">School Name</Label>
             <Input
@@ -241,8 +245,8 @@ const Schools = () => {
             <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="action-button">
-              {editingSchool ? 'Update' : 'Create'}
+            <Button type="submit" className="action-button" disabled={saving} aria-busy={saving}>
+              {saving ? 'Saving…' : editingSchool ? 'Update' : 'Create'}
             </Button>
           </div>
         </form>

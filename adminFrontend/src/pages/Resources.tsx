@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Resource } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
@@ -49,11 +50,14 @@ const Resources = () => {
 
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('0');
+  const [saving, setSaving] = useState(false);
   const [formInstitution, setFormInstitution] = useState(0);
   const [formData, setFormData] = useState({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: '', cover_url: '', paper_kind: '', academic_year: '' });
   const [uploadType, setUploadType] = useState<string>('link');
   const { toast } = useToast();
+  const { data: me } = useProfile();
+  const myEmail = me?.email ?? '';
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
@@ -159,7 +163,7 @@ const Resources = () => {
   const handleOpenCreate = () => {
     setEditingResource(null);
     setFormInstitution(0);
-    setFormData({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email, cover_url: '', paper_kind: '', academic_year: '' })
+    setFormData({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: myEmail, cover_url: '', paper_kind: '', academic_year: '' })
     setIsFormOpen(true);
   };
 
@@ -179,7 +183,7 @@ const Resources = () => {
       cover_url: (resource as any).cover_url ?? '',
       paper_kind: (resource as any).paper_kind ?? '',
       academic_year: (resource as any).academic_year ?? '',
-      uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email
+      uploaded_by: myEmail
     });
     setIsFormOpen(true);
   };
@@ -198,7 +202,7 @@ const Resources = () => {
       cover_url: '',
       paper_kind: '',
       academic_year: '',
-      uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email
+      uploaded_by: myEmail
     });
     setIsDeleteOpen(true);
   };
@@ -211,21 +215,14 @@ const Resources = () => {
     }
 
     if (uploadType === 'file' && file) {
-      console.log('Attempting file upload:');
-
       const res = await uploadFile(file);
 
-      console.log('Upload response:', res);
-
       if (res.error || res.public_access_url === null) {
-        console.log(res.error)
-        toast({ title: 'Error uploading file', variant: 'destructive' });
+        toast({ title: 'Could not upload the file', description: 'Your entries are kept. Check your connection and try again.', variant: 'destructive' });
         return
       }
 
       formData.public_access_url = res.public_access_url;
-
-      console.log('Uploaded file URL:', res.public_access_url);
     }
 
     if (editingResource) {
@@ -235,8 +232,9 @@ const Resources = () => {
         toast({ title: 'Resource updated successfully' });
         queryClient.invalidateQueries({ queryKey: ['resources', page, debouncedSearch, filter] })
       } else {
-        if (error) console.log(error)
-        toast({ title: 'Error updating resource', variant: 'destructive' });
+        // Keep the form open so nothing typed is lost.
+        toast({ title: 'Could not update the resource', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' });
+        return;
       }
 
     } else {
@@ -247,19 +245,26 @@ const Resources = () => {
         queryClient.invalidateQueries({ queryKey: ['resources', page, debouncedSearch, filter] })
       }
       else {
-        if (error) console.log(error)
-        toast({ title: 'Error uploading resource', variant: 'destructive' });
+        toast({ title: 'Could not upload the resource', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' });
+        return;
       }
     }
 
     setIsFormOpen(false);
   };
 
+  // One in-flight save at a time, so a slow upload cannot be sent twice.
+  const submit = async (e: React.FormEvent) => {
+    if (saving) { e.preventDefault(); return; }
+    setSaving(true);
+    try { await handleSubmit(e); } finally { setSaving(false); }
+  };
+
   const handleDelete = async () => {
     if (deletingResource) {
-      const { status, error, data } = await deleteRecord('resources', formData.id);
+      const { status, error, data } = await deleteRecord('resources', Number(deletingResource.id));
       if (status === 'success'){
-        toast({ title: 'Resource deleted successfully', variant: 'destructive' });
+        toast({ title: 'Resource deleted' });
         queryClient.invalidateQueries({ queryKey: ['resources', page, debouncedSearch, filter] })
       }
       else
@@ -271,12 +276,12 @@ const Resources = () => {
 
   const handleFile = (selectedFile: File) => {
     if (selectedFile.type !== "application/pdf") {
-      alert("Only PDF files are allowed")
+      toast({ title: 'Only PDF files are allowed', variant: 'destructive' })
       return
     }
 
     if (selectedFile.size > 50 * 1024 * 1024) {
-      alert("File must be 50MB or less")
+      toast({ title: 'File must be 50MB or less', variant: 'destructive' })
       return
     }
 
@@ -315,7 +320,7 @@ const Resources = () => {
     },
     {
       key: 'type',
-      header: 'Status',
+      header: 'Type',
       className: 'hidden md:table-cell',
       render: (resource) => (
         <Badge variant="outline" className="capitalize">
@@ -358,6 +363,7 @@ const Resources = () => {
           <Button
             variant="ghost"
             size="icon"
+            aria-label={`Edit ${resource.name}`}
             onClick={() => handleOpenEdit(resource)}
           >
             <Pencil className="h-4 w-4" />
@@ -366,6 +372,7 @@ const Resources = () => {
             variant="ghost"
             size="icon"
             className="text-destructive hover:text-destructive"
+            aria-label={`Delete ${resource.name}`}
             onClick={() => handleOpenDelete(resource)}
           >
             <Trash2 className="h-4 w-4" />
@@ -396,7 +403,11 @@ const Resources = () => {
 
       {/* Tabs */}
       {/* <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6"> */}
-      <Tabs value={activeTab} className="mb-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => { setActiveTab(v); setFilter((f) => ({ ...f, resource_type_id: Number(v) })); setPage(1); }}
+        className="mb-6"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             {/* Search */}
@@ -427,12 +438,10 @@ const Resources = () => {
             </div>
           </div>
           <TabsList>
-             <TabsTrigger value="0" onClick={() => {setFilter({ ...filter, resource_type_id: 0 }); setActiveTab("0")}} className='flex-1'>
-                all
-              </TabsTrigger>
+            <TabsTrigger value="0" className="flex-1">All</TabsTrigger>
             {resourceTypes.map((type) => (
-              <TabsTrigger key={type.id} value={String(type.id)} onClick={() => {setFilter({ ...filter, resource_type_id: type.id }); setActiveTab(String(type.id))}} className='flex-1'>
-                {type.name}
+              <TabsTrigger key={type.id} value={String(type.id)} className="flex-1">
+                {resourceTypeConfig[type.name as keyof typeof resourceTypeConfig]?.label ?? type.name}
               </TabsTrigger>
             ))}
             {/* <TabsTrigger value="0">All</TabsTrigger>
@@ -463,7 +472,7 @@ const Resources = () => {
         title={editingResource ? 'Edit Resource' : 'Upload Resource'}
         // description={editingResource ? 'Update resource information' : 'Add a new learning resource'}
       >
-          <form onSubmit={handleSubmit} className="space-y-4 overflow-scroll">
+          <form onSubmit={submit} className="space-y-4">
             {formData.public_access_url && (
               <div className="space-y-2">
                 <a href={formData.public_access_url} target="_blank" rel="noopener noreferrer" className='text-sm text-primary'>Public View Link</a>
@@ -704,11 +713,12 @@ const Resources = () => {
             </div>}
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+              <Button type="button" variant="outline" disabled={saving} onClick={() => setIsFormOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="action-button">
-                {editingResource ? 'Update' : 'Upload'}
+              <Button type="submit" className="action-button" disabled={saving} aria-busy={saving}>
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />}
+                {saving ? (editingResource ? 'Saving…' : 'Uploading…') : editingResource ? 'Update' : 'Upload'}
               </Button>
             </div>
           </form>

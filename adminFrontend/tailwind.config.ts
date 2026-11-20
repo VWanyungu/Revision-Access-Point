@@ -81,6 +81,8 @@ export default {
           muted: "hsl(var(--band-muted) / <alpha-value>)",
         },
         info: {
+          // `bg-info/10 text-info` is used in Resources and Admins; without a DEFAULT those classes emit nothing.
+          DEFAULT: "hsl(var(--info-fg) / <alpha-value>)",
           bg: "hsl(var(--info-bg) / <alpha-value>)",
           fg: "hsl(var(--info-fg) / <alpha-value>)",
         },

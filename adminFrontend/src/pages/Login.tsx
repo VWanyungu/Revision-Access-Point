@@ -29,15 +29,15 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    
-    console.log('Logging in with:', {email, password, role});
 
     try {
       await login(email, password, role);
 
       navigate('/dashboard');
-    } catch {
-      setError('Invalid credentials');
+    } catch (err) {
+      // Say what actually failed: a wrong password and a dead network need different next steps.
+      const offline = !navigator.onLine || /fetch|network/i.test(`${(err as Error)?.name} ${(err as Error)?.message}`);
+      setError(offline ? 'Could not reach the server. Check your connection and try again.' : 'Invalid email or password.');
     } finally {
       setIsLoading(false);
     }
@@ -63,15 +63,19 @@ const Login = () => {
           </div> */}
 
           <form onSubmit={handleSubmit} className="space-y-5 rounded-3xl bg-surface p-8 ring-1 ring-line">
+            <h1 className="sr-only">Admin sign in</h1>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="admin@university.edu"
+                autoComplete="email"
+                autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                aria-invalid={!!error}
                 className="h-11"
               />
             </div>
@@ -81,26 +85,30 @@ const Login = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? 'login-error' : undefined}
                 className="h-11"
               />
             </div>
 
             {error && (
-              <p className="text-sm text-destructive text-center">{error}</p>
+              <p id="login-error" role="alert" className="text-sm text-destructive text-center">{error}</p>
             )}
 
             <Button
               type="submit"
               className="w-full h-11 action-button"
               disabled={isLoading}
+              aria-busy={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                  Signing in…
                 </>
               ) : (
                 'Sign in'

@@ -105,6 +105,10 @@ const Admins = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.role !== 'super_admin' && !institutionId) return toast({ title: 'Choose an institution', variant: 'destructive' });
+    // Do not let a super admin demote themselves, or the last super admin, out of the role.
+    if (editing && editing.role === 'super_admin' && form.role !== 'super_admin' && (isMe(editing) || lastSuper(editing))) {
+      return toast({ title: 'Keep at least one super admin', description: 'Make someone else a super admin first.', variant: 'destructive' });
+    }
     setSaving(true);
     const { error } = await supabase.rpc('grant_admin', {
       p_email: form.email.trim(),
@@ -122,8 +126,14 @@ const Admins = () => {
     refresh();
   };
 
+  // You cannot remove yourself, and the platform must always keep one super admin.
+  const lastSuper = (a: AdminRow) => a.role === 'super_admin' && count('super_admin') <= 1;
+  const isMe = (a: AdminRow) => a.email === me?.email;
+  const whyLocked = (a: AdminRow) => isMe(a) ? 'You cannot remove your own access' : lastSuper(a) ? 'The last super admin cannot be removed' : '';
+
   const remove = async () => {
     if (!removing) return;
+    if (whyLocked(removing)) { toast({ title: whyLocked(removing), variant: 'destructive' }); setRemoving(null); return; }
     const { error } = await supabase.rpc('revoke_admin', { p_user: removing.id });
     toast(error ? { title: 'Could not remove admin', description: error.message, variant: 'destructive' } : { title: 'Admin access removed' });
     setRemoving(null);
@@ -173,7 +183,7 @@ const Admins = () => {
         <div className="flex items-center justify-end gap-1">
           <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => openEdit(a)}><Pencil className="h-4 w-4" /></Button>
           {isSuper && (
-            <Button variant="ghost" size="icon" aria-label="Remove admin access" className="text-destructive hover:text-destructive" onClick={() => setRemoving(a)}><Trash2 className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" aria-label={`Remove admin access for ${a.email}`} title={whyLocked(a) || undefined} disabled={!!whyLocked(a)} className="text-destructive hover:text-destructive" onClick={() => setRemoving(a)}><Trash2 className="h-4 w-4" /></Button>
           )}
         </div>
       ),
@@ -188,8 +198,9 @@ const Admins = () => {
         actions={<Button onClick={openCreate} className="action-button"><Plus className="mr-2 h-4 w-4" /> Add Admin</Button>}
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
+          { label: 'Super Admins', n: count('super_admin'), Icon: Shield, tint: 'bg-brand/10 text-brand' },
           { label: 'Institution Admins', n: count('institution_admin'), Icon: Shield, tint: 'bg-action/10 text-action' },
           { label: 'School Admins', n: count('school_admin'), Icon: Users, tint: 'bg-field text-primary' },
           { label: 'Course Admins', n: count('course_admin'), Icon: Users, tint: 'bg-info/10 text-info' },

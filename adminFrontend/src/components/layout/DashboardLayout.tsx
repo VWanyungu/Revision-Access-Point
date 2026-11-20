@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { AdminNav } from './AdminNav';
 import { supabase } from '@/data/supabase';
 import { setInstitutionScope, setCourseScope, setSchoolScope } from '@/data/db';
@@ -9,25 +9,26 @@ import { PanelSlotContext } from '@/components/shared/InlinePanel';
 import { useProfile } from '@/hooks/useProfile';
 
 export const DashboardLayout = () => {
-  const { isAuthenticated } = useAuth();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [panelSlot, setPanelSlot] = useState<HTMLElement | null>(null);
 
+  // No session (never signed in, expired, or signed out in another tab): back to sign in.
   useEffect(() => {
-    const fetchSession = async () => {
-      const {data, error} = await supabase.auth.getSession()
-      const {access_token} = JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token'))
-
-      if (error || !data.session?.user || data.session?.access_token !== access_token) {
-        console.error('Error fetching session:', error.message);
-        return <Navigate to="/login" replace />;
-      }
-    }
-    fetchSession();
-  }, []);
+    const toLogin = () => navigate('/login', { replace: true });
+    supabase.auth.getSession().then(({ data }) => { if (!data.session) toLogin(); }, toLogin);
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => { if (!session) toLogin(); });
+    return () => sub.subscription.unsubscribe();
+  }, [navigate]);
 
   const { data: me } = useProfile();
-  if (!me) return <div className="min-h-screen bg-background" />;
+  if (!me) {
+    return (
+      <div role="status" aria-label="Loading" className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="size-5 animate-spin text-ink-muted motion-reduce:animate-none" />
+      </div>
+    );
+  }
   // Before any page queries run: institution admins only ever see their own institution.
   setInstitutionScope(me.role !== 'super_admin' ? me.institutionId : null);
   setSchoolScope(me.role === 'school_admin' ? me.schoolIds : null);

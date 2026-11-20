@@ -27,14 +27,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   
   const login = async (email: string, password: string, role: AdminRole) => {
-    setIsAuthenticated(true);
     const { data, error } = await supabase.auth.signInWithPassword({email,password,})
 
+    // Throw so the sign-in page can show the failure instead of navigating on.
     if (error || !data.user) {
-      console.error('Login error:', error);
       setIsAuthenticated(false);
+      throw error ?? new Error('Invalid credentials');
     }
-    
+    setIsAuthenticated(true);
+
     const User: User = {
       email: data.user?.email || '',
       id: '',

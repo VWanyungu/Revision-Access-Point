@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Unit } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
 import { getRecords, addRecord, updateRecord, deleteRecord, uploadImage } from '@/data/db';
@@ -134,7 +135,7 @@ const Units = () => {
         queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
       }   
       else
-        toast({ title: 'Error updating unit', variant: 'destructive' });
+        { toast({ title: 'Could not update the unit', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
     } else {
       const { status, error, data } = await addRecord('units', { name: formData.name, code: formData.code, department_id: formData.department_id, year_of_study: Number(formData.year_of_study), semester_of_study: Number(formData.semester_of_study), ...bannerField });
       if (status === 'success'){
@@ -142,17 +143,20 @@ const Units = () => {
         queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
       }
       else
-        toast({ title: 'Error creating unit', variant: 'destructive' });
+        { toast({ title: 'Could not create the unit', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
     }
 
     setIsFormOpen(false);
   };
 
+  const [submit, saving] = useSubmitLock(handleSubmit);
+
+
   const handleDelete = async () => {
     if (deletingUnit) {
-      const { status, error, data } = await deleteRecord('units', formData.id);
+      const { status, error, data } = await deleteRecord('units', Number(deletingUnit.id));
       if (status === 'success'){
-        toast({ title: 'Unit deleted successfully', variant: 'destructive' });
+        toast({ title: 'Unit deleted' });
         queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
       }
       else
@@ -304,7 +308,7 @@ const Units = () => {
         title={editingUnit ? 'Edit Unit' : 'Add Unit'}
         description={editingUnit ? 'Update unit information' : 'Create a new unit'}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Unit Name</Label>
             <Input
@@ -399,8 +403,8 @@ const Units = () => {
             <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="action-button">
-              {editingUnit ? 'Update' : 'Create'}
+            <Button type="submit" className="action-button" disabled={saving} aria-busy={saving}>
+              {saving ? 'Saving…' : editingUnit ? 'Update' : 'Create'}
             </Button>
           </div>
         </form>

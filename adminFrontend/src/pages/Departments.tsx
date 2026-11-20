@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Department } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
@@ -96,7 +97,7 @@ const Departments = () => {
         queryClient.invalidateQueries({ queryKey: ['departments'] });
       }
       else
-        toast({ title: 'Error updating department', variant: 'destructive' });
+        { toast({ title: 'Could not update the department', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
     } else {
       const { status, error, data } = await addRecord('departments', { name: formData.name, code: formData.code, school_id: Number(formData.school_id) });
       if (status === 'success'){
@@ -104,17 +105,20 @@ const Departments = () => {
         queryClient.invalidateQueries({ queryKey: ['departments'] });
       }
       else
-        toast({ title: 'Error creating department', variant: 'destructive' });
+        { toast({ title: 'Could not create the department', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
     }
 
     setIsFormOpen(false);
   };
 
+  const [submit, saving] = useSubmitLock(handleSubmit);
+
+
   const handleDelete = async () => {
     if (deletingDepartment) {
-      const { status, error, data } = await deleteRecord('departments', Number(formData.id));
+      const { status, error, data } = await deleteRecord('departments', Number(deletingDepartment.id));
       if (status === 'success'){
-        toast({ title: 'Department deleted successfully', variant: 'destructive' });
+        toast({ title: 'Department deleted' });
         queryClient.invalidateQueries({ queryKey: ['departments'] });
       }
       else
@@ -242,7 +246,7 @@ const Departments = () => {
         title={editingDepartment ? 'Edit Department' : 'Add Department'}
         description={editingDepartment ? 'Update department information' : 'Create a new department'}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Department Name</Label>
             <Input
@@ -279,8 +283,8 @@ const Departments = () => {
             <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="action-button">
-              {editingDepartment ? 'Update' : 'Create'}
+            <Button type="submit" className="action-button" disabled={saving} aria-busy={saving}>
+              {saving ? 'Saving…' : editingDepartment ? 'Update' : 'Create'}
             </Button>
           </div>
         </form>
