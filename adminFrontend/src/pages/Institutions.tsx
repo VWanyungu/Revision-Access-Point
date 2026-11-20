@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Landmark, Pencil, Trash2 } from 'lucide-react';
+import { Landmark } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { FormModal } from '@/components/shared/FormModal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { InlineText } from '@/components/shared/InlineText';
+import { ListToolbar } from '@/components/shared/ListToolbar';
+import { RowActions } from '@/components/shared/RowActions';
+import { useListParams } from '@/hooks/useListParams';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +18,7 @@ import { getRecords, addRecord, updateRecord, deleteRecord } from '@/data/db';
 interface Institution { id: number; name: string; short_name: string }
 
 const Institutions = () => {
-  const [page, setPage] = useState(1);
+  const list = useListParams();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState({ name: '', short_name: '' });
   const [editing, setEditing] = useState<Institution | null>(null);
@@ -24,8 +27,8 @@ const Institutions = () => {
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['institutions', page],
-    queryFn: () => getRecords('institutions', { page, pageSize: 10 }),
+    queryKey: ['institutions', list.page, list.debounced, list.sort],
+    queryFn: () => getRecords('institutions', { page: list.page, pageSize: 10, search: list.debounced, sort: list.sort ?? undefined }),
     placeholderData: (prev) => prev,
   });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['institutions'] });
@@ -56,10 +59,14 @@ const Institutions = () => {
     refresh();
   };
 
+  const openCreate = () => { setEditing(null); setForm({ name: '', short_name: '' }); setIsFormOpen(true); };
+  const openEdit = (i: Institution) => { setEditing(i); setForm({ name: i.name, short_name: i.short_name }); setIsFormOpen(true); };
+
   const columns: Column<Institution>[] = [
     {
       key: 'name',
       header: 'Institution',
+      sortKey: 'name',
       render: (i) => (
         <div className="flex items-center gap-3">
           <div className="rounded-full bg-field p-2"><Landmark className="h-4 w-4 text-brand" /></div>
@@ -67,22 +74,20 @@ const Institutions = () => {
         </div>
       ),
     },
-    { key: 'short_name', header: 'Short name', render: (i) => <InlineText value={i.short_name} onSave={rename(i, 'short_name')} /> },
+    { key: 'short_name', header: 'Short name', sortKey: 'short_name', render: (i) => <InlineText value={i.short_name} onSave={rename(i, 'short_name')} /> },
     {
       key: 'actions', header: '', className: 'text-right',
-      render: (i) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => { setEditing(i); setForm({ name: i.name, short_name: i.short_name }); setIsFormOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Delete" className="text-danger" onClick={() => setDeleting(i)}><Trash2 className="h-4 w-4" /></Button>
-        </div>
-      ),
+      render: (i) => <RowActions name={i.name} onEdit={() => openEdit(i)} onDelete={() => setDeleting(i)} />,
     },
   ];
 
   return (
     <div className="animate-fade-in space-y-6">
       <PageHeader title="Institutions" description="Each institution owns its schools, units, resources and students."
-        actions={<Button onClick={() => { setEditing(null); setForm({ name: '', short_name: '' }); setIsFormOpen(true); }}>Add</Button>} />
+        actions={<Button onClick={openCreate}>Add</Button>} />
+
+      <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search institutions" resultCount={data?.meta.total}
+        active={!!list.debounced || !!list.sort} onReset={list.reset} />
 
       <FormModal open={isFormOpen} onOpenChange={(o) => { setIsFormOpen(o); if (!o) setEditing(null); }} title={editing ? 'Edit institution' : 'Add institution'}>
         <form onSubmit={create} className="space-y-4">
@@ -97,7 +102,9 @@ const Institutions = () => {
         confirmText="Delete" variant="destructive" onConfirm={remove} />
 
       <DataTable columns={columns} data={data?.data ?? []} isLoading={isLoading} keyExtractor={(i) => String(i.id)}
-        meta={data?.meta} onPageChange={setPage} emptyMessage="No institutions yet." />
+        meta={data?.meta} onPageChange={list.setPage} noun="institutions" sort={list.sort} onSortChange={list.setSort}
+        filtered={!!list.debounced} onResetFilters={list.reset}
+        emptyMessage="No institutions yet." emptyAction={{ label: 'Add institution', onClick: openCreate }} />
     </div>
   );
 };

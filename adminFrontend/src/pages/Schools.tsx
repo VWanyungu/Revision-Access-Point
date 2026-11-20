@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, School, Filter, Search, Building2, Grid } from 'lucide-react';
+import { useState } from 'react';
+import { Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { FormModal } from '@/components/shared/FormModal';
@@ -15,7 +15,9 @@ import { Label } from '@/components/ui/label';
 import { schools as initialSchools, School as SchoolType } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
-import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { ListToolbar } from '@/components/shared/ListToolbar';
+import { RowActions } from '@/components/shared/RowActions';
+import { useListParams } from '@/hooks/useListParams';
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/data/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -23,7 +25,7 @@ const Schools = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const list = useListParams();
   const queryClient = useQueryClient();
   const [editingSchool, setEditingSchool] = useState<SchoolType | null>(null);
   const [deletingSchool, setDeletingSchool] = useState<SchoolType | null>(null);
@@ -33,20 +35,10 @@ const Schools = () => {
   const institutions = instData?.data ?? [];
   const { toast } = useToast();
 
-  const [institutionId, setInstitutionId] = useState(0);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(timer);
-  }, [search]);
-
   const { data: schoolsData, isLoading } = useQuery({
-    queryKey: ['schools', page, debouncedSearch, institutionId],
+    queryKey: ['schools', list.page, list.debounced, list.institutionId, list.sort],
     queryFn: async () => {
-      return await getRecords('schools', { page, pageSize: 10, search: debouncedSearch, institution_id: institutionId })
+      return await getRecords('schools', { page: list.page, pageSize: 10, search: list.debounced, institution_id: list.institutionId, sort: list.sort ?? undefined })
     },
     placeholderData: (previousData) => previousData,
   });
@@ -123,7 +115,8 @@ const Schools = () => {
   const columns: Column<SchoolType>[] = [
     {
       key: 'name',
-      header: 'School Name',
+      header: 'School name',
+      sortKey: 'name',
       render: (school) => (
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-field">
@@ -141,21 +134,7 @@ const Schools = () => {
       key: 'actions',
       header: '',
       className: 'text-right',
-      render: (school) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => handleOpenEdit(school)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => handleOpenDelete(school)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+      render: (school) => <RowActions name={school.name} onEdit={() => handleOpenEdit(school)} onDelete={() => handleOpenDelete(school)} />,
     },
   ];
 
@@ -168,7 +147,7 @@ const Schools = () => {
           <div className="flex w-full justify-end gap-2">
             <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="action-button-secondary">
               {/* <Grid className="h-4 w-4 mr-2" /> */}
-              Bulk Create
+              Bulk add
             </Button>
             <Button onClick={handleOpenCreate} className="action-button">
               {/* <Plus className="h-4 w-4 mr-2" /> */}
@@ -178,27 +157,24 @@ const Schools = () => {
         }
       />
 
-      {/* Search */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search schools..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <div className="w-full sm:w-64"><InstitutionFilter value={institutionId} onChange={(id) => { setInstitutionId(id); setPage(1); }} /></div>
-      </div>
+      <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search schools" resultCount={meta?.total}
+        institutionId={list.institutionId} onInstitution={list.setInstitutionId}
+        active={!!list.debounced || !!list.institutionId || !!list.sort} onReset={list.reset} />
 
       <DataTable
         columns={columns}
         data={schools}
+        isLoading={isLoading}
         keyExtractor={(school) => `${school.id}`}
-        emptyMessage="No schools found. Create your first school to get started."
+        emptyMessage="No schools yet."
+        emptyAction={{ label: 'Add school', onClick: handleOpenCreate }}
+        filtered={!!list.debounced || !!list.institutionId}
+        onResetFilters={list.reset}
+        noun="schools"
+        sort={list.sort}
+        onSortChange={list.setSort}
         meta={meta}
-        onPageChange={setPage}
+        onPageChange={list.setPage}
       />
 
       {/* Form Modal */}

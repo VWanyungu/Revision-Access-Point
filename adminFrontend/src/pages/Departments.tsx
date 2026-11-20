@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, BookOpen, Filter, Grid, Search } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen } from 'lucide-react';
 import { Combobox } from '@/components/shared/Combobox';
 import { InlineText } from '@/components/shared/InlineText';
 import { INSTITUTION_COLUMN } from '@/components/shared/institutionColumn';
@@ -16,7 +16,9 @@ import { Department } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { ListToolbar } from '@/components/shared/ListToolbar';
+import { RowActions } from '@/components/shared/RowActions';
+import { useListParams } from '@/hooks/useListParams';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
 import { getRecords, addRecord, updateRecord, deleteRecord } from '@/data/db';
 
@@ -24,29 +26,20 @@ const Departments = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const list = useListParams();
   const queryClient = useQueryClient();
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [deletingDepartment, setDeletingDepartment] = useState<Department | null>(null);
-  const [filterSchool, setFilterSchool] = useState<string>('all');
+  const [filterSchool, setFilterSchool] = useState(0);
   const [formData, setFormData] = useState({ id: '', name: '', code: '', school_id: '' });
   const [formInstitution, setFormInstitution] = useState(0);
   const { toast } = useToast();
 
-  const [institutionId, setInstitutionId] = useState(0);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const { data: departmentsData, isLoading: departmentsLoading } = useQuery({
-    queryKey: ['departments', page, debouncedSearch, institutionId],
+  const { data: departmentsData, isLoading } = useQuery({
+    queryKey: ['departments', list.page, list.debounced, list.institutionId, filterSchool, list.sort],
     queryFn: async () => {
-      return await getRecords('departments', { page, pageSize: 10, search: debouncedSearch, institution_id: institutionId })
+      // The school filter runs in the database, so totals and pages stay correct.
+      return await getRecords('departments', { page: list.page, pageSize: 10, search: list.debounced, institution_id: list.institutionId, school_id: filterSchool, sort: list.sort ?? undefined })
     },
     placeholderData: (previousData) => previousData,
   });
@@ -62,10 +55,6 @@ const Departments = () => {
   });
 
   const schools = schoolsData?.data || [];
-
-  const filteredDepartments = departments.filter((c: any) => {
-    return filterSchool === 'all' || String(c.schools.id) === filterSchool;
-  });
 
   const handleOpenCreate = () => {
     setEditingDepartment(null);
@@ -134,7 +123,8 @@ const Departments = () => {
   const columns: Column<Department>[] = [
     {
       key: 'name',
-      header: 'Department Name',
+      header: 'Department name',
+      sortKey: 'name',
       render: (department) => (
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-field">
@@ -160,25 +150,7 @@ const Departments = () => {
       key: 'actions',
       header: '',
       className: 'text-right',
-      render: (department) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpenEdit(department)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => handleOpenDelete(department)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+      render: (department) => <RowActions name={department.name} onEdit={() => handleOpenEdit(department)} onDelete={() => handleOpenDelete(department)} />,
     },
   ];
 
@@ -191,7 +163,7 @@ const Departments = () => {
           <div className="flex w-full justify-end gap-2">
             <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="action-button-secondary">
               {/* <Grid className="h-4 w-4 mr-2" /> */}
-              Bulk Create
+              Bulk add
             </Button>
             <Button onClick={handleOpenCreate} className="action-button">
               {/* <Plus className="h-4 w-4 mr-2" /> */}
@@ -201,42 +173,37 @@ const Departments = () => {
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {/* Search */}
-        <div className="relative w-full max-w-sm sm:col-span-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-
-        {/* Filter */}
-        <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
-          <InstitutionFilter value={institutionId} onChange={(id) => { setInstitutionId(id); setPage(1); }} />
+      <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search departments" resultCount={meta?.total}
+        institutionId={list.institutionId} onInstitution={(id) => { list.setInstitutionId(id); setFilterSchool(0); }}
+        active={!!list.debounced || !!list.institutionId || !!filterSchool || !!list.sort} onReset={() => { list.reset(); setFilterSchool(0); }}>
+        <div className="w-full sm:w-56">
           <Combobox
             options={[
-              { value: "all", label: "All Schools" },
-              ...schools.map((s: any) => ({ value: String(s.id), label: s.name }))
+              { value: 'all', label: 'All schools' },
+              ...schools.filter((s: any) => !list.institutionId || s.institution_id === list.institutionId).map((s: any) => ({ value: String(s.id), label: s.name })),
             ]}
-            value={filterSchool}
-            onChange={setFilterSchool}
+            value={filterSchool > 0 ? String(filterSchool) : 'all'}
+            onChange={(v) => { setFilterSchool(v === 'all' ? 0 : Number(v)); list.setPage(1); }}
             placeholder="Filter by school"
             searchPlaceholder="Search schools..."
-            className=""
           />
         </div>
-      </div>
+      </ListToolbar>
 
       <DataTable
         columns={columns}
-        data={filteredDepartments}
+        data={departments}
+        isLoading={isLoading}
         keyExtractor={(department) => department.id}
-        emptyMessage="No departments found. Create your first department to get started."
+        emptyMessage="No departments yet."
+        emptyAction={{ label: 'Add department', onClick: handleOpenCreate }}
+        filtered={!!list.debounced || !!list.institutionId || !!filterSchool}
+        onResetFilters={() => { list.reset(); setFilterSchool(0); }}
+        noun="departments"
+        sort={list.sort}
+        onSortChange={list.setSort}
         meta={meta}
-        onPageChange={setPage}
+        onPageChange={list.setPage}
       />
 
       {/* Form Modal */}

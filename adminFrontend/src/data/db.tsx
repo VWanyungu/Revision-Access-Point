@@ -66,7 +66,7 @@ export const setSchoolScope = (ids: number[] | null) => { schoolScope = ids }
 
 const INSTITUTION = 'institutions(id, short_name)'
 
-export const getRecords = async (schema, options: { institution_id?: number, department_id?: number, unit_id?: number, resource_type_id?: number, page?: number, pageSize?: number, search?: string } = {}): Promise<{ data: any[], meta: { total: number, page: number, pageSize: number, lastPage: number } }> => {
+export const getRecords = async (schema, options: { institution_id?: number, department_id?: number, unit_id?: number, resource_type_id?: number, school_id?: number, page?: number, pageSize?: number, search?: string, sort?: { key: string, dir: 'asc' | 'desc' }, missing?: 'cover_url' | 'topic_id' | 'public_access_url', strict?: boolean } = {}): Promise<{ data: any[], meta: { total: number, page: number, pageSize: number, lastPage: number } }> => {
     try {
         const page = options.page || 1;
         const pageSize = options.pageSize || 10;
@@ -94,6 +94,17 @@ export const getRecords = async (schema, options: { institution_id?: number, dep
             if (options.resource_type_id && options.resource_type_id > 0) {
                 query = query.eq('resource_type_id', options.resource_type_id);
             }
+        }
+
+        if (schema === 'departments' && options.school_id && options.school_id > 0) {
+            query = query.eq('school_id', options.school_id);
+        }
+
+        // Content health: rows where this field is empty.
+        if (schema === 'resources' && options.missing) {
+            query = options.missing === 'public_access_url'
+                ? query.or('public_access_url.is.null,public_access_url.eq.')
+                : query.is(options.missing, null);
         }
 
         if (institutionScope !== null) {
@@ -140,7 +151,8 @@ export const getRecords = async (schema, options: { institution_id?: number, dep
 
         const { data, error, count } = await query
             .range(from, to)
-            .order('id', { ascending: false }); // Default order by newest
+            .order(options.sort?.key ?? 'id', { ascending: options.sort ? options.sort.dir === 'asc' : false }) // Default: newest first
+            .order('id', { ascending: false }); // tiebreak, so pages stay stable when sorting by a repeated value
 
         if (error) throw error
 
@@ -155,6 +167,7 @@ export const getRecords = async (schema, options: { institution_id?: number, dep
         };
     } catch (error) {
         console.log(error)
+        if (options.strict) throw error
         // Return empty structure to avoid breaking UI completely on error
         return {
             data: [],

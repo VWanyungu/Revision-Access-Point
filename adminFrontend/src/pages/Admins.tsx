@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Shield, Trash2, Users } from 'lucide-react';
+import { Shield, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable, Column } from '@/components/shared/DataTable';
 import { FormModal } from '@/components/shared/FormModal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { ListToolbar } from '@/components/shared/ListToolbar';
+import { RowActions } from '@/components/shared/RowActions';
+import type { Sort } from '@/hooks/useListParams';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +48,8 @@ const Admins = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [institutionFilter, setInstitutionFilter] = useState(0);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<Sort>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editing, setEditing] = useState<AdminRow | null>(null);
   const [removing, setRemoving] = useState<AdminRow | null>(null);
@@ -82,7 +86,15 @@ const Admins = () => {
     return [inst, shownNames || (a.role === 'school_admin' ? 'No schools yet' : 'No courses yet')].filter(Boolean).join(' · ');
   };
 
-  const shown = useMemo(() => (institutionFilter ? admins.filter((a) => a.institution_id === institutionFilter) : admins), [admins, institutionFilter]);
+  // The list comes whole from one database call, so search and sort happen here.
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const rows = admins.filter((a) => (!institutionFilter || a.institution_id === institutionFilter) && (!q || `${a.full_name} ${a.email}`.toLowerCase().includes(q)));
+    if (!sort) return rows;
+    const get = (a: AdminRow) => String((a as any)[sort.key] ?? '');
+    return [...rows].sort((a, b) => get(a).localeCompare(get(b)) * (sort.dir === 'asc' ? 1 : -1));
+  }, [admins, institutionFilter, search, sort]);
+  const resetFilters = () => { setSearch(''); setInstitutionFilter(0); setSort(null); };
   const count = (r: AdminRole) => admins.filter((a) => a.role === r).length;
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['admins'] });
@@ -148,6 +160,7 @@ const Admins = () => {
     {
       key: 'name',
       header: 'Admin',
+      sortKey: 'full_name',
       render: (a) => (
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -163,12 +176,14 @@ const Admins = () => {
     {
       key: 'role',
       header: 'Role',
+      sortKey: 'role',
       render: (a) => <span className={cn('inline-flex rounded-full border px-2.5 py-1 text-xs font-medium', roleConfig[a.role].color)}>{roleConfig[a.role].label}</span>,
     },
     { key: 'scope', header: 'Scope', render: (a) => <span className="context-badge">{scopeLabel(a)}</span> },
     {
       key: 'lastActive',
       header: 'Last active',
+      sortKey: 'last_sign_in_at',
       render: (a) => (
         <span className="text-muted-foreground">
           {a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never'}
@@ -179,14 +194,7 @@ const Admins = () => {
       key: 'actions',
       header: '',
       className: 'text-right',
-      render: (a) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => openEdit(a)}><Pencil className="h-4 w-4" /></Button>
-          {isSuper && (
-            <Button variant="ghost" size="icon" aria-label={`Remove admin access for ${a.email}`} title={whyLocked(a) || undefined} disabled={!!whyLocked(a)} className="text-destructive hover:text-destructive" onClick={() => setRemoving(a)}><Trash2 className="h-4 w-4" /></Button>
-          )}
-        </div>
-      ),
+      render: (a) => <RowActions name={a.full_name || a.email} onEdit={() => openEdit(a)} onDelete={isSuper ? () => setRemoving(a) : undefined} deleteBlockedReason={whyLocked(a) || undefined} />,
     },
   ];
 
@@ -195,7 +203,7 @@ const Admins = () => {
       <PageHeader
         title="Admins & Permissions"
         description="Who can manage what. Admins are existing accounts that have been given a role."
-        actions={<Button onClick={openCreate} className="action-button"><Plus className="mr-2 h-4 w-4" /> Add Admin</Button>}
+        actions={<Button onClick={openCreate} className="action-button">Add admin</Button>}
       />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -215,11 +223,13 @@ const Admins = () => {
         ))}
       </div>
 
-      <div className="mb-4 w-full sm:w-64"><InstitutionFilter value={institutionFilter} onChange={setInstitutionFilter} /></div>
+      <ListToolbar search={search} onSearch={setSearch} placeholder="Search admins" resultCount={shown.length}
+        institutionId={institutionFilter} onInstitution={setInstitutionFilter}
+        active={!!search || !!institutionFilter || !!sort} onReset={resetFilters} />
 
-      {error && <p className="mb-4 rounded-2xl bg-surface p-4 text-sm text-danger ring-1 ring-line">Admins could not be loaded. Run admins.sql on the database, and make sure your own account has the super_admin role set.</p>}
+      {error && <p className="mb-4 rounded-2xl bg-surface p-4 text-sm text-danger ring-1 ring-line">Admins could not be loaded. Refresh the page to try again. If it keeps failing, ask the person who manages the database.</p>}
 
-      <DataTable columns={columns} data={shown} isLoading={isLoading} keyExtractor={(a) => a.id} emptyMessage="No admins yet. Add one to get started." />
+      <DataTable columns={columns} data={shown} isLoading={isLoading} keyExtractor={(a) => a.id} emptyMessage="No admins yet." emptyAction={{ label: 'Add admin', onClick: openCreate }} filtered={!!search || !!institutionFilter} onResetFilters={resetFilters} noun="admins" sort={sort} onSortChange={setSort} />
 
       <FormModal open={isFormOpen} onOpenChange={setIsFormOpen} title={editing ? 'Edit admin' : 'Add admin'} description="The person must already have an account. Enter the email they signed up with.">
         <form onSubmit={submit} className="space-y-4">

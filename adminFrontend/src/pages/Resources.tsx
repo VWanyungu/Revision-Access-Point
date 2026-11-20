@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Plus, Pencil, Trash2, FileText, Upload, Filter, BookOpen, ClipboardList, GraduationCap, Lightbulb, Grid, Search, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { FileText, Upload, BookOpen, ClipboardList, GraduationCap, Lightbulb, Loader2 } from 'lucide-react';
 import { Combobox } from '@/components/shared/Combobox';
 import { InlineText } from '@/components/shared/InlineText';
 import { INSTITUTION_COLUMN } from '@/components/shared/institutionColumn';
@@ -26,7 +26,9 @@ import { Resource } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
-import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { ListToolbar } from '@/components/shared/ListToolbar';
+import { RowActions } from '@/components/shared/RowActions';
+import { useListParams } from '@/hooks/useListParams';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
 import { TYPE_OPTIONS, academicYears, defaultPaperName, isPaperType, optionFor } from '@/lib/paperKinds';
 import { getRecords, addRecord, updateRecord, deleteRecord, uploadFile, uploadImage, getTopics } from '@/data/db';
@@ -45,7 +47,7 @@ const Resources = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const list = useListParams();
   const queryClient = useQueryClient();
 
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
@@ -61,23 +63,12 @@ const Resources = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
-  const [filter, setFilter] = useState<{ unit_id: number, resource_type_id: number, institution_id: number }>({ unit_id: 0, resource_type_id: 0, institution_id: 0 });
-  const [filterUnit, setFilterUnit] = useState<number>(0);
-  const [filterResourceType, setFilterResourceType] = useState<number>(0);
-
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const [filter, setFilter] = useState<{ unit_id: number, resource_type_id: number }>({ unit_id: 0, resource_type_id: 0 });
 
   const { data: resourcesData, isLoading } = useQuery({
-    queryKey: ['resources', page, debouncedSearch, filter],
+    queryKey: ['resources', list.page, list.debounced, list.institutionId, filter, list.sort],
     queryFn: async () => {
-      return await getRecords('resources', { page, pageSize: 10, search: debouncedSearch, ...filter })
+      return await getRecords('resources', { page: list.page, pageSize: 10, search: list.debounced, institution_id: list.institutionId, ...filter, sort: list.sort ?? undefined })
     },
     placeholderData: (previousData) => previousData,
   });
@@ -96,18 +87,18 @@ const Resources = () => {
   const schools = schoolsData?.data || [];
 
   const { data: departmentsData, isLoading: departmentsLoading } = useQuery({
-    queryKey: ['departments', filter.institution_id],
+    queryKey: ['departments', list.institutionId],
     queryFn: async () => {
-      return await getRecords('departments', { pageSize: 100, institution_id: filter.institution_id })
+      return await getRecords('departments', { pageSize: 100, institution_id: list.institutionId })
     },
   });
 
   const departments = departmentsData?.data || [];
 
   const { data: unitsData, isLoading: unitsLoading } = useQuery({
-    queryKey: ['units', filter.institution_id],
+    queryKey: ['units', list.institutionId],
     queryFn: async () => {
-      return await getRecords('units', { pageSize: 100, institution_id: filter.institution_id })
+      return await getRecords('units', { pageSize: 100, institution_id: list.institutionId })
     },
   });
 
@@ -230,7 +221,7 @@ const Resources = () => {
 
       if (status === 'success') {
         toast({ title: 'Resource updated successfully' });
-        queryClient.invalidateQueries({ queryKey: ['resources', page, debouncedSearch, filter] })
+        queryClient.invalidateQueries({ queryKey: ['resources'] })
       } else {
         // Keep the form open so nothing typed is lost.
         toast({ title: 'Could not update the resource', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' });
@@ -242,7 +233,7 @@ const Resources = () => {
 
       if (status === 'success'){
         toast({ title: 'Resource uploaded successfully' });
-        queryClient.invalidateQueries({ queryKey: ['resources', page, debouncedSearch, filter] })
+        queryClient.invalidateQueries({ queryKey: ['resources'] })
       }
       else {
         toast({ title: 'Could not upload the resource', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' });
@@ -265,7 +256,7 @@ const Resources = () => {
       const { status, error, data } = await deleteRecord('resources', Number(deletingResource.id));
       if (status === 'success'){
         toast({ title: 'Resource deleted' });
-        queryClient.invalidateQueries({ queryKey: ['resources', page, debouncedSearch, filter] })
+        queryClient.invalidateQueries({ queryKey: ['resources'] })
       }
       else
         toast({ title: 'Error deleting resource', variant: 'destructive' });
@@ -297,11 +288,13 @@ const Resources = () => {
   }
 
   const saveField = useFieldSaver('resources');
+  const resetAll = () => { list.reset(); setFilter((f) => ({ ...f, unit_id: 0 })); };
 
   const columns: Column<Resource>[] = [
     {
       key: 'name',
       header: 'Resource',
+      sortKey: 'name',
       render: (resource) => {
         const config = resourceTypeConfig[resource.resource_types.name]
         const Icon = config.icon;
@@ -339,6 +332,7 @@ const Resources = () => {
     {
       key: 'uploadedAt',
       header: 'Uploaded',
+      sortKey: 'created_at',
       className: 'hidden md:table-cell',
       render: (resource) => (
         <div>
@@ -358,27 +352,7 @@ const Resources = () => {
       key: 'actions',
       header: '',
       className: 'text-right',
-      render: (resource) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Edit ${resource.name}`}
-            onClick={() => handleOpenEdit(resource)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            aria-label={`Delete ${resource.name}`}
-            onClick={() => handleOpenDelete(resource)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+      render: (resource) => <RowActions name={resource.name} onEdit={() => handleOpenEdit(resource)} onDelete={() => handleOpenDelete(resource)} />,
     },
   ];
 
@@ -391,7 +365,7 @@ const Resources = () => {
           <div className="flex w-full justify-end gap-2">
             <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="action-button-secondary">
               {/* <Grid className="h-4 w-4 mr-2" /> */}
-              Bulk Upload
+              Bulk upload
             </Button>
             <Button onClick={handleOpenCreate} className="action-button">
               {/* <Upload className="h-4 w-4 mr-2" /> */}
@@ -401,66 +375,53 @@ const Resources = () => {
         }
       />
 
-      {/* Tabs */}
-      {/* <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6"> */}
       <Tabs
         value={activeTab}
-        onValueChange={(v) => { setActiveTab(v); setFilter((f) => ({ ...f, resource_type_id: Number(v) })); setPage(1); }}
+        onValueChange={(v) => { setActiveTab(v); setFilter((f) => ({ ...f, resource_type_id: Number(v) })); list.setPage(1); }}
         className="mb-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-            {/* Search */}
-            <div className="relative max-w-sm sm:col-span-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            
-            {/* Filter */}
-            <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
-              <InstitutionFilter value={filter.institution_id} onChange={(id) => { setFilter({ ...filter, unit_id: 0, institution_id: id }); setPage(1); }} />
-              <Combobox
-                options={[
-                  { value: "all", label: "All Units" },
-                  ...units.map((u: any) => ({ value: String(u.id), label: u.name }))
-                ]}
-                value={filter.unit_id > 0 ? String(filter.unit_id) : "all"}
-                onChange={(value) => setFilter({ ...filter, unit_id: value === "all" ? 0 : Number(value) })}
-                placeholder="Filter by unit"
-                searchPlaceholder="Search units..."
-                className=""
-              />
-            </div>
+        <TabsList className="mb-6">
+          <TabsTrigger value="0" className="flex-1">All</TabsTrigger>
+          {resourceTypes.map((type) => (
+            <TabsTrigger key={type.id} value={String(type.id)} className="flex-1">
+              {resourceTypeConfig[type.name as keyof typeof resourceTypeConfig]?.label ?? type.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search resources" resultCount={meta?.total}
+          institutionId={list.institutionId} onInstitution={(id) => { list.setInstitutionId(id); setFilter((f) => ({ ...f, unit_id: 0 })); }}
+          active={!!list.debounced || !!list.institutionId || !!filter.unit_id || !!list.sort} onReset={resetAll}>
+          <div className="w-full sm:w-56">
+            <Combobox
+              options={[
+                { value: 'all', label: 'All units' },
+                ...units.map((u: any) => ({ value: String(u.id), label: u.name })),
+              ]}
+              value={filter.unit_id > 0 ? String(filter.unit_id) : 'all'}
+              onChange={(v) => { setFilter({ ...filter, unit_id: v === 'all' ? 0 : Number(v) }); list.setPage(1); }}
+              placeholder="Filter by unit"
+              searchPlaceholder="Search units..."
+            />
           </div>
-          <TabsList>
-            <TabsTrigger value="0" className="flex-1">All</TabsTrigger>
-            {resourceTypes.map((type) => (
-              <TabsTrigger key={type.id} value={String(type.id)} className="flex-1">
-                {resourceTypeConfig[type.name as keyof typeof resourceTypeConfig]?.label ?? type.name}
-              </TabsTrigger>
-            ))}
-            {/* <TabsTrigger value="0">All</TabsTrigger>
-            <TabsTrigger value="notes">Notes</TabsTrigger>
-            <TabsTrigger value="cats">CATs</TabsTrigger>
-            <TabsTrigger value="exams">Exams</TabsTrigger>
-            <TabsTrigger value="tutorials">Tutorials</TabsTrigger> */}
-          </TabsList>
-        </div>
+        </ListToolbar>
 
         <TabsContent value={activeTab} className="mt-6">
           <DataTable
             columns={columns}
             data={resources}
+            isLoading={isLoading}
             keyExtractor={(resource) => resource.id}
-            emptyMessage="No resources found. Upload your first resource to get started."
-            emptyIcon={<FileText className="h-12 w-12 text-muted-foreground/50" />}
+            emptyMessage="No resources yet."
+            emptyAction={{ label: 'Upload resource', onClick: handleOpenCreate }}
+            emptyIcon={<FileText className="mb-4 size-10 text-ink-subtle" />}
+            filtered={!!list.debounced || !!list.institutionId || !!filter.unit_id}
+            onResetFilters={resetAll}
+            noun="resources"
+            sort={list.sort}
+            onSortChange={list.setSort}
             meta={meta}
-            onPageChange={setPage}
+            onPageChange={list.setPage}
           />
         </TabsContent>
       </Tabs>

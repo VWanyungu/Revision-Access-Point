@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Loader2, Upload, Plus, Pencil, Trash2, FileText, LayoutGrid, Filter, Search, Layers, Grid, ListTree } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Loader2, Upload, Layers, ListTree } from 'lucide-react';
 import { Combobox } from '@/components/shared/Combobox';
 import { InlineText } from '@/components/shared/InlineText';
 import { INSTITUTION_COLUMN } from '@/components/shared/institutionColumn';
@@ -24,7 +24,9 @@ import {
 import { Unit } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { useSubmitLock } from '@/hooks/useSubmitLock';
-import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
+import { ListToolbar } from '@/components/shared/ListToolbar';
+import { RowActions, IconAction } from '@/components/shared/RowActions';
+import { useListParams } from '@/hooks/useListParams';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
 import { getRecords, addRecord, updateRecord, deleteRecord, uploadImage } from '@/data/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,28 +36,19 @@ const Units = () => {
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [syllabusUnit, setSyllabusUnit] = useState<Unit | null>(null);
-  const [page, setPage] = useState(1);
+  const list = useListParams();
   const queryClient = useQueryClient();
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null);
-  const [filter, setFilter] = useState({ department_id: 0, institution_id: 0 });
+  const [filterDepartment, setFilterDepartment] = useState(0);
   const [formInstitution, setFormInstitution] = useState(0);
   const [formData, setFormData] = useState({ id: 0, name: '', code: '', department_id: 0, year_of_study: '1', semester_of_study: '1', banner_url: '' });
   const { toast } = useToast();
 
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(timer);
-  }, [search]);
-
   const { data: unitsData, isLoading } = useQuery({
-    queryKey: ['units', page, debouncedSearch, filter],
+    queryKey: ['units', list.page, list.debounced, list.institutionId, filterDepartment, list.sort],
     queryFn: async () => {
-      return await getRecords('units', { page, pageSize: 10, search: debouncedSearch, ...filter})
+      return await getRecords('units', { page: list.page, pageSize: 10, search: list.debounced, institution_id: list.institutionId, department_id: filterDepartment, sort: list.sort ?? undefined })
     },
     placeholderData: (previousData) => previousData,
   });
@@ -64,9 +57,9 @@ const Units = () => {
   const meta = unitsData?.meta;
 
   const { data: departmentsData, isLoading: departmentsLoading } = useQuery({
-    queryKey: ['departments', filter.institution_id],
+    queryKey: ['departments', list.institutionId],
     queryFn: async () => {
-      return await getRecords('departments', { pageSize: 100, institution_id: filter.institution_id })
+      return await getRecords('departments', { pageSize: 100, institution_id: list.institutionId })
     },
   });
 
@@ -132,7 +125,7 @@ const Units = () => {
       const { status, error, data } = await updateRecord('units', formData.id, { name: formData.name, code: formData.code, department_id: formData.department_id, year_of_study: Number(formData.year_of_study), semester_of_study: Number(formData.semester_of_study), ...bannerField });
       if (status === 'success'){
         toast({ title: 'Unit updated successfully' });
-        queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
+        queryClient.invalidateQueries({ queryKey: ['units'] })
       }   
       else
         { toast({ title: 'Could not update the unit', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
@@ -140,7 +133,7 @@ const Units = () => {
       const { status, error, data } = await addRecord('units', { name: formData.name, code: formData.code, department_id: formData.department_id, year_of_study: Number(formData.year_of_study), semester_of_study: Number(formData.semester_of_study), ...bannerField });
       if (status === 'success'){
         toast({ title: 'Unit created successfully' })
-        queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
+        queryClient.invalidateQueries({ queryKey: ['units'] })
       }
       else
         { toast({ title: 'Could not create the unit', description: (error as any)?.message ?? 'Your entries are kept. Try again.', variant: 'destructive' }); return; }
@@ -157,7 +150,7 @@ const Units = () => {
       const { status, error, data } = await deleteRecord('units', Number(deletingUnit.id));
       if (status === 'success'){
         toast({ title: 'Unit deleted' });
-        queryClient.invalidateQueries({ queryKey: ['units', page, debouncedSearch, filter] })
+        queryClient.invalidateQueries({ queryKey: ['units'] })
       }
       else
         toast({ title: 'Error deleting unit', variant: 'destructive' });
@@ -171,7 +164,8 @@ const Units = () => {
   const columns: Column<Unit>[] = [
     {
       key: 'name',
-      header: 'Unit Name',
+      header: 'Unit name',
+      sortKey: 'name',
       render: (unit) => (
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-field">
@@ -195,6 +189,7 @@ const Units = () => {
     {
       key: 'year_of_study',
       header: 'Year',
+      sortKey: 'year_of_study',
       className: 'hidden md:table-cell',
       render: (unit) => (
         <Badge variant="outline">Year {unit.year_of_study}</Badge>
@@ -203,6 +198,7 @@ const Units = () => {
     {
       key: 'semester_of_study',
       header: 'Semester',
+      sortKey: 'semester_of_study',
       className: 'hidden md:table-cell',
       render: (unit) => (
         <Badge variant="outline">Semester {unit.semester_of_study}</Badge>
@@ -214,32 +210,9 @@ const Units = () => {
       header: '',
       className: 'text-right',
       render: (unit) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Syllabus"
-            aria-label="Syllabus"
-            onClick={() => setSyllabusUnit(unit)}
-          >
-            <ListTree className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleOpenEdit(unit)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={() => handleOpenDelete(unit)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <RowActions name={unit.name} onEdit={() => handleOpenEdit(unit)} onDelete={() => handleOpenDelete(unit)}>
+          <IconAction label={`Syllabus for ${unit.name}`} hint="Syllabus" icon={<ListTree />} onClick={() => setSyllabusUnit(unit)} />
+        </RowActions>
       ),
     },
   ];
@@ -253,7 +226,7 @@ const Units = () => {
           <div className="flex justify-end gap-2 w-full">
             <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="action-button-secondary">
               {/* <Grid className="h-4 w-4 mr-2" /> */}
-              Bulk Create
+              Bulk add
             </Button>
             <Button onClick={handleOpenCreate} className="action-button">
               {/* <Plus className="h-4 w-4 mr-2" /> */}
@@ -263,42 +236,37 @@ const Units = () => {
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {/* Search */}
-        <div className="relative max-w-sm sm:col-span-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-
-        {/* Filter */}
-        <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center">
-          <InstitutionFilter value={filter.institution_id} onChange={(id) => { setFilter({ department_id: 0, institution_id: id }); setPage(1); }} />
+      <ListToolbar search={list.search} onSearch={list.setSearch} placeholder="Search units" resultCount={meta?.total}
+        institutionId={list.institutionId} onInstitution={(id) => { list.setInstitutionId(id); setFilterDepartment(0); }}
+        active={!!list.debounced || !!list.institutionId || !!filterDepartment || !!list.sort} onReset={() => { list.reset(); setFilterDepartment(0); }}>
+        <div className="w-full sm:w-56">
           <Combobox
             options={[
-              { value: "all", label: "All departments" },
-              ...departments.map((d: any) => ({ value: String(d.id), label: d.name }))
+              { value: 'all', label: 'All departments' },
+              ...departments.map((d: any) => ({ value: String(d.id), label: d.name })),
             ]}
-            value={filter.department_id > 0 ? String(filter.department_id) : "all"}
-            onChange={(value) => setFilter({ ...filter, department_id: value === "all" ? 0 : Number(value) })}
+            value={filterDepartment > 0 ? String(filterDepartment) : 'all'}
+            onChange={(v) => { setFilterDepartment(v === 'all' ? 0 : Number(v)); list.setPage(1); }}
             placeholder="Filter by department"
             searchPlaceholder="Search departments..."
-            className=""
           />
         </div>
-      </div>
+      </ListToolbar>
 
       <DataTable
         columns={columns}
         data={units}
+        isLoading={isLoading}
         keyExtractor={(unit) => unit.id}
-        emptyMessage="No units found. Create your first unit to get started."
+        emptyMessage="No units yet."
+        emptyAction={{ label: 'Add unit', onClick: handleOpenCreate }}
+        filtered={!!list.debounced || !!list.institutionId || !!filterDepartment}
+        onResetFilters={() => { list.reset(); setFilterDepartment(0); }}
+        noun="units"
+        sort={list.sort}
+        onSortChange={list.setSort}
         meta={meta}
-        onPageChange={setPage}
+        onPageChange={list.setPage}
       />
 
       {/* Form Modal */}
