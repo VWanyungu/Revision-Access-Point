@@ -18,11 +18,12 @@ export interface Attempt {
   paper: Paper; model_answers: AnswersData | null; answers: Given; result: Result | null;
 }
 
+import { btnPrimary, btnQuietSoft } from "@/components/pay/PayKit";
 const MAX_PHOTOS = 3;
 const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
-const primary = "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-base font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98] disabled:opacity-60";
-const quiet = "inline-flex min-h-11 items-center gap-2 rounded-full bg-field px-5 text-sm font-medium transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-field-strong active:scale-[0.98] disabled:opacity-50";
+const primary = btnPrimary;
+const quiet = btnQuietSoft;
 
 /** A photo the student attached, shown through a short-lived link because the bucket is private. */
 const Thumb = ({ path, onRemove }: { path: string; onRemove: () => void }) => {

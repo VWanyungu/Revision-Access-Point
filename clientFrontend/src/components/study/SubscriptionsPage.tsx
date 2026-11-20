@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight, CaretLeft, CaretRight, Receipt, Sparkle } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, Receipt, Sparkle } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/database/supabase";
 import { useAuth } from "@/context/AuthContext";
 import PricingGate from "@/pages/PricingGate";
 import AiUpgradePage from "@/pages/AiUpgradePage";
-import { EASE, formatDate } from "@/components/pay/PayKit";
+import { EASE, formatDate, InkButton, QuietButton } from "@/components/pay/PayKit";
 import LoadFailed from "@/components/layout/LoadFailed";
 
 interface SubscriptionsPageProps {
@@ -40,20 +40,11 @@ const endOf = (s: Sub) => new Date(`${s.end_date}T23:59:59`).getTime();
 const label = "text-xs font-medium uppercase tracking-[0.14em] text-ink-muted";
 const spring = "ease-[cubic-bezier(0.32,0.72,0,1)]";
 
-/** Pill button with its arrow nested in a circle that drifts on hover. */
-const IslandButton = ({ children, onClick, tone = "ink", className = "" }: { children: React.ReactNode; onClick: () => void; tone?: "ink" | "soft"; className?: string }) => (
-  <button
-    onClick={onClick}
-    className={`group inline-flex h-11 shrink-0 items-center gap-3 rounded-full pl-5 pr-1.5 text-sm font-medium transition-[background-color,transform] duration-500 ${spring} active:scale-[0.98] ${className} ${
-      tone === "ink" ? "bg-primary text-primary-foreground hover:bg-primary-dark" : "bg-field text-ink ring-1 ring-line hover:bg-field-strong"
-    }`}
-  >
-    {children}
-    <span className={`flex size-8 items-center justify-center rounded-full transition-transform duration-500 ${spring} group-hover:-translate-y-px group-hover:translate-x-0.5 ${tone === "ink" ? "bg-ink-fg/15" : "bg-ink/10"}`}>
-      <ArrowUpRight size={15} />
-    </span>
-  </button>
-);
+/** Pill button with its arrow nested in a circle that drifts on hover (the shared PayKit buttons). */
+const IslandButton = ({ children, onClick, tone = "ink", className = "" }: { children: React.ReactNode; onClick: () => void; tone?: "ink" | "soft"; className?: string }) =>
+  tone === "ink"
+    ? <InkButton arrow onClick={onClick} className={`shrink-0 ${className}`}>{children}</InkButton>
+    : <QuietButton arrow tone="soft" onClick={onClick} className={`shrink-0 ${className}`}>{children}</QuietButton>;
 
 const Fact = ({ name, value }: { name: string; value: React.ReactNode }) => (
   <div>

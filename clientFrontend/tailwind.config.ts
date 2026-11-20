@@ -154,6 +154,7 @@ export default {
         core: "calc(var(--radius-tray) - 0.375rem)",
         well: "var(--radius-well)",
       },
+      transitionTimingFunction: { house: "var(--ease-house)" },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

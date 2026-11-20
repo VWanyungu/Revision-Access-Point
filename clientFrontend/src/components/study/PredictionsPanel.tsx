@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { btnPrimary, btnQuiet, btnQuietSoft } from "@/components/pay/PayKit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleNotch, Info } from "@phosphor-icons/react";
 import { supabase } from "@/database/supabase";
@@ -72,7 +73,7 @@ const PredictionsPanel = ({ unitId, onViewAnswers, onUpgradeAi }: { unitId: numb
         <div className="max-w-[560px]">
           <p className="text-base text-ink-muted">Forecasts and practice papers are part of the AI add-on for your semester pass.</p>
           {onUpgradeAi && (
-            <button onClick={onUpgradeAi} className="mt-4 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-base font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98]">
+            <button onClick={onUpgradeAi} className={`mt-4 ${btnPrimary}`}>
               Add AI features
             </button>
           )}
@@ -209,7 +210,6 @@ const PracticePaper = ({ unitId, kind, topics, onViewAnswers }: { unitId: number
     );
   }
 
-  const pill = "inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full px-3 text-sm md:px-5 font-medium transition-[transform,background-color,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 
   return (
     <section ref={top} className="max-w-[720px] scroll-mt-32" aria-label="Practice paper">
@@ -219,7 +219,7 @@ const PracticePaper = ({ unitId, kind, topics, onViewAnswers }: { unitId: number
         <button
           onClick={() => write.mutate("generate")}
           disabled={write.isPending}
-          className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-base font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98] disabled:opacity-60"
+          className={btnPrimary}
         >
           {write.isPending ? <><CircleNotch size={18} className="animate-spin" /> Writing your paper…</> : `Generate ${kindLabel}`}
         </button>
@@ -256,7 +256,7 @@ const PracticePaper = ({ unitId, kind, topics, onViewAnswers }: { unitId: number
 
           <div className="mt-4 flex flex-wrap items-center gap-2 md:gap-3">
             {serial !== undefined && (
-              <button onClick={() => setExamSerial(serial)} className={`${pill} bg-primary text-primary-foreground hover:bg-primary-dark`}>
+              <button onClick={() => setExamSerial(serial)} className={btnPrimary}>
                 {mine?.status === "marked" ? "My marks" : mine ? "Continue" : "Take paper"}
               </button>
             )}
@@ -264,7 +264,7 @@ const PracticePaper = ({ unitId, kind, topics, onViewAnswers }: { unitId: number
               <button
                 onClick={() => paper.answers && onViewAnswers(paper.answers, paper.paper.title)}
                 disabled={!paper.answers}
-                className={`${pill} bg-field hover:bg-field-strong`}
+                className={btnQuietSoft}
               >
                 {paper.answers ? "Answers" : <><CircleNotch size={16} className="animate-spin" /> Answers</>}
               </button>
@@ -278,7 +278,7 @@ const PracticePaper = ({ unitId, kind, topics, onViewAnswers }: { unitId: number
               trigger={
                 <button
                   disabled={write.isPending || (!paper.meta.outdated && paper.meta.generations_left === 0)}
-                  className={`${pill} border border-line hover:bg-field`}
+                  className={`${btnQuiet} border border-line`}
                 >
                   {write.isPending
                     ? <><CircleNotch size={16} className="animate-spin" /> Writing…</>

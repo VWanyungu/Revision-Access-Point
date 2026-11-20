@@ -53,34 +53,38 @@ export const Title = ({ children, sub, icon, subDesktopOnly }: { children: React
   </div>
 );
 
-/** Primary ink pill. `arrow` adds the nested circular arrow used on the one main action. */
+/** The house buttons. One primary pill, one quiet pill, one shared focus ring (.focus-ring in index.css). */
+const pillBase = "focus-ring group inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full text-base font-medium transition-[transform,background-color,opacity] duration-500 ease-house active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
+export const btnPrimary = `${pillBase} bg-primary px-5 text-primary-foreground hover:bg-primary-dark`;
+export const btnQuiet = `${pillBase} px-5 hover:bg-field`;
+export const btnQuietSoft = `${pillBase} bg-field px-5 ring-1 ring-line hover:bg-field-strong`;
+
+/** The nested circle that carries the arrow; it drifts on hover when the parent is a `group`. */
+const ArrowChip = ({ soft }: { soft?: boolean }) => (
+  <span className={`flex size-7 items-center justify-center rounded-full transition-transform duration-500 ease-house group-hover:-translate-y-px group-hover:translate-x-0.5 ${soft ? "bg-ink/10" : "bg-ink-fg/15"}`}>
+    <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
+      <path d="M200 64v104a8 8 0 0 1-16 0V83.3L69.7 197.7a8 8 0 0 1-11.4-11.4L172.7 72H88a8 8 0 0 1 0-16h104a8 8 0 0 1 8 8Z" />
+    </svg>
+  </span>
+);
+
+/** Primary pill. `arrow` adds the nested circular arrow used on the one main action. */
 export const InkButton = ({
   children, arrow, className = "", ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { arrow?: boolean }) => (
-  <button
-    className={`group flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-base font-medium text-primary-foreground transition-[transform,background-color,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 ${className}`}
-    {...rest}
-  >
+  <button className={`${btnPrimary} ${arrow ? "!pr-2" : ""} ${className}`} {...rest}>
     {children}
-    {arrow && (
-      <span className="-mr-2 ml-1 flex size-7 items-center justify-center rounded-full bg-surface/10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px">
-        <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden>
-          <path d="M200 64v104a8 8 0 0 1-16 0V83.3L69.7 197.7a8 8 0 0 1-11.4-11.4L172.7 72H88a8 8 0 0 1 0-16h104a8 8 0 0 1 8 8Z" />
-        </svg>
-      </span>
-    )}
+    {arrow && <ArrowChip />}
   </button>
 );
 
 export const QuietButton = ({
-  tone = "plain", className = "", ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "plain" | "soft" }) => (
-  <button
-    className={`flex h-11 items-center justify-center rounded-full px-5 text-base font-medium transition-[transform,background-color,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 ${
-      tone === "soft" ? "bg-field hover:bg-field-strong" : "hover:bg-field"
-    } ${className}`}
-    {...rest}
-  />
+  tone = "plain", arrow, children, className = "", ...rest
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "plain" | "soft"; arrow?: boolean }) => (
+  <button className={`${tone === "soft" ? btnQuietSoft : btnQuiet} ${arrow ? "!pr-2" : ""} ${className}`} {...rest}>
+    {children}
+    {arrow && <ArrowChip soft />}
+  </button>
 );
 
 interface SelectFieldProps {
