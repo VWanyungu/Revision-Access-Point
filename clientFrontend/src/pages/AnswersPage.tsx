@@ -44,8 +44,12 @@ export interface AnswerQuestion {
 
 export interface AnswersData {
   document_title: string;
-  /** ISO time the answers were generated and saved on this device. */
+  /** ISO time this version of the answers was generated. */
   savedAt?: string;
+  /** The saved version the student is on, the newest version that exists, and how many regenerations they have left. */
+  version?: number;
+  latestVersion?: number;
+  regenerationsLeft?: number;
   questions: AnswerQuestion[];
 }
 
@@ -57,6 +61,8 @@ interface AnswersPageProps {
   onBack: () => void;
   onOpenPaper?: () => void;
   onRegenerate?: () => void;
+  /** Move to another saved version (for example, the newest). */
+  onSwitchVersion?: (version: number) => void;
   onQuiz?: () => void;
   downloadUrl?: string;
 }
@@ -191,7 +197,7 @@ const QuestionSection = ({ q, index, last, onNext, onQuiz }: {
   );
 };
 
-export default function AnswersPage({ data, generating, title, onBack, onOpenPaper, onRegenerate, onQuiz, downloadUrl }: AnswersPageProps) {
+export default function AnswersPage({ data, generating, title, onBack, onOpenPaper, onRegenerate, onSwitchVersion, onQuiz, downloadUrl }: AnswersPageProps) {
   const [active, setActive] = useState(0);
   const isMobile = useIsMobile(); // phones get their own, full-width question layout
   const reduce = useReducedMotion();
@@ -266,7 +272,8 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
   // Number of questions and when they were written; nothing else.
   const stats = [
     { n: count, l: count === 1 ? "question" : "questions" },
-    ...(data.savedAt ? [{ n: formatDate(new Date(data.savedAt)), l: "uploaded" }] : []),
+    ...(data.version ? [{ n: `v${data.version}`, l: "version" }] : []),
+    ...(data.savedAt ? [{ n: formatDate(new Date(data.savedAt)), l: "written" }] : []),
   ];
 
   return (
@@ -293,8 +300,24 @@ export default function AnswersPage({ data, generating, title, onBack, onOpenPap
               </button>
             )}
             {downloadUrl && <a href={downloadUrl} target="_blank" rel="noreferrer" className={`${outline} hidden h-10 md:inline-flex`}>Download <DownloadSimple size={14} /></a>}
-            {onRegenerate && <button onClick={onRegenerate} className={`${outline} h-10 text-ink-muted`}>Regenerate <ArrowsClockwise size={14} /></button>}
+            {onRegenerate && (
+              <button
+                onClick={() => { if (window.confirm("This writes a new version of the answers for you. Your current version is kept and you can switch back. Continue?")) onRegenerate(); }}
+                disabled={data.regenerationsLeft === 0}
+                className={`${outline} h-10 text-ink-muted disabled:pointer-events-none disabled:opacity-40`}
+                title={data.regenerationsLeft === 0 ? "You have used your regenerations for this paper" : undefined}
+              >
+                Regenerate{data.regenerationsLeft !== undefined ? ` (${data.regenerationsLeft} left)` : ""} <ArrowsClockwise size={14} />
+              </button>
+            )}
           </div>
+
+          {data.version && data.latestVersion && data.latestVersion > data.version && onSwitchVersion && (
+            <p className="mt-5 flex max-w-[60ch] flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              <span className="text-ink-muted">A newer version (v{data.latestVersion}) exists. You are on v{data.version}.</span>
+              <button onClick={() => onSwitchVersion(data.latestVersion!)} className="inline-flex min-h-11 items-center font-medium text-brand md:min-h-0">Switch to v{data.latestVersion}</button>
+            </p>
+          )}
 
           <p className="mt-6 flex max-w-[60ch] items-start gap-2 text-sm text-ink-muted">
             <Info size={16} className="mt-0.5 shrink-0" />

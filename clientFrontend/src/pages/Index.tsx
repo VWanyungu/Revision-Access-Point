@@ -184,26 +184,23 @@ const Index = () => {
     setCurrentPage("quiz");
   };
 
-  const answersKey = (url: string) => `rap-answers:${url}`;
-
-  /** Shows the saved copy if there is one; `force` regenerates. */
-  const handleGenerateAnswers = async (fileUrl: string, title: string, force = false) => {
+  /**
+   * Opens the student's saved answers for a paper. They are pinned to one saved version, so the content never changes while
+   * they read. "regenerate" writes a new version for this student only (capped); "switch" moves them to another version.
+   */
+  const handleGenerateAnswers = async (
+    fileUrl: string,
+    title: string,
+    force = false,
+    action: "get" | "regenerate" | "switch" = force ? "regenerate" : "get",
+    version?: number,
+  ) => {
+    const previous = answersData;
     setAnswersSource({ url: fileUrl, title });
     setCurrentPage("answers");
-
-    if (!force) {
-      try {
-        const saved = localStorage.getItem(answersKey(fileUrl));
-        if (saved) {
-          const { data, savedAt } = JSON.parse(saved);
-          setAnswersData({ ...data, savedAt });
-          return;
-        }
-      } catch { /* fall through and generate */ }
-    }
-
     setAnswersData(null);
     setIsGeneratingAnswers(true);
+    const started = Date.now();
     try {
       const tokenStr = localStorage.getItem("sb-ptktlornnngqvzbbisaq-auth-token");
       const accessToken = tokenStr ? JSON.parse(tokenStr).access_token : "";
@@ -211,34 +208,45 @@ const Index = () => {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-answers`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ fileUrl, title }),
+        body: JSON.stringify({ fileUrl, title, action, version }),
       });
       const raw = await res.json();
 
       if (!res.ok) {
         toast({
-          title: "Error generating answers",
+          title: action === "regenerate" ? "Could not regenerate" : "Error loading answers",
           description: (raw as { error?: string }).error ?? "Something went wrong.",
           variant: "destructive",
         });
-        setCurrentPage("dashboard");
+        // A refused regenerate (for example the cap) leaves the student on the answers they were reading.
+        if (previous && action !== "get") setAnswersData(previous);
+        else setCurrentPage("dashboard");
         return;
       }
 
-      const savedAt = new Date().toISOString();
-      try { localStorage.setItem(answersKey(fileUrl), JSON.stringify({ data: raw.data, savedAt })); } catch { /* storage full */ }
-      setAnswersData({ ...raw.data, savedAt });
-      // The user may have gone back to the paper while this ran, so tell them it finished.
-      sonnerToast.success("Model answers are ready", {
-        action: { label: "View", onClick: () => setCurrentPage("answers") },
+      const meta = (raw.meta ?? {}) as { generated_at?: string; version?: number; latest_version?: number; regenerations_left?: number };
+      setAnswersData({
+        ...raw.data,
+        savedAt: meta.generated_at,
+        version: meta.version,
+        latestVersion: meta.latest_version,
+        regenerationsLeft: meta.regenerations_left,
       });
+      // Opening saved answers is instant; if this took a while the answers were just written, so say so (the student
+      // may have gone back to the paper while it ran).
+      if (Date.now() - started > 4000) {
+        sonnerToast.success("Model answers are ready", {
+          action: { label: "View", onClick: () => setCurrentPage("answers") },
+        });
+      }
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to generate answers. Please try again.",
+        description: "Failed to load the answers. Please try again.",
         variant: "destructive",
       });
-      setCurrentPage("dashboard");
+      if (previous && action !== "get") setAnswersData(previous);
+      else setCurrentPage("dashboard");
     } finally {
       setIsGeneratingAnswers(false);
     }
@@ -347,6 +355,7 @@ const Index = () => {
             onBack={() => { setCurrentPage(answersSource ? "pdf" : "dashboard"); }}
             onOpenPaper={() => { if (answersSource) openPaper(answersSource.url, answersSource.title); }}
             onRegenerate={() => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title, true)}
+            onSwitchVersion={(v) => answersSource && handleGenerateAnswers(answersSource.url, answersSource.title, false, "switch", v)}
             onQuiz={() => answersSource && handleGenerateQuiz(answersSource.url, answersSource.title)}
             downloadUrl={answersSource?.url}
           />

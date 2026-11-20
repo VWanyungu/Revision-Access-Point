@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { InstitutionFilter } from '@/components/shared/InstitutionFilter';
 import { InstitutionSelect } from '@/components/shared/InstitutionSelect';
+import { TYPE_OPTIONS, academicYears, defaultPaperName, isPaperType, optionFor } from '@/lib/paperKinds';
 import { getRecords, addRecord, updateRecord, deleteRecord, uploadFile, uploadImage, getTopics } from '@/data/db';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -50,7 +51,7 @@ const Resources = () => {
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
   const [activeTab, setActiveTab] = useState<string>('all');
   const [formInstitution, setFormInstitution] = useState(0);
-  const [formData, setFormData] = useState({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: '', cover_url: '' });
+  const [formData, setFormData] = useState({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: '', cover_url: '', paper_kind: '', academic_year: '' });
   const [uploadType, setUploadType] = useState<string>('link');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -131,6 +132,16 @@ const Resources = () => {
 
   // Only touch cover_url when there is one to set or clear, so saving works before the column exists.
   const coverField = formData.cover_url || (editingResource as any)?.cover_url ? { cover_url: formData.cover_url || null } : {};
+  // Papers save their kind and academic year (and a default title when none was typed). Only touched when relevant, so
+  // saving still works on a database that has not run paper_kinds.sql yet.
+  const paper = isPaperType(formData.resource_type_id);
+  const wasPaper = !!(editingResource as any)?.paper_kind;
+  const paperFields = paper
+    ? { paper_kind: formData.paper_kind || null, academic_year: formData.academic_year || null }
+    : wasPaper ? { paper_kind: null, academic_year: null } : {};
+  const savedName = paper && !formData.name.trim() && formData.paper_kind && formData.academic_year
+    ? defaultPaperName(formData.paper_kind, formData.academic_year)
+    : formData.name;
   const [coverUploading, setCoverUploading] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const handleCover = async (file: File) => {
@@ -148,7 +159,7 @@ const Resources = () => {
   const handleOpenCreate = () => {
     setEditingResource(null);
     setFormInstitution(0);
-    setFormData({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email, cover_url: '' })
+    setFormData({ id: 0, resource_type_id: 0, unit_id: 0, department_id: 0, school_id: 0, name: '', description: '', public_access_url: '', topic_id: 0, uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email, cover_url: '', paper_kind: '', academic_year: '' })
     setIsFormOpen(true);
   };
 
@@ -166,6 +177,8 @@ const Resources = () => {
       public_access_url: resource.public_access_url,
       topic_id: Number(resource.topic_id) || 0,
       cover_url: (resource as any).cover_url ?? '',
+      paper_kind: (resource as any).paper_kind ?? '',
+      academic_year: (resource as any).academic_year ?? '',
       uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email
     });
     setIsFormOpen(true);
@@ -183,6 +196,8 @@ const Resources = () => {
       public_access_url: '',
       topic_id: 0,
       cover_url: '',
+      paper_kind: '',
+      academic_year: '',
       uploaded_by: JSON.parse(localStorage.getItem('sb-ptktlornnngqvzbbisaq-auth-token')).user.email
     });
     setIsDeleteOpen(true);
@@ -190,6 +205,10 @@ const Resources = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (paper && (!formData.paper_kind || !formData.academic_year)) {
+      toast({ title: 'Choose the paper type and its academic year', variant: 'destructive' });
+      return;
+    }
 
     if (uploadType === 'file' && file) {
       console.log('Attempting file upload:');
@@ -210,7 +229,7 @@ const Resources = () => {
     }
 
     if (editingResource) {
-      const { status, error, data } = await updateRecord('resources', formData.id, { name: formData.name, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, topic_id: formData.topic_id || null, uploaded_by: formData.uploaded_by, ...coverField });
+      const { status, error, data } = await updateRecord('resources', formData.id, { name: savedName, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, topic_id: formData.topic_id || null, uploaded_by: formData.uploaded_by, ...coverField, ...paperFields });
 
       if (status === 'success') {
         toast({ title: 'Resource updated successfully' });
@@ -221,7 +240,7 @@ const Resources = () => {
       }
 
     } else {
-      const { status, error, data } = await addRecord('resources', { name: formData.name, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, topic_id: formData.topic_id || null, uploaded_by: formData.uploaded_by, ...coverField });
+      const { status, error, data } = await addRecord('resources', { name: savedName, description: formData.description, resource_type_id: formData.resource_type_id, unit_id: formData.unit_id, department_id: formData.department_id, school_id: formData.school_id, public_access_url: formData.public_access_url, topic_id: formData.topic_id || null, uploaded_by: formData.uploaded_by, ...coverField, ...paperFields });
 
       if (status === 'success'){
         toast({ title: 'Resource uploaded successfully' });
@@ -454,13 +473,13 @@ const Resources = () => {
             <InstitutionSelect value={formInstitution} onChange={(id) => { setFormInstitution(id); setFormData((f) => ({ ...f, school_id: 0, department_id: 0, unit_id: 0, topic_id: 0 })); }} />
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{paper ? <>Title <span className="font-normal text-muted-foreground">(optional)</span></> : 'Name'}</Label>
               <Input
                 id="name"
-                placeholder="e.g., Introduction to Data Structures"
+                placeholder={paper ? 'Leave blank to use the type and year' : 'e.g., Introduction to Data Structures'}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
+                required={!paper}
               />
             </div>
 
@@ -502,23 +521,34 @@ const Resources = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="resource_type_id">Resource Type</Label>
+              <Label htmlFor="resource_type_id">Type</Label>
               <Select
-                value={String(formData.resource_type_id)}
-                onValueChange={(value) => setFormData({ ...formData, resource_type_id: Number(value) })}
+                value={optionFor(formData.resource_type_id, formData.paper_kind)?.value ?? ''}
+                onValueChange={(value) => {
+                  const o = TYPE_OPTIONS.find((t) => t.value === value)!;
+                  setFormData({ ...formData, resource_type_id: o.typeId, paper_kind: o.kind ?? '', academic_year: o.kind ? formData.academic_year : '' });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {resourceTypes.map((resourceType) => (
-                    <SelectItem key={resourceType.id} value={String(resourceType.id)}>
-                      {resourceType.name}
-                    </SelectItem>
-                  ))}
+                  {TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+
+            {paper && (
+              <div className="space-y-2">
+                <Label>Academic year</Label>
+                <Select value={formData.academic_year} onValueChange={(value) => setFormData({ ...formData, academic_year: value })}>
+                  <SelectTrigger><SelectValue placeholder="Select the academic year" /></SelectTrigger>
+                  <SelectContent>
+                    {academicYears().map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="school">School</Label>

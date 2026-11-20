@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './InlinePanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { InstitutionSelect } from './InstitutionSelect';
+import { TYPE_OPTIONS, academicYears, defaultPaperName, isPaperType, optionFor } from '@/lib/paperKinds';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,6 +31,8 @@ interface BulkResourceEntry {
     department_id: number;
     unit_id: number;
     resource_type_id: number;
+    paper_kind: string;
+    academic_year: string;
     file: File | null;
     public_access_url?: string;
     status: 'pending' | 'uploading' | 'success' | 'error';
@@ -71,6 +74,8 @@ export const BulkUploadModal = ({
             department_id: lastResource ? lastResource.department_id : 0,
             unit_id: lastResource ? lastResource.unit_id : 0,
             resource_type_id: lastResource ? lastResource.resource_type_id : 0,
+            paper_kind: lastResource ? lastResource.paper_kind : '',
+            academic_year: lastResource ? lastResource.academic_year : '',
             file: null,
             status: 'pending'
         };
@@ -111,11 +116,12 @@ export const BulkUploadModal = ({
 
         // Validation
         const invalid = pendingResources.find(r =>
-            !r.name || (!r.file && !r.public_access_url) || !r.school_id || !r.department_id || !r.unit_id || !r.resource_type_id
+            (!r.name && !isPaperType(r.resource_type_id)) || (!r.file && !r.public_access_url) || !r.school_id || !r.department_id || !r.unit_id || !r.resource_type_id
+            || (isPaperType(r.resource_type_id) && (!r.paper_kind || !r.academic_year))
         );
 
         if (invalid) {
-            toast({ title: "Please fill in all required fields", description: "Name, Unit, Type, and File/Link are required for all entries.", variant: "destructive" });
+            toast({ title: "Please fill in all required fields", description: "Unit, Type, and File/Link are required for all entries. Papers also need an academic year, and other types a name.", variant: "destructive" });
             return;
         }
 
@@ -156,7 +162,8 @@ export const BulkUploadModal = ({
                 }
 
                 const { status, error } = await addRecord('resources', {
-                    name: r.name,
+                    name: r.name.trim() || (isPaperType(r.resource_type_id) ? defaultPaperName(r.paper_kind, r.academic_year) : r.name),
+                    ...(isPaperType(r.resource_type_id) ? { paper_kind: r.paper_kind, academic_year: r.academic_year } : {}),
                     description: r.description,
                     resource_type_id: r.resource_type_id,
                     unit_id: r.unit_id,
@@ -329,17 +336,32 @@ export const BulkUploadModal = ({
                                                 <div className="col-span-1">
                                                     <Label className="text-xs">Type *</Label>
                                                     <Select
-                                                        value={resource.resource_type_id ? String(resource.resource_type_id) : ''}
-                                                        onValueChange={(val) => updateResource(resource.id, 'resource_type_id', Number(val))}
+                                                        value={optionFor(resource.resource_type_id, resource.paper_kind)?.value ?? ''}
+                                                        onValueChange={(val) => {
+                                                            const o = TYPE_OPTIONS.find((t) => t.value === val)!;
+                                                            setResources((prev) => prev.map((r) => r.id === resource.id ? { ...r, resource_type_id: o.typeId, paper_kind: o.kind ?? '', academic_year: o.kind ? r.academic_year : '' } : r));
+                                                        }}
                                                     >
                                                         <SelectTrigger className="h-8">
                                                             <SelectValue placeholder="Type" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {resourceTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                                                            {TYPE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
+
+                                                {isPaperType(resource.resource_type_id) && (
+                                                    <div className="col-span-1">
+                                                        <Label className="text-xs">Year *</Label>
+                                                        <Select value={resource.academic_year} onValueChange={(val) => updateResource(resource.id, 'academic_year', val)}>
+                                                            <SelectTrigger className="h-8"><SelectValue placeholder="Year" /></SelectTrigger>
+                                                            <SelectContent>
+                                                                {academicYears().map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 

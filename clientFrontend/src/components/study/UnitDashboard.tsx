@@ -47,6 +47,9 @@ interface Resource {
   topic_id?: number | null;
   /** Optional cover photo (e.g. a book cover) uploaded by the admin. */
   cover_url?: string | null;
+  /** Past papers say which paper they are: cat1, cat2, exam or supplementary, and the academic year ("2024/25"). */
+  paper_kind?: "cat1" | "cat2" | "exam" | "supplementary" | null;
+  academic_year?: string | null;
 }
 
 /** A group of notes. Complete once every note in it has been read. */
@@ -58,13 +61,18 @@ const num = (i: number) => String(i + 1).padStart(2, "0");
 // 44px tall on phones so it is easy to tap; inline-sized on desktop.
 const link = "inline-flex items-center gap-1.5 text-sm font-medium transition-opacity duration-300 hover:opacity-60 max-md:min-h-11";
 
-/** "CAT 2, 2025/26" -> { year: "2025/26", slot: "cat2" }. Unparseable names land in the "Other" row. */
+/** A paper's academic year and slot (cat1, cat2, exam, supp). Unreadable years land in the "Other" row. */
+// Papers carry an explicit kind and academic year. Older rows without them fall back to reading the file name.
 const classify = (r: Resource) => {
   const y = r.name.match(/(20\d{2})\s*[\/\-–]\s*(\d{2,4})/);
-  const year = y ? `${y[1]}/${y[2].slice(-2)}` : "Other";
+  const year = r.academic_year ?? (y ? `${y[1]}/${y[2].slice(-2)}` : "Other");
   const lower = r.name.toLowerCase();
   const slot =
-    r.resource_type_id === EXAMS ? "exam"
+    r.paper_kind === "supplementary" ? "supp"
+    : r.paper_kind === "exam" ? "exam"
+    : r.paper_kind === "cat2" ? "cat2"
+    : r.paper_kind === "cat1" ? "cat1"
+    : r.resource_type_id === EXAMS ? (/supp/.test(lower) ? "supp" : "exam")
     : /cat\s*2|cat\s*two|second/.test(lower) ? "cat2"
     : "cat1";
   return { year, slot };
@@ -260,6 +268,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [papers]);
 
+  const hasSupp = byYear.some(([, cells]) => cells.supp);
   const rise = (i: number) => reduce ? {} : ({
     initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.6, ease: EASE, delay: Math.min(i, 8) * 0.04 },
   });
@@ -639,7 +648,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                   <div key={year} className="rounded-2xl border border-line p-4">
                     <p className="font-literata text-lg">{year}</p>
                     <div className="mt-3 space-y-3">
-                      {([["CAT 1", cells.cat1, "c1"], ["CAT 2", cells.cat2, "c2"], ["Main exam", cells.exam, "ex"]] as const).map(([label, cell, key]) => (
+                      {([["CAT 1", cells.cat1, "c1"], ["CAT 2", cells.cat2, "c2"], ["Main exam", cells.exam, "ex"], ...(cells.supp ? [["Supplementary", cells.supp, "sp"] as const] : [])] as const).map(([label, cell, key]) => (
                         <div key={key}>
                           <p className="mb-1.5 text-xs text-ink-muted">{label}</p>
                           {cell ? paperCell(cell, key) : <p className="text-sm text-ink-muted">Not uploaded</p>}
@@ -650,14 +659,14 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                 ))}
               </div>
               <div className="hidden overflow-x-auto md:block">
-                <div className="min-w-[760px]">
-                  <div className="grid grid-cols-[140px_repeat(3,minmax(0,1fr))] gap-4 border-b border-line pb-3 text-sm text-ink-muted">
-                    <span>Academic year</span><span>CAT 1</span><span>CAT 2</span><span>Main exam</span>
+                <div className={hasSupp ? "min-w-[940px]" : "min-w-[760px]"}>
+                  <div className={`grid ${hasSupp ? "grid-cols-[140px_repeat(4,minmax(0,1fr))]" : "grid-cols-[140px_repeat(3,minmax(0,1fr))]"} gap-4 border-b border-line pb-3 text-sm text-ink-muted`}>
+                    <span>Academic year</span><span>CAT 1</span><span>CAT 2</span><span>Main exam</span>{hasSupp && <span>Supplementary</span>}
                   </div>
                   {byYear.map(([year, cells]) => (
-                    <div key={year} className="grid grid-cols-[140px_repeat(3,minmax(0,1fr))] items-center gap-4 border-b border-line py-4">
+                    <div key={year} className={`grid ${hasSupp ? "grid-cols-[140px_repeat(4,minmax(0,1fr))]" : "grid-cols-[140px_repeat(3,minmax(0,1fr))]"} items-center gap-4 border-b border-line py-4`}>
                       <span className="font-literata text-lg">{year}</span>
-                      {paperCell(cells.cat1, "c1")}{paperCell(cells.cat2, "c2")}{paperCell(cells.exam, "ex")}
+                      {paperCell(cells.cat1, "c1")}{paperCell(cells.cat2, "c2")}{paperCell(cells.exam, "ex")}{hasSupp && paperCell(cells.supp, "sp")}
                     </div>
                   ))}
                 </div>
