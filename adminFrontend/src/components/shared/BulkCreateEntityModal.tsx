@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
+import { BulkSummary } from './BulkSummary';
 import { addRecord } from '@/data/db';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -64,9 +64,9 @@ export const BulkCreateEntityModal = ({
 
     const getTitle = () => {
         switch (type) {
-            case 'school': return 'Bulk Create Schools';
-            case 'department': return 'Bulk Create Departments';
-            case 'unit': return 'Bulk Create Units';
+            case 'school': return 'Bulk add schools';
+            case 'department': return 'Bulk add departments';
+            case 'unit': return 'Bulk add units';
         }
     };
 
@@ -138,9 +138,10 @@ export const BulkCreateEntityModal = ({
 
         setIsCreating(true);
         let successCount = 0;
-
-        // Clone to avoid mutation issues
-        let currentEntries = [...entries];
+        let done = 0; // a counter, not state: state read inside this loop is stale
+        const currentEntries = [...entries];
+        const total = currentEntries.filter(x => x.status !== 'success').length;
+        setProgress(0);
 
         for (let i = 0; i < currentEntries.length; i++) {
             let e = currentEntries[i];
@@ -172,21 +173,21 @@ export const BulkCreateEntityModal = ({
                     successCount++;
                     setEntries(prev => prev.map(item => item.id === e.id ? { ...item, status: 'success' } : item));
                 } else {
-                    setEntries(prev => prev.map(item => item.id === e.id ? { ...item, status: 'error', error: String(error) } : item));
+                    setEntries(prev => prev.map(item => item.id === e.id ? { ...item, status: 'error', error: (error as any)?.message ?? 'Could not save this row.' } : item));
                 }
             } catch (err: any) {
                 setEntries(prev => prev.map(item => item.id === e.id ? { ...item, status: 'error', error: err.message || String(err) } : item));
             }
 
             // Update progress
-            const done = entries.filter(item => item.status === 'success' || item.status === 'error').length + 1;
-            setProgress(Math.round((done / entries.length) * 100));
+            done++;
+            setProgress(Math.round((done / total) * 100));
         }
 
         setIsCreating(false);
         if (successCount > 0) {
             onSuccess();
-            toast({ title: `Successfully created ${successCount} ${type}s` });
+            
         }
     };
 
@@ -319,6 +320,7 @@ export const BulkCreateEntityModal = ({
                                             </>
                                         )}
 
+                                        {entry.status === 'error' && entry.error && <p role="alert" className="col-span-2 text-sm text-danger">{entry.error}</p>}
                                     </div>
 
                                     {/* Actions / Status Icon */}
@@ -329,12 +331,7 @@ export const BulkCreateEntityModal = ({
                                         ) : entry.status === 'success' ? (
                                             <Check className="h-5 w-5 text-green-500" />
                                         ) : entry.status === 'error' ? (
-                                            <div className="group relative w-full">
-                                                <AlertTriangle className="h-5 w-5 text-destructive cursor-help" />
-                                                <div className="absolute right-0 top-6 w-48 bg-destructive text-destructive-foreground text-xs p-2 rounded shadow-lg z-10 hidden group-hover:block">
-                                                    {entry.error}
-                                                </div>
-                                            </div>
+                                            <AlertTriangle className="h-5 w-5 text-danger" aria-label="Failed" />
                                         ) : (
                                             <Button
                                                 variant="outline"
@@ -355,22 +352,15 @@ export const BulkCreateEntityModal = ({
                                 onClick={addEntry}
                                 disabled={isCreating}
                             >
-                                <Plus className="h-4 w-4 mr-2" /> Add Another {type === 'school' ? 'School' : type === 'department' ? 'Department' : 'Unit'}
+                                <Plus className="h-4 w-4 mr-2" /> Add another {type === 'school' ? 'school' : type === 'department' ? 'department' : 'unit'}
                             </Button>
                         </div>
                     </ScrollArea>
                 </div>
 
                 <div className="p-4 border-t bg-background">
-                    {isCreating && (
-                        <div className="mb-4 space-y-2">
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>Creating...</span>
-                                <span>{progress}%</span>
-                            </div>
-                            <Progress value={progress} className="h-1" />
-                        </div>
-                    )}
+                    <BulkSummary running={isCreating} verb="Adding" doneVerb="added" progress={progress}
+                        succeeded={entries.filter(x => x.status === 'success').length} failed={entries.filter(x => x.status === 'error').length} onRetry={handleProcessCreate} />
 
                     <div className="flex justify-between items-center w-full">
                         {/* <div className="text-sm text-muted-foreground">
@@ -388,12 +378,12 @@ export const BulkCreateEntityModal = ({
                                 {isCreating ? (
                                     <>
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Processing...
+                                        Adding…
                                     </>
                                 ) : (
                                     <>
                                         {/* <Grid className="h-4 w-4 mr-2" /> */}
-                                        Create
+                                        Add all
                                     </>
                                 )}
                             </Button>

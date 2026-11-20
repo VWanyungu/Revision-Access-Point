@@ -8,7 +8,7 @@ import { TYPE_OPTIONS, academicYears, defaultPaperName, isPaperType, optionFor }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
+import { BulkSummary } from './BulkSummary';
 import { addRecord, uploadFile } from '@/data/db';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +54,7 @@ export const BulkUploadModal = ({
     const [isUploading, setIsUploading] = useState(false);
     const [progress, setProgress] = useState(0);
     const { toast } = useToast();
+    const multiRef = useRef<HTMLInputElement>(null);
 
     // Initialize with one empty row when opened
     useEffect(() => {
@@ -62,25 +63,37 @@ export const BulkUploadModal = ({
         }
     }, [open]);
 
-    const addResource = () => {
-        const lastResource = resources[resources.length - 1];
+    const blank = (last?: BulkResourceEntry): BulkResourceEntry => ({
+        id: Math.random().toString(36).slice(2, 11),
+        name: '',
+        description: '',
+        // Smart default: copy context from the previous row if available
+        school_id: last ? last.school_id : 0,
+        department_id: last ? last.department_id : 0,
+        unit_id: last ? last.unit_id : 0,
+        resource_type_id: last ? last.resource_type_id : 0,
+        paper_kind: last ? last.paper_kind : '',
+        academic_year: last ? last.academic_year : '',
+        file: null,
+        status: 'pending'
+    });
 
-        const newResource: BulkResourceEntry = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: '',
-            description: '',
-            // Smart Default: Copy context from previous row if available
-            school_id: lastResource ? lastResource.school_id : 0,
-            department_id: lastResource ? lastResource.department_id : 0,
-            unit_id: lastResource ? lastResource.unit_id : 0,
-            resource_type_id: lastResource ? lastResource.resource_type_id : 0,
-            paper_kind: lastResource ? lastResource.paper_kind : '',
-            academic_year: lastResource ? lastResource.academic_year : '',
-            file: null,
-            status: 'pending'
-        };
+    const addResource = () => setResources([...resources, blank(resources[resources.length - 1])]);
 
-        setResources([...resources, newResource]);
+    // One row per PDF, named from the file name; context is copied from the last row.
+    const addFiles = (files: File[]) => {
+        const pdfs = files.filter(f => f.type === 'application/pdf' && f.size <= 50 * 1024 * 1024);
+        if (pdfs.length < files.length) toast({ title: 'Some files were skipped', description: 'Only PDFs of 50MB or less can be uploaded.', variant: 'destructive' });
+        if (!pdfs.length) return;
+        // An untouched blank row is replaced rather than left empty.
+        const kept = resources.filter(r => r.file || r.name || r.status !== 'pending');
+        let last = kept[kept.length - 1] ?? resources[resources.length - 1];
+        const rows = pdfs.map(f => {
+            const row = { ...blank(last), file: f, name: f.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').trim() };
+            last = row;
+            return row;
+        });
+        setResources([...kept, ...rows]);
     };
 
     const removeResource = (id: string) => {
@@ -121,12 +134,15 @@ export const BulkUploadModal = ({
         );
 
         if (invalid) {
-            toast({ title: "Please fill in all required fields", description: "Unit, Type, and File/Link are required for all entries. Papers also need an academic year, and other types a name.", variant: "destructive" });
+            toast({ title: 'Some rows are incomplete', description: 'Each row needs a file, school, department, unit and type. Papers also need an academic year, and other types a name.', variant: 'destructive' });
             return;
         }
 
         setIsUploading(true);
         let successCount = 0;
+        let done = 0; // a counter, not state: state read inside this loop is stale
+        const total = resources.filter(x => x.status !== 'success').length;
+        setProgress(0);
 
         // Get user email
         let currentUserEmail = '';
@@ -156,7 +172,7 @@ export const BulkUploadModal = ({
                 if (r.file) {
                     const res = await uploadFile(r.file);
                     if (res.status === 'error' || !res.public_access_url) {
-                        throw new Error(res.error || "File upload failed");
+                        throw new Error((res.error as any)?.message || 'The file could not be uploaded.');
                     }
                     finalUrl = res.public_access_url;
                 }
@@ -177,21 +193,20 @@ export const BulkUploadModal = ({
                     successCount++;
                     setResources(prev => prev.map(item => item.id === r.id ? { ...item, status: 'success' } : item));
                 } else {
-                    setResources(prev => prev.map(item => item.id === r.id ? { ...item, status: 'error', error: String(error) } : item));
+                    setResources(prev => prev.map(item => item.id === r.id ? { ...item, status: 'error', error: (error as any)?.message ?? 'Could not save this row.' } : item));
                 }
             } catch (e: any) {
                 setResources(prev => prev.map(item => item.id === r.id ? { ...item, status: 'error', error: e.message || String(e) } : item));
             }
 
             // Update progress roughly
-            const done = resources.filter(res => res.status === 'success' || res.status === 'error').length + 1; // +1 current
-            setProgress(Math.round((done / resources.length) * 100));
+            done++;
+            setProgress(Math.round((done / total) * 100));
         }
 
         setIsUploading(false);
         if (successCount > 0) {
             onSuccess();
-            toast({ title: `Successfully uploaded ${successCount} resources` });
         }
     };
 
@@ -210,13 +225,18 @@ export const BulkUploadModal = ({
         <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
             <DialogContent className="flex h-[85vh] flex-col p-0">
                 <DialogHeader className="p-6 pb-0">
-                    <DialogTitle>Bulk Upload Resources</DialogTitle>
+                    <DialogTitle>Bulk upload resources</DialogTitle>
                     {/* <DialogDescription>
                         Add multiple resources manually. Context (School, Dept, Unit) is copied to new rows automatically to save time.
                     </DialogDescription> */}
                 </DialogHeader>
 
-                <div className="px-6 py-4">
+                <div className="space-y-3 px-6 py-4">
+                    <input type="file" multiple accept="application/pdf" ref={multiRef} className="hidden" aria-label="Choose PDFs"
+                        onChange={(e) => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
+                    <Button type="button" variant="outline" onClick={() => multiRef.current?.click()} disabled={isUploading}>
+                        <Upload /> Choose several PDFs
+                    </Button>
                     <InstitutionSelect value={institution} onChange={(id) => { setInstitution(id); setResources((prev) => prev.map((r) => ({ ...r, school_id: 0, department_id: 0, unit_id: 0 }))); }} />
                 </div>
 
@@ -363,6 +383,7 @@ export const BulkUploadModal = ({
                                                     </div>
                                                 )}
                                             </div>
+                                            {resource.status === 'error' && resource.error && <p role="alert" className="text-sm text-danger">{resource.error}</p>}
                                         </div>
 
                                         {/* Actions */}
@@ -373,12 +394,7 @@ export const BulkUploadModal = ({
                                             ) : resource.status === 'success' ? (
                                                 <Check className="h-5 w-5 text-green-500" />
                                             ) : resource.status === 'error' ? (
-                                                <div className="group relative w-full">
-                                                    <AlertTriangle className="h-5 w-5 text-destructive cursor-help" />
-                                                    <div className="absolute right-0 top-6 w-48 bg-destructive text-destructive-foreground text-xs p-2 rounded shadow-lg z-10 hidden group-hover:block">
-                                                        {resource.error}
-                                                    </div>
-                                                </div>
+                                                <AlertTriangle className="h-5 w-5 text-danger" aria-label="Failed" />
                                             ) : (
                                                 <Button
                                                     variant="outline"
@@ -400,22 +416,15 @@ export const BulkUploadModal = ({
                                 onClick={addResource}
                                 disabled={isUploading}
                             >
-                                <Plus className="h-4 w-4 mr-2" /> Add Another Resource
+                                <Plus className="h-4 w-4 mr-2" /> Add another resource
                             </Button>
                         </div>
                     </ScrollArea>
                 </div>
 
                 <div className="p-4 border-t bg-background">
-                    {isUploading && (
-                        <div className="mb-4 space-y-2">
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>Uploading...</span>
-                                <span>{progress}%</span>
-                            </div>
-                            <Progress value={progress} className="h-1" />
-                        </div>
-                    )}
+                    <BulkSummary running={isUploading} verb="Uploading" doneVerb="uploaded" progress={progress}
+                        succeeded={resources.filter(x => x.status === 'success').length} failed={resources.filter(x => x.status === 'error').length} onRetry={handleProcessUpload} />
 
                     <div className="flex justify-between items-center">
                         {/* <div className="text-sm text-muted-foreground">
@@ -433,12 +442,12 @@ export const BulkUploadModal = ({
                                 {isUploading ? (
                                     <>
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Uploading...
+                                        Uploading…
                                     </>
                                 ) : (
                                     <>
                                         <Upload className="h-4 w-4 mr-2" />
-                                        Upload All
+                                        Upload all
                                     </>
                                 )}
                             </Button>
