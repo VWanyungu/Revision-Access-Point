@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Banknote, Percent, Receipt } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/shared/StatCard';
@@ -25,17 +26,17 @@ export const EarningsPanel = ({ role }: { role: AdminRole }) => {
 
   const { byCourse, byMonth } = useMemo(() => {
     const c = new Map<number, { name: string; institution: string; passes: number; gross: number; mine: number }>();
-    const m = new Map<string, { passes: number; mine: number }>();
+    const m = new Map<string, { passes: number; mine: number; ts: number }>();
     for (const r of rows) {
       const course = c.get(r.department_id) ?? { name: r.department_name, institution: r.institution_name, passes: 0, gross: 0, mine: 0 };
       course.passes += 1; course.gross += r.amount; course.mine += r[mineKey];
       c.set(r.department_id, course);
       const key = month(r.created_at);
-      const mo = m.get(key) ?? { passes: 0, mine: 0 };
+      const mo = m.get(key) ?? { passes: 0, mine: 0, ts: new Date(r.created_at).setDate(1) };
       mo.passes += 1; mo.mine += r[mineKey];
       m.set(key, mo);
     }
-    return { byCourse: [...c.values()].sort((a, b) => b.mine - a.mine), byMonth: [...m.entries()].slice(0, 6) };
+    return { byCourse: [...c.values()].sort((a, b) => b.mine - a.mine), byMonth: [...m.entries()].sort((a, b) => b[1].ts - a[1].ts).slice(0, 6) };
   }, [rows, mineKey]);
 
   if (isError) return (
@@ -47,8 +48,15 @@ export const EarningsPanel = ({ role }: { role: AdminRole }) => {
 
   return (
     <section aria-label="Earnings" className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard title={mineLabel} value={stat(ksh(sum(rows, mineKey)))} icon={<Banknote className="h-5 w-5" />} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* The share is the number admins come for, so it leads; the other two are context. */}
+        <div className="stat-card flex flex-col justify-between gap-8 lg:col-span-2 lg:row-span-2 lg:p-8">
+          <div className="flex items-center justify-between text-ink-muted">
+            <p className="text-sm font-medium">{mineLabel}</p>
+            <span className="rounded-tile bg-field p-3 text-brand"><Banknote className="size-5" aria-hidden /></span>
+          </div>
+          <div className="text-3xl font-semibold tabular-nums sm:text-4xl">{isLoading ? <Skeleton className="h-12 w-48 motion-reduce:animate-none" /> : ksh(sum(rows, mineKey))}</div>
+        </div>
         <StatCard title="Total paid in" value={stat(ksh(sum(rows, 'amount')))} icon={<Receipt className="h-5 w-5" />} />
         <StatCard title="Semester passes sold" value={stat(rows.length)} icon={<Percent className="h-5 w-5" />} />
       </div>
@@ -82,6 +90,21 @@ export const EarningsPanel = ({ role }: { role: AdminRole }) => {
           {byMonth.length === 0 ? (
             <p className="text-sm text-ink-muted">Nothing yet.</p>
           ) : (
+            <>
+            {/* Bars scale from the busiest month; the list below carries the exact figures, so the chart is decoration for screen readers. */}
+            <div aria-hidden className="mb-5 flex h-28 items-end gap-2">
+              {[...byMonth].reverse().map(([name, v], i, all) => {
+                const max = Math.max(...byMonth.map(([, x]) => x.mine), 1);
+                return (
+                  <div key={name} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
+                    <div className="flex w-full flex-1 items-end">
+                      <div className={cn('w-full origin-bottom rounded-t-inner', i === all.length - 1 ? 'bg-brand-solid' : 'bg-brand-solid/40')} style={{ height: '100%', transform: `scaleY(${Math.max(v.mine / max, 0.04)})` }} />
+                    </div>
+                    <span className="text-xs text-ink-muted">{name.split(' ')[0]}</span>
+                  </div>
+                );
+              })}
+            </div>
             <ul className="space-y-3">
               {byMonth.map(([name, v]) => (
                 <li key={name} className="flex items-center justify-between border-t border-line pt-3 first:border-0 first:pt-0">
@@ -90,6 +113,7 @@ export const EarningsPanel = ({ role }: { role: AdminRole }) => {
                 </li>
               ))}
             </ul>
+            </>
           )}
         </div>
       </div>

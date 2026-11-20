@@ -72,7 +72,7 @@ const Dashboard = () => {
 
       <section aria-label="Content totals" className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {cards.map(({ schema, label, path, Icon }) => (
-          <Link key={schema} to={path} className="stat-card card-hover block !p-5 transition-[transform,box-shadow] duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] motion-reduce:transition-none">
+          <Link key={schema} to={path} className="stat-card card-hover block !p-5 transition-[transform,box-shadow] duration-base ease-house active:scale-[0.98] motion-reduce:transition-none">
             <div className="flex items-center justify-between text-ink-muted">
               <span className="text-sm font-medium">{label}</span>
               <Icon aria-hidden className="size-4" />
