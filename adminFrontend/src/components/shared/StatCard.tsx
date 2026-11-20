@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 interface StatCardProps {
   title: string;
-  value: string | number;
+  value: ReactNode;
   icon: ReactNode;
   trend?: {
     value: number;
@@ -18,7 +18,7 @@ export const StatCard = ({ title, value, icon, trend, className }: StatCardProps
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-2xl font-semibold mt-2">{value}</p>
+          <div className="mt-2 text-2xl font-semibold">{value}</div>
           {trend && (
             <p className={cn(
               "text-xs mt-2 font-medium",

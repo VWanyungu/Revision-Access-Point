@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 interface PageHeaderProps {
   title: string;
@@ -6,7 +6,9 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-export const PageHeader = ({ title, description, actions }: PageHeaderProps) => (
+export const PageHeader = ({ title, description, actions }: PageHeaderProps) => {
+  useEffect(() => { document.title = `${title} · RAP Admin`; }, [title]);
+  return (
   <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
     <div>
       <h1 className="text-2xl font-semibold text-ink">{title}</h1>
@@ -14,4 +16,5 @@ export const PageHeader = ({ title, description, actions }: PageHeaderProps) => 
     </div>
     {actions && <div className="flex items-center gap-2">{actions}</div>}
   </div>
-);
+  );
+};

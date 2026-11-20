@@ -205,12 +205,12 @@
     @apply flex items-center gap-3 px-3.5 py-2.5 rounded-full text-sm text-ink-muted transition-colors duration-300;
   }
 
-  .nav-link:hover {
+  .nav-link:hover:not(.active) {
     @apply bg-field text-ink;
   }
 
   .nav-link.active {
-    @apply bg-field text-ink font-medium;
+    @apply bg-ink text-ink-fg font-medium;
   }
 
   .table-row-hover {

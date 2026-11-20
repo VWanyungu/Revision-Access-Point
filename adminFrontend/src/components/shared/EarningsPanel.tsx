@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { Banknote, Percent, Receipt } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/shared/StatCard';
 import { useEarnings, ksh, type EarningRow } from '@/hooks/useEarnings';
 import type { AdminRole } from '@/contexts/AuthContext';
@@ -14,7 +16,8 @@ const month = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month
 
 /** Earnings from semester passes: the totals, a month-by-month list, and a row per course. */
 export const EarningsPanel = ({ role }: { role: AdminRole }) => {
-  const { data: rows = [], isLoading, isError } = useEarnings();
+  const { data: rows = [], isLoading, isError, refetch } = useEarnings();
+  const stat = (v: string | number) => isLoading ? <Skeleton className="h-8 w-24 motion-reduce:animate-none" /> : v;
 
   // What "mine" means depends on who is looking: course admins keep 70%, the platform keeps 30%.
   const mineKey: Money = role === 'super_admin' ? 'app_share' : 'admin_share';
@@ -35,30 +38,35 @@ export const EarningsPanel = ({ role }: { role: AdminRole }) => {
     return { byCourse: [...c.values()].sort((a, b) => b.mine - a.mine), byMonth: [...m.entries()].slice(0, 6) };
   }, [rows, mineKey]);
 
-  if (isError) return <p className="rounded-3xl bg-surface p-6 text-sm text-danger ring-1 ring-line">Earnings could not be loaded. Run revenue_split.sql on the database, then refresh.</p>;
+  if (isError) return (
+    <div className="flex items-center justify-between gap-4 rounded-3xl bg-surface p-6 ring-1 ring-line">
+      <p className="text-sm text-ink">Earnings could not be loaded. Check your connection and try again.</p>
+      <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+    </div>
+  );
 
   return (
     <section aria-label="Earnings" className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard title={mineLabel} value={isLoading ? '…' : ksh(sum(rows, mineKey))} icon={<Banknote className="h-5 w-5" />} />
-        <StatCard title="Total paid in" value={isLoading ? '…' : ksh(sum(rows, 'amount'))} icon={<Receipt className="h-5 w-5" />} />
-        <StatCard title="Semester passes sold" value={isLoading ? '…' : rows.length} icon={<Percent className="h-5 w-5" />} />
+        <StatCard title={mineLabel} value={stat(ksh(sum(rows, mineKey)))} icon={<Banknote className="h-5 w-5" />} />
+        <StatCard title="Total paid in" value={stat(ksh(sum(rows, 'amount')))} icon={<Receipt className="h-5 w-5" />} />
+        <StatCard title="Semester passes sold" value={stat(rows.length)} icon={<Percent className="h-5 w-5" />} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-3xl bg-surface p-6 ring-1 ring-line lg:col-span-2">
           <h2 className="mb-4 text-lg font-semibold">By course</h2>
           {byCourse.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{isLoading ? 'Loading…' : role === 'course_admin' ? 'No paid passes for your courses yet.' : 'No paid passes yet.'}</p>
+            <div className="text-sm text-ink-muted">{isLoading ? <Skeleton className="h-10 w-full motion-reduce:animate-none" /> : role === 'course_admin' ? 'No paid passes for your courses yet.' : 'No paid passes yet.'}</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="text-left text-xs uppercase tracking-wide text-ink-muted">
                 <tr><th className="pb-2 font-medium">Course</th><th className="pb-2 text-right font-medium">Passes</th><th className="pb-2 text-right font-medium">Paid in</th><th className="pb-2 text-right font-medium">Share</th></tr>
               </thead>
               <tbody>
                 {byCourse.map((c) => (
                   <tr key={`${c.institution}-${c.name}`} className="border-t border-line">
-                    <td className="py-3 pr-3"><span className="font-medium">{c.name}</span> <span className="text-muted-foreground">{c.institution}</span></td>
+                    <td className="py-3 pr-3"><span className="font-medium">{c.name}</span> <span className="text-ink-muted">{c.institution}</span></td>
                     <td className="py-3 text-right tabular-nums">{c.passes}</td>
                     <td className="py-3 text-right tabular-nums">{ksh(c.gross)}</td>
                     <td className="py-3 text-right font-medium tabular-nums">{ksh(c.mine)}</td>
@@ -72,12 +80,12 @@ export const EarningsPanel = ({ role }: { role: AdminRole }) => {
         <div className="rounded-3xl bg-surface p-6 ring-1 ring-line">
           <h2 className="mb-4 text-lg font-semibold">By month</h2>
           {byMonth.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing yet.</p>
+            <p className="text-sm text-ink-muted">Nothing yet.</p>
           ) : (
             <ul className="space-y-3">
               {byMonth.map(([name, v]) => (
                 <li key={name} className="flex items-center justify-between border-t border-line pt-3 first:border-0 first:pt-0">
-                  <span className="text-sm">{name} <span className="text-muted-foreground">· {v.passes} {v.passes === 1 ? 'pass' : 'passes'}</span></span>
+                  <span className="text-sm">{name} <span className="text-ink-muted">· {v.passes} {v.passes === 1 ? 'pass' : 'passes'}</span></span>
                   <span className="text-sm font-medium tabular-nums">{ksh(v.mine)}</span>
                 </li>
               ))}
