@@ -5,7 +5,7 @@ import { ArrowLeft, Check, CaretDown, Info, X as XIcon } from "@phosphor-icons/r
 import { useAuth } from "@/context/AuthContext";
 import { recordQuiz } from "@/database/progress";
 import PageCrumbs from "@/components/layout/PageCrumbs";
-import { EASE, InkButton, PayBottomBar, QuietButton } from "@/components/pay/PayKit";
+import { EASE, InkButton, PayBottomBar, QuietButton, trayShell } from "@/components/pay/PayKit";
 
 /** A page, not an overlay: it renders inside the app layout and `onClose` returns to where the quiz was started. */
 interface QuizSystemProps {
@@ -197,14 +197,14 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
         </div>
         <Frame keyed={current}>
           <h1 className="font-literata text-xl md:text-2xl">{q.question}</h1>
-          <div role="radiogroup" aria-label="Answers" className="mt-6 flex flex-col gap-1">
+          <div role="radiogroup" aria-label="Answers" className={`mt-6 flex flex-col gap-1.5 ${trayShell}`}>
             {q.options.map((opt, i) => {
               const on = answers[current] === i;
               return (
                 <button
                   key={i} role="radio" aria-checked={on}
                   onClick={() => setAnswers({ ...answers, [current]: i })}
-                  className={`flex items-center gap-4 rounded-lg px-3 py-3.5 text-left text-base transition-colors duration-300 ${on ? "bg-field-strong font-medium" : "hover:bg-field"}`}
+                  className={`focus-ring flex items-center gap-4 rounded-core px-3 py-3.5 text-left text-base transition-[background-color,box-shadow] duration-500 ease-house ${on ? "bg-surface font-medium shadow-float ring-1 ring-brand" : "bg-surface/60 ring-1 ring-line hover:bg-surface"}`}
                 >
                   <span className={`flex size-8 shrink-0 items-center justify-center rounded-full border text-sm transition-colors duration-300 ${on ? "border-brand bg-brand-solid text-white" : "border-line-strong"}`}>{letter(i)}</span>
                   {opt}

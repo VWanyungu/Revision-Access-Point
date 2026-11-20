@@ -9,7 +9,7 @@ import AiAddOn from "@/components/pay/AiAddOn";
 import { ksh, usePrices } from "@/lib/pricing";
 import { useSemesterPreview } from "@/components/pay/useSemesterPreview";
 import {
-  EASE, PayPage, PayHeader, PayBottomBar, Title, InkButton, QuietButton, SelectField, accessUntil, formatDate,
+  EASE, PayPage, PayHeader, PayBottomBar, Title, InkButton, QuietButton, SelectField, trayShell, trayCore, accessUntil, formatDate,
 } from "@/components/pay/PayKit";
 
 interface PricingGateProps {
@@ -145,7 +145,8 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel, initial }: PricingGateP
           <AiAddOn checked={withAi} onChange={setWithAi} price={prices?.ai} />
           {pricesFailed && <p className="text-sm text-danger" role="alert">Prices could not be loaded. Please refresh the page.</p>}
 
-          <div className="hidden flex-col gap-4 border-t border-line pt-8 md:flex">
+          <div className={`hidden md:block ${trayShell}`}>
+          <div className={`flex flex-col gap-4 p-6 ${trayCore}`}>
             <div className="flex items-center justify-between">
               <span className="font-literata text-lg font-medium">Semester pass</span>
               <span className="font-literata text-xl">{prices ? ksh(prices.access) : "…"}</span>
@@ -163,6 +164,7 @@ const PricingGate = ({ onLogout, onSubscribed, onCancel, initial }: PricingGateP
             <p className="text-sm text-ink-muted">Access until {until}.{withAi ? "" : " Reading and viewing only; you can add AI features later."}</p>
             <InkButton arrow disabled={!canPay} onClick={() => setPaymentOpen(true)}>Continue to payment</InkButton>
             {onCancel && <QuietButton onClick={onCancel}>Cancel</QuietButton>}
+          </div>
           </div>
         </section>
 

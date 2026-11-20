@@ -53,6 +53,10 @@ export const Title = ({ children, sub, icon, subDesktopOnly }: { children: React
   </div>
 );
 
+/** Nested tray: an outer shell with a hairline ring, and an inner core that sits in it. Copy of the pass card. */
+export const trayShell = "rounded-tray bg-field/60 p-1.5 ring-1 ring-line";
+export const trayCore = "rounded-core bg-surface shadow-float";
+
 /** The house buttons. One primary pill, one quiet pill, one shared focus ring (.focus-ring in index.css). */
 const pillBase = "focus-ring group inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full text-base font-medium transition-[transform,background-color,opacity] duration-500 ease-house active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 export const btnPrimary = `${pillBase} bg-primary px-5 text-primary-foreground hover:bg-primary-dark`;

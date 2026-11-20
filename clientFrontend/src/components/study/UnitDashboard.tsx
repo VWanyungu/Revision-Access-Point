@@ -447,7 +447,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                   animate={{ opacity: 1, y: 0 }}
                   exit={reduce ? undefined : { opacity: 0, y: -8 }}
                   transition={{ duration: 0.25, ease: EASE }}
-                  className="absolute left-0 top-full z-30 mt-4 w-[min(520px,calc(100vw-2.5rem))] rounded-3xl bg-surface p-5 shadow-[0_16px_48px_-16px_rgba(14,21,37,0.18)] ring-1 ring-line md:p-6"
+                  className="absolute left-0 top-full z-30 mt-4 w-[min(520px,calc(100vw-2.5rem))] rounded-3xl bg-surface p-5 shadow-float ring-1 ring-line md:p-6"
                 >
                   <p className="mb-4 text-base font-medium">Change unit</p>
                   <ResourceSearch inline currentUnitId={unitId} onSearch={(s) => { setPickerOpen(false); onChangeUnit(s); }} />
@@ -456,12 +456,12 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             </AnimatePresence>
           </div>
           {topics.length > 0 && (
-            <div className="max-w-[340px] text-base md:rounded-2xl md:bg-background/80 md:p-4 md:backdrop-blur-md">
+            <div className="max-w-[340px] text-base md:rounded-tray md:bg-field/60 md:p-1.5 md:ring-1 md:ring-line md:backdrop-blur-md"><div className="md:rounded-core md:bg-surface md:p-4 md:shadow-float">
               <p className="max-md:hidden">{doneCount} of {topics.length} {topics.length === 1 ? "topic" : "topics"} complete.{resume ? (last ? " Pick up where you stopped." : " Start with the first note.") : ""}</p>
               {resume && (
                 <button className={`${link} md:mt-2`} onClick={() => open(resume)}>Continue reading <ArrowUpRight size={14} /></button>
               )}
-            </div>
+            </div></div>
           )}
         </div>
       </div>

@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { callFunction } from "@/lib/callFunction";
 import { CONTACT_EMAIL } from "@/components/layout/SiteFooter";
 import {
-  EASE, PayPage, PayTopBar, PayBottomBar, Title, InkButton, QuietButton, DetailRow, formatDate,
+  EASE, PayPage, PayTopBar, PayBottomBar, Title, InkButton, QuietButton, DetailRow, trayShell, trayCore, formatDate,
 } from "@/components/pay/PayKit";
 
 type Step = "phone" | "waiting" | "received" | "failed";
@@ -340,7 +340,7 @@ const MpesaPaymentDialog = ({
           transition={{ duration: 0.45, ease: EASE }}
           className="px-5 pb-44 pt-6 md:mx-auto md:max-w-[480px] md:px-0 md:pb-24 md:pt-8"
         >
-          {body[step]}
+          <div className={trayShell}><div className={`p-5 md:p-7 ${trayCore}`}>{body[step]}</div></div>
         </motion.div>
       </AnimatePresence>
     </PayPage>

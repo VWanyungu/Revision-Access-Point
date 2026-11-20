@@ -76,7 +76,7 @@ const ActivePass = ({ sub, index, onRenew, onAddAi }: { sub: Sub; index: number;
       aria-label={`Active pass for ${sub.department_name ?? "your department"}`}
       className="rounded-tray bg-field/60 p-1.5 ring-1 ring-line"
     >
-      <div className="rounded-[calc(2rem-0.375rem)] bg-surface p-5 shadow-[0_24px_48px_-28px_rgba(14,21,37,0.18)] md:p-7">
+      <div className="rounded-core bg-surface p-5 shadow-float md:p-7">
         <div className="flex items-center justify-between gap-4">
           <span className="flex items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full bg-positive/10 px-3 py-1 text-xs font-medium text-positive">
