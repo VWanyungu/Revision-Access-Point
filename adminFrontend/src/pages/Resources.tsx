@@ -436,7 +436,7 @@ const Resources = () => {
           <form onSubmit={submit} className="space-y-4">
             {formData.public_access_url && (
               <div className="space-y-2">
-                <a href={formData.public_access_url} target="_blank" rel="noopener noreferrer" className='text-sm text-primary'>Public View Link</a>
+                <a href={formData.public_access_url} target="_blank" rel="noopener noreferrer" className='text-sm text-brand'>Public View Link</a>
               </div>
             )}
 
@@ -483,8 +483,8 @@ const Resources = () => {
                   {formData.cover_url ? <img src={formData.cover_url} alt="" className="size-full object-cover" /> : coverUploading ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}
                 </button>
                 <div className="flex flex-col items-start gap-1 text-sm">
-                  <button type="button" className="text-primary" onClick={() => coverInputRef.current?.click()}>{formData.cover_url ? 'Replace photo' : 'Upload photo'}</button>
-                  {formData.cover_url && <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setFormData({ ...formData, cover_url: '' })}>Remove</button>}
+                  <button type="button" className="text-brand" onClick={() => coverInputRef.current?.click()}>{formData.cover_url ? 'Replace photo' : 'Upload photo'}</button>
+                  {formData.cover_url && <button type="button" className="text-muted-foreground hover:text-danger" onClick={() => setFormData({ ...formData, cover_url: '' })}>Remove</button>}
                   <span className="text-xs text-muted-foreground">JPG or PNG</span>
                 </div>
               </div>

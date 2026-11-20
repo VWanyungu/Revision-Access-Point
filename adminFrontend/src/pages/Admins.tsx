@@ -37,7 +37,7 @@ interface AdminRow {
 const roleConfig: Record<AdminRole, { label: string; color: string }> = {
   super_admin: { label: 'Super Admin', color: 'bg-action/10 text-action border-action/20' },
   institution_admin: { label: 'Institution Admin', color: 'bg-field text-ink border-line' },
-  school_admin: { label: 'School Admin', color: 'bg-primary/10 text-primary border-primary/20' },
+  school_admin: { label: 'School Admin', color: 'bg-brand/10 text-brand border-brand/20' },
   course_admin: { label: 'Course Admin', color: 'bg-info/10 text-info border-info/20' },
 };
 
@@ -164,7 +164,7 @@ const Admins = () => {
       render: (a) => (
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <span className="text-sm font-medium text-primary">{a.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}</span>
+            <span className="text-sm font-medium text-brand">{a.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}</span>
           </div>
           <div>
             <p className="font-medium">{a.full_name}</p>
@@ -210,7 +210,7 @@ const Admins = () => {
         {[
           { label: 'Super Admins', n: count('super_admin'), Icon: Shield, tint: 'bg-brand/10 text-brand' },
           { label: 'Institution Admins', n: count('institution_admin'), Icon: Shield, tint: 'bg-action/10 text-action' },
-          { label: 'School Admins', n: count('school_admin'), Icon: Users, tint: 'bg-field text-primary' },
+          { label: 'School Admins', n: count('school_admin'), Icon: Users, tint: 'bg-field text-brand' },
           { label: 'Course Admins', n: count('course_admin'), Icon: Users, tint: 'bg-info/10 text-info' },
         ].map(({ label, n, Icon, tint }) => (
           <div key={label} className="flex items-center gap-4 rounded-3xl bg-surface p-4 ring-1 ring-line">

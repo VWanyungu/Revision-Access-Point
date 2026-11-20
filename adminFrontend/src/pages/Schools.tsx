@@ -120,7 +120,7 @@ const Schools = () => {
       render: (school) => (
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-field">
-            <Building2 className="h-4 w-4 text-primary" />
+            <Building2 className="h-4 w-4 text-brand" />
           </div>
           <div>
             <InlineText value={school.name} onSave={(v) => saveField(school.id, { name: v })} className="font-medium" />

@@ -40,7 +40,7 @@
     --muted-foreground: 220 10% 46%;
 
     /* Destructive */
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 46%; /* white text on it is about 5.5:1 */
     --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs */
@@ -101,7 +101,7 @@
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 30 60% 10%; /* dark text: white on amber is about 2:1 */
 
     /* Sidebar */
     --sidebar-background: 210 40% 98%;

@@ -249,7 +249,7 @@ export const BulkUploadModal = ({
                                     className={cn(
                                         "bg-surface rounded-3xl ring-1 ring-line p-4 shadow-sm transition-all",
                                         resource.status === 'uploading' && "opacity-70 pointer-events-none border-primary/50",
-                                        resource.status === 'success' && "border-green-500/50 bg-green-500/5",
+                                        resource.status === 'success' && "border-success/50 bg-success/5",
                                         resource.status === 'error' && "border-destructive/50 bg-destructive/5"
                                     )}
                                 >
@@ -276,8 +276,8 @@ export const BulkUploadModal = ({
                                                     >
                                                         {resource.file ? (
                                                             <div className="text-center p-2">
-                                                                <FileText className="h-6 w-6 mx-auto text-primary mb-1" />
-                                                                <p className="text-[10px] truncate max-w-[16rem]">{resource.file.name}</p>
+                                                                <FileText className="h-6 w-6 mx-auto text-brand mb-1" />
+                                                                <p className="text-xs truncate max-w-[16rem]">{resource.file.name}</p>
                                                             </div>
                                                         ) : (
                                                             <>
@@ -390,9 +390,9 @@ export const BulkUploadModal = ({
                                         {/* <div className="flex flex-col gap-2 pt-6 w-full"> */}
                                         <div className="flex w-8 shrink-0 flex-col gap-2 pt-6">
                                             {resource.status === 'uploading' ? (
-                                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                <Loader2 className="h-4 w-4 animate-spin text-brand" />
                                             ) : resource.status === 'success' ? (
-                                                <Check className="h-5 w-5 text-green-500" />
+                                                <Check className="h-5 w-5 text-positive" />
                                             ) : resource.status === 'error' ? (
                                                 <AlertTriangle className="h-5 w-5 text-danger" aria-label="Failed" />
                                             ) : (
@@ -400,7 +400,7 @@ export const BulkUploadModal = ({
                                                     variant="outline"
                                                     size="icon"
                                                     onClick={() => removeResource(resource.id)}
-                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-danger"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -412,7 +412,7 @@ export const BulkUploadModal = ({
 
                             <Button
                                 variant="outline"
-                                className="w-full border-dashed py-6 text-muted-foreground hover:text-primary hover:border-primary/50"
+                                className="w-full border-dashed py-6 text-muted-foreground hover:text-brand hover:border-brand/50"
                                 onClick={addResource}
                                 disabled={isUploading}
                             >

@@ -128,7 +128,7 @@ const Departments = () => {
       render: (department) => (
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-field">
-            <BookOpen className="h-4 w-4 text-primary" />
+            <BookOpen className="h-4 w-4 text-brand" />
           </div>
           <div>
             <InlineText value={department.name} onSave={(v) => saveField(department.id, { name: v })} className="font-medium" />

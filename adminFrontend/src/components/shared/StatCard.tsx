@@ -22,7 +22,7 @@ export const StatCard = ({ title, value, icon, trend, className }: StatCardProps
           {trend && (
             <p className={cn(
               "text-xs mt-2 font-medium",
-              trend.isPositive ? "text-success" : "text-destructive"
+              trend.isPositive ? "text-success" : "text-danger"
             )}>
               {trend.isPositive ? '+' : ''}{trend.value}% from last month
             </p>

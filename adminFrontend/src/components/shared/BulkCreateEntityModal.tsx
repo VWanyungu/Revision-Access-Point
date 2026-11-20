@@ -220,7 +220,7 @@ export const BulkCreateEntityModal = ({
                                     className={cn(
                                         "bg-surface rounded-3xl ring-1 ring-line p-4 shadow-sm transition-all relative flex items-start gap-3",
                                         entry.status === 'creating' && "opacity-70 pointer-events-none border-primary/50",
-                                        entry.status === 'success' && "border-green-500/50 bg-green-500/5",
+                                        entry.status === 'success' && "border-success/50 bg-success/5",
                                         entry.status === 'error' && "border-destructive/50 bg-destructive/5"
                                     )}
                                 >
@@ -327,9 +327,9 @@ export const BulkCreateEntityModal = ({
                                     {/* <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col justify-center w-full"> */}
                                     <div className="flex w-8 shrink-0 flex-col items-center pt-6">
                                         {entry.status === 'creating' ? (
-                                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                            <Loader2 className="h-4 w-4 animate-spin text-brand" />
                                         ) : entry.status === 'success' ? (
-                                            <Check className="h-5 w-5 text-green-500" />
+                                            <Check className="h-5 w-5 text-positive" />
                                         ) : entry.status === 'error' ? (
                                             <AlertTriangle className="h-5 w-5 text-danger" aria-label="Failed" />
                                         ) : (
@@ -337,7 +337,7 @@ export const BulkCreateEntityModal = ({
                                                 variant="outline"
                                                 size="icon"
                                                 onClick={() => removeEntry(entry.id)}
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                className="h-8 w-8 text-muted-foreground hover:text-danger"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
@@ -348,7 +348,7 @@ export const BulkCreateEntityModal = ({
 
                             <Button
                                 variant="outline"
-                                className="w-full border-dashed py-6 text-muted-foreground hover:text-primary hover:border-primary/50"
+                                className="w-full border-dashed py-6 text-muted-foreground hover:text-brand hover:border-brand/50"
                                 onClick={addEntry}
                                 disabled={isCreating}
                             >

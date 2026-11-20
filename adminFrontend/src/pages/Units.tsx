@@ -169,7 +169,7 @@ const Units = () => {
       render: (unit) => (
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-field">
-            <Layers className="h-4 w-4 text-primary" />
+            <Layers className="h-4 w-4 text-brand" />
           </div>
           <div>
             <InlineText value={unit.name} onSave={(v) => saveField(unit.id, { name: v })} className="font-medium" />
@@ -328,8 +328,8 @@ const Units = () => {
             </button>
             {formData.banner_url && (
               <div className="flex gap-4 text-sm">
-                <button type="button" className="text-primary" onClick={() => bannerInputRef.current?.click()}>Replace</button>
-                <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setFormData({ ...formData, banner_url: '' })}>Remove</button>
+                <button type="button" className="text-brand" onClick={() => bannerInputRef.current?.click()}>Replace</button>
+                <button type="button" className="text-muted-foreground hover:text-danger" onClick={() => setFormData({ ...formData, banner_url: '' })}>Remove</button>
               </div>
             )}
           </div>
