@@ -1,6 +1,6 @@
 // Generates multiple-choice questions from a note using ChatPDF.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { HttpError, authorizeFile, chatPdfKey, corsFor, reply } from "../_shared/guard.ts";
+import { HttpError, authorizeFile, chatPdfKey, corsFor, reply, requireAi } from "../_shared/guard.ts";
 
 const CHATPDF_BASE = "https://api.chatpdf.com/v1";
 
@@ -19,7 +19,8 @@ Deno.serve(async (req) => {
     const { fileUrl, numberOfQuestions, difficulty } = await req.json();
     if (!fileUrl || !numberOfQuestions || !difficulty) throw new HttpError(400, "Missing required input");
 
-    await authorizeFile(req, fileUrl);
+    const { ai } = await authorizeFile(req, fileUrl);
+    requireAi(ai);
     const apiKey = chatPdfKey();
 
     const addRes = await fetch(`${CHATPDF_BASE}/sources/add-url`, {

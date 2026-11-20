@@ -5,7 +5,7 @@
 // 2. The forecast itself is plain arithmetic over those saved analyses (no AI), so it is explainable and free to repeat.
 //    It is cached per unit and kind and recomputed only when the set of analysed papers changes.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { HttpError, adminClient, authorizeUnit, chatPdfKey, corsFor, reply } from "../_shared/guard.ts";
+import { HttpError, adminClient, authorizeUnit, chatPdfKey, corsFor, reply, requireAi } from "../_shared/guard.ts";
 import { addSource, ask, extractJson } from "../_shared/chatpdf.ts";
 import { computeForecast, type Analysis, type Kind, type Paper, type Question, type Topic } from "./forecast.ts";
 
@@ -90,7 +90,8 @@ Deno.serve(async (req) => {
     if (!unitId || !["cat1", "cat2", "exam"].includes(kind)) throw new HttpError(400, "Missing required input");
     const target = kind as Kind;
 
-    const { unit } = await authorizeUnit(req, Number(unitId));
+    const { unit, ai } = await authorizeUnit(req, Number(unitId));
+    requireAi(ai);
     const admin = adminClient();
 
     const { data: topicRows } = await admin.from("topics").select("id, title, position").eq("unit_id", unit.id).order("position");

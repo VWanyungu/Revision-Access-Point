@@ -62,12 +62,13 @@ export const authorizeFile = async (req: Request, fileUrl: string) => {
 
   // Admins (anyone with an admin role in app_metadata) may use any file; students need a current pass.
   const role = user.app_metadata?.role;
+  let ai = !!role;
   if (!role) {
     const unit = resource.units as { department_id: number; year_of_study: number; semester_of_study: number } | null;
     const today = new Date().toISOString().slice(0, 10);
     const { data: pass } = await admin
       .from("subscriptions")
-      .select("id")
+      .select("id, ai_access")
       .eq("user_uuid", user.id)
       .eq("department_id", unit?.department_id ?? resource.department_id)
       .eq("year_of_study", unit?.year_of_study ?? -1)
@@ -76,9 +77,10 @@ export const authorizeFile = async (req: Request, fileUrl: string) => {
       .limit(1)
       .maybeSingle();
     if (!pass) throw new HttpError(403, "You need a current semester pass for this unit");
+    ai = !!pass.ai_access;
   }
 
-  return { user, resource };
+  return { user, resource, ai };
 };
 
 /**
@@ -100,11 +102,12 @@ export const authorizeUnit = async (req: Request, unitId: number) => {
     .maybeSingle();
   if (!unit) throw new HttpError(404, "Unknown unit");
 
+  let ai = !!user.app_metadata?.role;
   if (!user.app_metadata?.role) {
     const today = new Date().toISOString().slice(0, 10);
     const { data: pass } = await admin
       .from("subscriptions")
-      .select("id")
+      .select("id, ai_access")
       .eq("user_uuid", user.id)
       .eq("department_id", unit.department_id)
       .eq("year_of_study", unit.year_of_study)
@@ -113,7 +116,16 @@ export const authorizeUnit = async (req: Request, unitId: number) => {
       .limit(1)
       .maybeSingle();
     if (!pass) throw new HttpError(403, "You need a current semester pass for this unit");
+    ai = !!pass.ai_access;
   }
 
-  return { user, unit };
+  return { user, unit, ai };
+};
+
+/**
+ * AI features (answers, quizzes, forecasts, practice papers, marking) belong to the AI add-on. A pass without it can read and
+ * view but not use them. The app recognises detail "ai_required" and offers the add-on.
+ */
+export const requireAi = (ai: boolean) => {
+  if (!ai) throw new HttpError(403, "This is part of the AI add-on for your semester pass", "ai_required");
 };

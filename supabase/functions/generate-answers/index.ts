@@ -1,6 +1,6 @@
 // Writes model answers for a past paper using ChatPDF: one call to list the questions, then one per question.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { HttpError, adminClient, authorizeFile, chatPdfKey, corsFor, reply } from "../_shared/guard.ts";
+import { HttpError, adminClient, authorizeFile, chatPdfKey, corsFor, reply, requireAi } from "../_shared/guard.ts";
 
 const CHATPDF_BASE = "https://api.chatpdf.com/v1";
 
@@ -511,7 +511,8 @@ Deno.serve(async (req) => {
     if (!fileUrl || !title) throw new HttpError(400, "Missing required input");
 
     // Signed in, our own file, and a current pass for it: checked before any ChatPDF credit is spent.
-    const { user, resource } = await authorizeFile(req, fileUrl);
+    const { user, resource, ai } = await authorizeFile(req, fileUrl);
+    requireAi(ai);
     const admin = adminClient();
 
     const present = async (row: AnswersRow, regenerations: number, extra: Record<string, unknown> = {}) =>
