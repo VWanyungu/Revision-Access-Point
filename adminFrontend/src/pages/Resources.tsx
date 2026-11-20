@@ -300,7 +300,7 @@ const Resources = () => {
         const Icon = config.icon;
         return (
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-lg", config.color)}>
+            <div className={cn("p-2 rounded-tile", config.color)}>
               <Icon className="h-4 w-4" />
             </div>
             <div>

@@ -50,6 +50,21 @@
 
     --radius: 0.625rem;
 
+    /* House motion: one curve and three durations. Animate transform and opacity only. */
+    --ease-house: cubic-bezier(0.32, 0.72, 0, 1);
+    --dur-fast: 200ms;
+    --dur-base: 400ms;
+    --dur-slow: 700ms;
+
+    /* Named radii (see tailwind.config.ts): pill, card, inner (rows inside a card), tile (icon tiles). */
+    --radius-pill: 9999px;
+    --radius-card: 1.5rem;
+    --radius-inner: 1rem;
+    --radius-tile: 9999px;
+
+    /* Floating layers: menus and the phone sheet. */
+    --shadow-float: 0 16px 48px -12px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.06);
+
     /*
      * Semantic colour tokens for the study screens. Use these (bg-surface, text-ink-muted, border-line, ...)
      * instead of hex values, so every screen follows the theme. Light values match the original design.
@@ -115,6 +130,7 @@
   .dark {
     /* Native controls and scrollbars follow the theme too. */
     color-scheme: dark;
+    --shadow-float: 0 24px 64px -16px rgb(0 0 0 / 0.5);
 
     /*
      * Dark: flat graphite, not black and not navy. Depth comes from three close greys (page, surface, field),
@@ -232,7 +248,7 @@
 
 @layer utilities {
   .animate-fade-in {
-    animation: fadeIn 0.2s ease-out;
+    animation: fadeIn var(--dur-fast) var(--ease-house);
   }
 
   @keyframes fadeIn {
@@ -247,7 +263,7 @@
   }
 
   .animate-slide-in {
-    animation: slideIn 0.25s ease-out;
+    animation: slideIn var(--dur-fast) var(--ease-house);
   }
 
   @keyframes slideIn {
@@ -259,6 +275,19 @@
       opacity: 1;
       transform: translateX(0);
     }
+  }
+}
+
+/* Radix popovers (tailwindcss-animate) get the house curve; duration is set per component. */
+.animate-in, .animate-out { animation-timing-function: var(--ease-house); }
+
+/* Reduced motion: no animation, no smooth scroll, no long transitions, anywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

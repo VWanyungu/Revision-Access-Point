@@ -153,7 +153,15 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      // House motion: one curve, three durations (values in index.css).
+      transitionTimingFunction: { house: "var(--ease-house)" },
+      transitionDuration: { fast: "var(--dur-fast)", base: "var(--dur-base)", slow: "var(--dur-slow)" },
       borderRadius: {
+        // Named radii: pill = buttons, inputs, nav; card = cards and panels; inner = rows nested in a card; tile = icon tiles.
+        pill: "var(--radius-pill)",
+        card: "var(--radius-card)",
+        inner: "var(--radius-inner)",
+        tile: "var(--radius-tile)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
@@ -167,13 +175,10 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-in": {
-          from: { opacity: "0", transform: "translateY(10px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
+        // `animate-fade-in` lives in index.css (the one the pages use); only the exit is defined here.
         "fade-out": {
           from: { opacity: "1", transform: "translateY(0)" },
-          to: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "0", transform: "translateY(-4px)" },
         },
         "slide-in-left": {
           from: { transform: "translateX(-100%)" },
@@ -198,17 +203,17 @@ export default {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.3s ease-out",
-        "fade-out": "fade-out 0.3s ease-out",
-        "slide-in-left": "slide-in-left 0.3s ease-out",
-        "slide-in-right": "slide-in-right 0.3s ease-out",
-        "scale-in": "scale-in 0.2s ease-out",
-        "flip": "flip 0.6s ease-in-out",
-        "pulse-ring": "pulse-ring 2s ease-in-out infinite",
+        "accordion-down": "accordion-down var(--dur-fast) var(--ease-house)",
+        "accordion-up": "accordion-up var(--dur-fast) var(--ease-house)",
+        "fade-out": "fade-out var(--dur-fast) var(--ease-house) forwards",
+        "slide-in-left": "slide-in-left var(--dur-base) var(--ease-house)",
+        "slide-in-right": "slide-in-right var(--dur-base) var(--ease-house)",
+        "scale-in": "scale-in var(--dur-fast) var(--ease-house)",
+        "flip": "flip var(--dur-slow) var(--ease-house)",
+        "pulse-ring": "pulse-ring 2s var(--ease-house) infinite",
       },
       boxShadow: {
+        "float": "var(--shadow-float)",
         "card": "var(--shadow-card)",
         "elevated": "var(--shadow-elevated)",
       },

@@ -74,7 +74,7 @@ export function Dropdown({ label, items, selectedId, onSelect, align = 'left', p
       </button>
 
       {open && (
-        <div className={cn('absolute top-full z-50 mt-2 rounded-3xl border border-line bg-surface p-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]', block ? 'w-full' : 'w-max min-w-full max-w-[90vw]', align === 'right' ? 'right-0' : 'left-0')}>
+        <div className={cn('absolute top-full z-50 mt-2 rounded-3xl border border-line bg-surface p-1.5 shadow-float', block ? 'w-full' : 'w-max min-w-full max-w-[90vw]', align === 'right' ? 'right-0' : 'left-0')}>
           {/* In forms the list is exactly as wide as the field (it sits in a narrow side panel), so long names wrap instead of overflowing. */}
           <DropdownList wrap={block} items={items} selectedId={selectedId} onSelect={(id) => { onSelect(id); close(); }} />
         </div>

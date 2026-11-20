@@ -61,14 +61,14 @@ export const AdminNav = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={10} className="min-w-[200px] rounded-2xl p-1.5">
               {visible.map(({ icon: Icon, label, path }) => (
-                <DropdownMenuItem key={path} className="cursor-pointer gap-2.5 rounded-xl px-3 py-2.5 text-sm lg:hidden" onClick={() => navigate(path)}>
+                <DropdownMenuItem key={path} className="cursor-pointer gap-2.5 rounded-inner px-3 py-2.5 text-sm lg:hidden" onClick={() => navigate(path)}>
                   <Icon size={18} /> {label}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-xl px-3 py-2.5 text-sm" onClick={() => navigate('/profile')}>
+              <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-inner px-3 py-2.5 text-sm" onClick={() => navigate('/profile')}>
                 <UserCircle size={18} /> Profile
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-xl px-3 py-2.5 text-sm text-danger focus:text-danger" onClick={logout}>
+              <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-inner px-3 py-2.5 text-sm text-danger focus:text-danger" onClick={logout}>
                 <LogOut size={18} /> Log out
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -258,7 +258,7 @@ const Admins = () => {
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-2xl bg-field p-2">
                 {scopeSchools.length === 0 && <p className="p-2 text-sm text-muted-foreground">Choose an institution first.</p>}
                 {scopeSchools.map((s) => (
-                  <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-surface">
+                  <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-inner px-3 py-2 text-sm hover:bg-surface">
                     <input type="checkbox" className="size-4 accent-primary" checked={form.schoolIds.includes(Number(s.id))} onChange={() => toggle('schoolIds', Number(s.id))} />
                     {s.name}
                   </label>
@@ -273,7 +273,7 @@ const Admins = () => {
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-2xl bg-field p-2">
                 {scopeDepartments.length === 0 && <p className="p-2 text-sm text-muted-foreground">Choose an institution first.</p>}
                 {scopeDepartments.map((d) => (
-                  <label key={d.id} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-surface">
+                  <label key={d.id} className="flex cursor-pointer items-center gap-3 rounded-inner px-3 py-2 text-sm hover:bg-surface">
                     <input type="checkbox" className="size-4 accent-primary" checked={form.courseIds.includes(Number(d.id))} onChange={() => toggle('courseIds', Number(d.id))} />
                     {d.name}
                   </label>
