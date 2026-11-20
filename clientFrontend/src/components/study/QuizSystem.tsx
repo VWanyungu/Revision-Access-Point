@@ -5,6 +5,7 @@ import { ArrowLeft, Check, CaretDown, Info, X as XIcon } from "@phosphor-icons/r
 import { useAuth } from "@/context/AuthContext";
 import { recordQuiz } from "@/database/progress";
 import PageCrumbs from "@/components/layout/PageCrumbs";
+import ResultFigure from "@/components/study/ResultFigure";
 import { EASE, InkButton, PayBottomBar, QuietButton, trayShell } from "@/components/pay/PayKit";
 
 /** A page, not an overlay: it renders inside the app layout and `onClose` returns to where the quiz was started. */
@@ -119,6 +120,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
     [questions, answers],
   );
   const correct = questions.length - missed.length;
+  const [prevBest, setPrevBest] = useState<number | null>(null);
   const weakTopics = useMemo(() => [...new Set(missed.map(({ q }) => q.topic).filter(Boolean))], [missed]);
 
   // Save each finished quiz so the unit page can show best score and attempts.
@@ -126,7 +128,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
     const userId = session?.user?.id;
     if (stage !== "results" || !questions.length || !userId) return;
     recordQuiz(userId, resourcePublicAccessUrl, correct, questions.length)
-      .then(() => queryClient.invalidateQueries({ queryKey: ["progress"] }))
+      .then((prev) => { setPrevBest(prev); queryClient.invalidateQueries({ queryKey: ["progress"] }); })
       .catch((e) => console.error("Could not save quiz score", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- record once per results screen
   }, [stage]);
@@ -228,11 +230,22 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
       <>
         {bar("Results", { quiz: true, toQuiz: () => setStage("setup") })}
         <Frame>
-          <h1 className="font-literata text-2xl md:text-3xl">{correct} of {questions.length} correct</h1>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {missed.length > 0 && <InkButton onClick={retryMissed}>Retry these {missed.length}</InkButton>}
-            <QuietButton tone="soft" onClick={() => setStage("setup")}>New quiz</QuietButton>
-          </div>
+          <h1 className="sr-only">Results</h1>
+          <ResultFigure
+            percent={(correct / Math.max(questions.length, 1)) * 100}
+            detail={`${correct} of ${questions.length} correct`}
+            previous={prevBest}
+            action={missed.length > 0 ? (
+              <>
+                <InkButton arrow onClick={() => document.getElementById("missed")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" })}>
+                  Review the {missed.length} you missed
+                </InkButton>
+                <QuietButton tone="soft" onClick={retryMissed}>Retry these {missed.length}</QuietButton>
+              </>
+            ) : (
+              <InkButton arrow onClick={() => setStage("setup")}>Take another quiz</InkButton>
+            )}
+          />
 
           {weakTopics.length > 0 && (
             <div className="mt-8">
@@ -244,7 +257,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
           )}
 
           {missed.length > 0 && (
-            <ul className="mt-10 border-t border-line">
+            <ul id="missed" className="mt-10 scroll-mt-28 border-t border-line">
               {missed.map(({ q: mq, i }, n) => {
                 const isOpen = open === i || (open === null && n === 0);
                 const mine = answers[i];

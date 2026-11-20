@@ -47,10 +47,14 @@ export const recordOpen = async (userId: string, resourceId: number) => {
 };
 
 /** Quizzes are started from a file URL, so find the resource it belongs to first. */
-export const recordQuiz = async (userId: string, fileUrl: string, correct: number, total: number) => {
+export const recordQuiz = async (userId: string, fileUrl: string, correct: number, total: number): Promise<number | null> => {
   const { data: r, error: findError } = await supabase.from("resources").select("id").eq("public_access_url", fileUrl).limit(1).maybeSingle();
   if (findError) throw findError;
-  if (!r) return;
+  if (!r) return null;
+  // The best percentage stored before this attempt, so the results screen can compare against it.
+  const { data: before } = await supabase.from("quiz_attempts").select("correct, total").eq("user_uuid", userId).eq("resource_id", r.id);
+  const previous = (before ?? []).reduce<number | null>((m, a) => (a.total ? Math.max(m ?? 0, Math.round((a.correct / a.total) * 100)) : m), null);
   const { error } = await supabase.from("quiz_attempts").insert({ user_uuid: userId, resource_id: r.id, correct, total });
   if (error) throw error;
+  return previous;
 };

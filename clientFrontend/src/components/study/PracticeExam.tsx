@@ -18,7 +18,8 @@ export interface Attempt {
   paper: Paper; model_answers: AnswersData | null; answers: Given; result: Result | null;
 }
 
-import { btnPrimary, btnQuietSoft } from "@/components/pay/PayKit";
+import ResultFigure from "@/components/study/ResultFigure";
+import { InkButton, btnPrimary, btnQuietSoft } from "@/components/pay/PayKit";
 const MAX_PHOTOS = 3;
 const MAX_BYTES = 5 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -124,7 +125,7 @@ const PracticeExam = ({ unitId, kind, serial, onClose, onViewAnswers }: Props) =
     );
   }
 
-  if (attempt.status === "marked" && attempt.result) return <Results attempt={attempt} onClose={onClose} onViewAnswers={onViewAnswers} />;
+  if (attempt.status === "marked" && attempt.result) return <Results attempt={attempt} unitId={unitId} kind={kind} onClose={onClose} onViewAnswers={onViewAnswers} />;
 
   // An error shows only the message, with Try again and Back to the paper side by side.
   if (error) {
@@ -309,15 +310,38 @@ const Runner = ({ attempt, unitId, kind, userId, onClose, onSubmit }: { attempt:
 const tone: Record<MarkedQuestion["status"], string> = { correct: "text-success", partial: "text-warning", wrong: "text-danger", blank: "text-ink-muted" };
 
 /** The marks: score, topics to revise, and a breakdown of the questions that lost marks. */
-export const Results = ({ attempt, onClose, onViewAnswers }: { attempt: Attempt; onClose: () => void; onViewAnswers?: (data: AnswersData, title: string) => void }) => {
+export const Results = ({ attempt, unitId, kind, onClose, onViewAnswers }: { attempt: Attempt; unitId?: number; kind?: Kind; onClose: () => void; onViewAnswers?: (data: AnswersData, title: string) => void }) => {
   const r = attempt.result!;
   const missed = r.questions.filter((q) => q.status !== "correct");
+  // The best mark on the other papers of this kind for the unit, when the student has taken any.
+  const { data: previous = null } = useQuery({
+    queryKey: ["practice-best", unitId, kind, attempt.paper_serial],
+    enabled: unitId !== undefined && !!kind,
+    queryFn: async () => {
+      const { data } = await supabase.from("practice_attempts").select("result").eq("unit_id", unitId!).eq("kind", kind!).eq("status", "marked").neq("paper_serial", attempt.paper_serial);
+      const best = (data ?? []).map((a: { result: Result | null }) => a.result?.percent).filter((p): p is number => typeof p === "number");
+      return best.length ? Math.round(Math.max(...best)) : null;
+    },
+  });
+  const weakest = r.weak_topics[0]?.topic;
   const model = (n: string) => attempt.model_answers?.questions.find((a) => a.question_number === n);
   return (
     <div className="max-w-[720px]">
       <button onClick={onClose} className="mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-ink-muted hover:text-ink"><ArrowLeft size={16} /> Back</button>
-      <p className="text-3xl font-semibold tabular-nums">{r.score}<span className="text-ink-muted"> / {r.total}</span></p>
-      <p className="mt-1 text-lg text-ink-muted">{r.percent}%</p>
+      <h1 className="sr-only">Your marks</h1>
+      <ResultFigure
+        percent={r.percent}
+        detail={`${r.score} of ${r.total} marks`}
+        previous={previous}
+        note={weakest ? `Start with ${weakest}: it lost you marks.` : undefined}
+        action={missed.length > 0 ? (
+          <InkButton arrow onClick={() => document.getElementById("lost-marks")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            Review the {missed.length} that lost marks
+          </InkButton>
+        ) : (
+          <InkButton arrow onClick={onClose}>Back to the paper</InkButton>
+        )}
+      />
 
       {r.weak_topics.length > 0 && (
         <div className="mt-8">
@@ -330,7 +354,7 @@ export const Results = ({ attempt, onClose, onViewAnswers }: { attempt: Attempt;
         </div>
       )}
 
-      <p className="mt-8 text-sm text-ink-muted">{missed.length === 0 ? "Full marks on every question." : `${missed.length} question${missed.length === 1 ? "" : "s"} lost marks`}</p>
+      <p id="lost-marks" className="mt-8 scroll-mt-28 text-sm text-ink-muted">{missed.length === 0 ? "Full marks on every question." : `${missed.length} question${missed.length === 1 ? "" : "s"} lost marks`}</p>
       <ul className="mt-2 flex flex-col">
         {missed.map((q) => {
           const m = model(q.number);
