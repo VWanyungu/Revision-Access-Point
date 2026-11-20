@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { EASE, formatDate } from "@/components/pay/PayKit";
 import { BannerArt } from "./ProfileBanner";
 import ProfileMobile from "./ProfileMobile";
+import ProfileActions from "./ProfileActions";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProfilePageProps {
@@ -144,7 +145,7 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
             </p>
           )}
 
-          <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-line pt-6">
+          <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-line pt-6 sm:grid-cols-5">
             <Stat name="Opened" value={Object.keys(progress?.opens ?? {}).length} />
             <Stat name="Quizzes" value={quizzes} />
             <Stat name="Avg best" value={average === null ? "–" : `${average}%`} />
@@ -164,6 +165,10 @@ const ProfilePage = ({ onNavigate }: ProfilePageProps) => {
             View billing
             <ArrowRight size={18} className="transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-1" />
           </button>
+
+          <div className="mt-8 border-t border-line pt-6">
+            <ProfileActions name={fullName} />
+          </div>
         </div>
       </motion.article>
     </div>

@@ -1,5 +1,6 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import { BannerArt } from "./ProfileBanner";
+import ProfileActions from "./ProfileActions";
 
 interface ProfileMobileProps {
   name: string;
@@ -40,9 +41,10 @@ const ProfileMobile = ({ name, initials, photo, onPhotoError, department, rows, 
       {rows.map((row) => <p key={row} className="mt-1 text-sm text-ink-muted">{row}</p>)}
       {access && <p className="mt-1 text-sm text-ink-muted">{access}</p>}
 
-      <dl className="mt-6 grid grid-cols-3 gap-4 border-t border-line py-6">
-        {stats.map((s) => (
-          <div key={s.name}>
+      {/* Five stats: three on the first row, two wider ones below, so no row is left half empty. */}
+      <dl className="mt-6 grid grid-cols-6 gap-4 border-t border-line py-6">
+        {stats.map((s, i) => (
+          <div key={s.name} className={stats.length === 5 && i >= 3 ? "col-span-3" : "col-span-2"}>
             <dt className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">{s.name}</dt>
             <dd className="mt-1.5 text-xl font-semibold tabular-nums">{s.value}</dd>
           </div>
@@ -57,6 +59,10 @@ const ProfileMobile = ({ name, initials, photo, onPhotoError, department, rows, 
       <button onClick={onBilling} className="group mt-4 inline-flex min-h-11 items-center gap-2 text-lg font-medium text-ink-muted active:text-ink">
         View billing <ArrowRight size={18} />
       </button>
+
+      <div className="mt-6 border-t border-line pt-6">
+        <ProfileActions name={name} />
+      </div>
     </div>
   </article>
 );
