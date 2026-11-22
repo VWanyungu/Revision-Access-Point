@@ -1,0 +1,227 @@
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - button "Scroll to top"
+    - generic [ref=e5]:
+      - navigation "Main" [ref=e6]:
+        - link "Revision Access Point home" [ref=e7] [cursor=pointer]:
+          - /url: "#top"
+          - img "Revision Access Point" [ref=e8]
+        - generic [ref=e9]:
+          - link "What you get" [ref=e10] [cursor=pointer]:
+            - /url: "#get"
+          - link "Pricing" [ref=e11] [cursor=pointer]:
+            - /url: "#pricing"
+          - link "Contact" [ref=e12] [cursor=pointer]:
+            - /url: "#footer"
+        - link "Sign in" [ref=e14] [cursor=pointer]:
+          - /url: /login
+      - generic [ref=e15]:
+        - heading "Escape the chaos" [level=1] [ref=e16]
+        - generic [ref=e17]:
+          - paragraph [ref=e18]: Studying gets chaotic. Where are the notes? Do you have last year's paper? RAP puts them all in one place, for your exact unit.
+          - button "Get started" [ref=e19] [cursor=pointer]
+          - generic [ref=e23]:
+            - link "WhatsApp channel" [ref=e24] [cursor=pointer]:
+              - /url: https://whatsapp.com/channel
+            - link "X" [ref=e25] [cursor=pointer]:
+              - /url: https://x.com
+            - link "Instagram" [ref=e26] [cursor=pointer]:
+              - /url: https://instagram.com
+            - link "Facebook" [ref=e27] [cursor=pointer]:
+              - /url: https://facebook.com
+    - generic [ref=e30]:
+      - heading "What you get" [level=2] [ref=e32]
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - generic [aria-hidden]: "01"
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - paragraph [ref=e39]: Software Project Management
+              - paragraph [ref=e40]: BCS 412 · Year 4, Semester 1
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: 2025/26
+              - generic [ref=e43]:
+                - generic [ref=e44]:
+                  - generic [ref=e45]:
+                    - generic [ref=e48]: Paper
+                    - generic [ref=e49]: 4 pages
+                  - generic [ref=e50]: Model answers
+                - generic [ref=e53]:
+                  - generic [ref=e54]:
+                    - generic [ref=e57]: Paper
+                    - generic [ref=e58]: 6 pages
+                  - generic [ref=e59]: Model answers
+                - generic [ref=e62]:
+                  - generic [ref=e63]:
+                    - generic [ref=e66]: Paper
+                    - generic [ref=e67]: 9 pages
+                  - generic [ref=e68]: Model answers
+            - generic [ref=e71]:
+              - paragraph [ref=e72]: 2024/25
+              - generic [ref=e73]:
+                - generic [ref=e74]:
+                  - generic [ref=e75]:
+                    - generic [ref=e78]: Paper
+                    - generic [ref=e79]: 3 pages
+                  - generic [ref=e80]: Model answers
+                - generic [ref=e83]: Not uploaded
+                - generic [ref=e84]:
+                  - generic [ref=e85]:
+                    - generic [ref=e88]: Paper
+                    - generic [ref=e89]: 8 pages
+                  - generic [ref=e90]: Model answers
+          - generic [ref=e93]:
+            - paragraph [ref=e94]: Sorted by year and sitting
+            - heading "Past papers and CATs" [level=3] [ref=e95]
+            - paragraph [ref=e96]: Every sitting we have for your unit, in one grid. Gaps are marked, not hidden, so you know what to ask your class rep for.
+        - generic [ref=e97]:
+          - generic [aria-hidden]: "02"
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - generic [ref=e102]: Question 1(b)
+              - generic [ref=e103]: 10 marks
+            - paragraph [ref=e104]: Draw the activity-on-node network, then identify the critical path and the minimum project duration.
+            - generic [ref=e105]:
+              - paragraph [ref=e106]: Model answer
+              - paragraph [ref=e107]: Critical path A, B, D, E. Minimum duration 3 + 4 + 6 + 3 = 16 days. C has 2 days of float.
+            - generic [ref=e108]:
+              - generic [ref=e109]: Draws the network correctly
+              - generic [ref=e110]: "4"
+            - generic [ref=e111]:
+              - generic [ref=e112]: Finds the critical path
+              - generic [ref=e113]: "4"
+            - generic [ref=e114]:
+              - generic [ref=e115]: States the duration
+              - generic [ref=e116]: "2"
+          - generic [ref=e117]:
+            - heading "Model answers" [level=3] [ref=e118]
+            - paragraph [ref=e119]: Worked answers for any CAT or exam, with how each mark is earned. Check them against your lecture notes.
+        - generic [ref=e120]:
+          - generic [aria-hidden]: "03"
+          - generic [ref=e123]:
+            - paragraph [ref=e124]: Lecture 3 quiz · Question 4 of 10
+            - paragraph [ref=e125]: Which process group produces the project charter?
+            - generic [ref=e126]:
+              - generic [ref=e127]: A
+              - generic [ref=e128]: Planning
+            - generic [ref=e129]:
+              - generic [ref=e130]: B
+              - generic [ref=e131]: Initiating
+            - generic [ref=e132]:
+              - generic [ref=e133]: C
+              - generic [ref=e134]: Executing
+            - generic [ref=e135]:
+              - generic [ref=e136]: D
+              - generic [ref=e137]: Monitoring and controlling
+          - generic [ref=e138]:
+            - heading "Notes and quizzes" [level=3] [ref=e139]
+            - paragraph [ref=e140]: Read the notes, then tap Quiz me for 5 to 15 questions and a review of the ones you missed.
+        - generic [ref=e141]:
+          - generic [aria-hidden]: "04"
+          - generic [ref=e144]:
+            - generic [ref=e145]:
+              - paragraph [ref=e146]: Focus timer
+              - paragraph [ref=e147]: Session 2 of 4
+            - paragraph [ref=e148]: 18:42
+            - generic [ref=e149]:
+              - generic [ref=e150]: Pause
+              - generic [ref=e153]: Reset
+            - generic [ref=e160]:
+              - paragraph [ref=e161]: Critical path method, step by step
+              - paragraph [ref=e162]: YouTube · 18 min
+          - generic [ref=e165]:
+            - heading "Tutorials and a focus timer" [level=3] [ref=e166]
+            - paragraph [ref=e167]: Short videos chosen for the unit, and a Pomodoro timer that stays on when you open a paper.
+    - generic [ref=e169]:
+      - heading "Pricing" [level=2] [ref=e171]
+      - generic [ref=e172]:
+        - generic [ref=e174]:
+          - generic [ref=e175]:
+            - paragraph [ref=e176]: Semester access
+            - paragraph [ref=e177]:
+              - generic [ref=e178]: KSh
+              - generic [ref=e179]: "100"
+              - generic [ref=e180]: per semester
+            - button "Get started" [ref=e181] [cursor=pointer]
+          - generic [ref=e185]:
+            - paragraph [ref=e186]: What's included
+            - list [ref=e187]:
+              - listitem [ref=e188]: Past papers and CATs by year and sitting
+              - listitem [ref=e191]: Notes and quizzes
+              - listitem [ref=e194]: Tutorials and a focus timer
+        - generic [ref=e198]:
+          - generic [ref=e199]:
+            - paragraph [ref=e200]: Semester access with AI
+            - paragraph [ref=e201]:
+              - generic [ref=e202]: KSh
+              - generic [ref=e203]: "450"
+              - generic [ref=e204]: per semester
+            - button "Get started" [ref=e205] [cursor=pointer]
+          - generic [ref=e209]:
+            - paragraph [ref=e210]: What's included
+            - list [ref=e211]:
+              - listitem [ref=e212]: Everything in Semester access
+              - listitem [ref=e215]: Model answers and topic forecasts
+              - listitem [ref=e218]: Practice papers and AI marking
+    - contentinfo [ref=e221]:
+      - generic [ref=e222]:
+        - generic [ref=e224]:
+          - generic [ref=e225]:
+            - generic [ref=e226]:
+              - img "Revision Access Point" [ref=e228]
+              - generic [ref=e229]:
+                - paragraph [ref=e230]: Email
+                - link "vwanyungu254@gmail.com" [ref=e231] [cursor=pointer]:
+                  - /url: mailto:vwanyungu254@gmail.com
+            - generic [ref=e232]:
+              - heading "Have a CAT coming up? Start revising tonight." [level=2] [ref=e233]
+              - generic [ref=e234]:
+                - button "Pick your unit" [ref=e235] [cursor=pointer]
+                - button "Sign in" [ref=e239] [cursor=pointer]
+          - generic [ref=e241]:
+            - paragraph [ref=e242]: Works on every device
+            - generic [ref=e245]:
+              - generic [ref=e246]: Android
+              - generic [ref=e249]: iOS
+              - generic [ref=e252]: Windows
+              - generic [ref=e255]: Chrome
+        - generic [ref=e258]:
+          - generic [ref=e259]:
+            - img "Revision Access Point" [ref=e260]
+            - generic [ref=e261]:
+              - paragraph [ref=e262]: Real past papers, for your exact unit and semester.
+              - generic [ref=e263]:
+                - generic [ref=e264]: Stay in touch!
+                - generic [ref=e265]:
+                  - link "WhatsApp channel" [ref=e266] [cursor=pointer]:
+                    - /url: https://whatsapp.com/channel
+                  - link "X" [ref=e267] [cursor=pointer]:
+                    - /url: https://x.com
+                  - link "Instagram" [ref=e268] [cursor=pointer]:
+                    - /url: https://instagram.com
+                  - link "Facebook" [ref=e269] [cursor=pointer]:
+                    - /url: https://facebook.com
+          - generic [ref=e270]:
+            - generic [ref=e271]:
+              - generic [ref=e272]:
+                - paragraph [ref=e273]: Navigation
+                - link "Home" [ref=e274] [cursor=pointer]:
+                  - /url: /
+                - link "What you get" [ref=e275] [cursor=pointer]:
+                  - /url: /#get
+                - link "Sign in" [ref=e276] [cursor=pointer]:
+                  - /url: /login
+              - generic [ref=e277]:
+                - paragraph [ref=e278]: Company
+                - link "Terms of use" [ref=e279] [cursor=pointer]:
+                  - /url: /terms-of-user.txt
+                - link "Privacy policy" [ref=e280] [cursor=pointer]:
+                  - /url: /privacy-policy.txt
+                - link "vwanyungu254@gmail.com" [ref=e281] [cursor=pointer]:
+                  - /url: mailto:vwanyungu254@gmail.com
+            - paragraph [ref=e282]: © 2026 Revision Access Point. Made by Calibre Internet and Software Solutions.
+      - img [aria-hidden]:
+        - generic: RAP
