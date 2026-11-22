@@ -48,13 +48,13 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
                   </div>
                 </div>
                 <div className="flex flex-col gap-6 md:items-end md:text-right">
-                  <h2 className="text-2xl font-semibold md:text-3xl">
+                  <h2 className="text-2xl font-light tracking-tight md:text-3xl">
                     Have a CAT coming up? Start revising tonight.
                   </h2>
                   <div className="flex flex-wrap gap-3 md:justify-end">
                     <button
                       onClick={() => navigate(user ? "/app" : "/signup")}
-                      className="group inline-flex items-center gap-2 rounded-full bg-brand-solid py-2 pl-5 pr-2 text-sm font-medium text-white transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+                      className="group inline-flex items-center gap-2 rounded-full bg-brand-solid py-2 pl-5 pr-2 text-sm text-white transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
                     >
                       Pick your unit
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-px group-hover:translate-x-1 group-hover:scale-105">
@@ -63,7 +63,7 @@ const SiteFooter = ({ showCta = false, inApp = false }: { showCta?: boolean; inA
                     </button>
                     <button
                       onClick={() => navigate("/login")}
-                      className="rounded-full border border-line px-5 py-2.5 text-sm font-medium transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-muted active:scale-[0.98]"
+                      className="rounded-full border border-line px-5 py-2.5 text-sm transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-muted active:scale-[0.98]"
                     >
                       Sign in
                     </button>
