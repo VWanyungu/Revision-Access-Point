@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { GripVertical, Pencil, Trash2, Plus } from 'lucide-react';
+import { GripVertical, ListChecks, Pencil, Trash2, Plus } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormModal } from '@/components/shared/FormModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { TopicQuizzes } from '@/components/shared/TopicQuizzes';
 import { useToast } from '@/hooks/use-toast';
 import { getTopics, addRecord, updateRecord, deleteRecord, type Topic } from '@/data/db';
 
@@ -22,6 +23,7 @@ export const SyllabusModal = ({ unit, onClose }: Props) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [form, setForm] = useState(empty);
+  const [quizTopic, setQuizTopic] = useState<Topic | null>(null);
 
   const { data: topics = NO_TOPICS, error } = useQuery({
     queryKey: ['topics', unitId],
@@ -74,7 +76,8 @@ export const SyllabusModal = ({ unit, onClose }: Props) => {
   };
 
   return (
-    <FormModal open={!!unit} onOpenChange={(o) => { if (!o) { setForm(empty); onClose(); } }} title={`Syllabus: ${unit?.name ?? ''}`} description="Topics group a unit's resources. Notes with no topic show on their own.">
+    <FormModal open={!!unit} onOpenChange={(o) => { if (!o) { setForm(empty); setQuizTopic(null); onClose(); } }} title={`Syllabus: ${unit?.name ?? ''}`} description="Topics group a unit's resources. Notes with no topic show on their own.">
+      {quizTopic ? <TopicQuizzes topic={quizTopic} onBack={() => setQuizTopic(null)} /> : (
       <div className="space-y-6">
         {error && <p className="text-sm text-danger">Topics are unavailable. Has the topics migration been run?</p>}
 
@@ -105,6 +108,7 @@ export const SyllabusModal = ({ unit, onClose }: Props) => {
                 <p className="font-medium">{t.title}</p>
                 {t.description && <p className="text-sm text-ink-muted">{t.description}</p>}
               </div>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={`Quizzes for ${t.title}`} onClick={() => setQuizTopic(t)}><ListChecks /></Button>
               <Button type="button" variant="ghost" size="icon-sm" aria-label="Edit topic" onClick={() => setForm({ id: t.id, title: t.title, description: t.description ?? '' })}><Pencil /></Button>
               <Button type="button" variant="ghost" size="icon-sm" aria-label="Delete topic" className="text-danger" onClick={() => remove(t.id)}><Trash2 /></Button>
             </li>
@@ -121,6 +125,7 @@ export const SyllabusModal = ({ unit, onClose }: Props) => {
           </div>
         </form>
       </div>
+      )}
     </FormModal>
   );
 };

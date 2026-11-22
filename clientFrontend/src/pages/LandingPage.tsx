@@ -26,10 +26,10 @@ interface LandingPageProps {
 const PillCta = ({ label, onClick }: { label: string; onClick: () => void }) => (
   <button
     onClick={onClick}
-    className="group inline-flex items-center gap-4 rounded-full bg-brand-light py-1.5 pl-6 pr-1.5 text-base font-medium text-band transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+    className="group inline-flex items-center gap-4 rounded-full bg-[hsl(var(--red))] py-1.5 pl-6 pr-1.5 text-base font-medium text-white transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
   >
     {label}
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-band text-brand-light transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-px group-hover:translate-x-1 group-hover:scale-105">
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[hsl(var(--red))] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-px group-hover:translate-x-1 group-hover:scale-105">
       <ArrowRight size={20} weight="light" />
     </span>
   </button>
@@ -209,7 +209,7 @@ const Feature = ({ f, flip }: { f: (typeof features)[number]; flip: boolean }) =
   <div className="relative grid items-center gap-8 md:grid-cols-12 md:gap-12">
     <span
       aria-hidden
-      className={`pointer-events-none absolute -top-16 select-none font-light [font-size:8.75rem] leading-none tracking-tighter text-transparent [-webkit-text-stroke:1px_hsl(var(--line))] max-md:hidden ${
+      className={`pointer-events-none absolute -top-16 select-none font-light [font-size:8.75rem] leading-none tracking-tighter text-transparent [-webkit-text-stroke:1px_hsl(var(--red)/0.4)] max-md:hidden ${
         flip ? "left-0" : "right-0"
       }`}
     >

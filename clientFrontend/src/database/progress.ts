@@ -40,6 +40,27 @@ export const getTopics = async (unitId: number): Promise<TopicRow[]> => {
   return data ?? [];
 };
 
+export interface CustomQuiz {
+  id: number; topic_id: number; title: string;
+  questions: { question: string; options: string[]; correctAnswer: number; explanation?: string }[];
+}
+
+/** Quizzes admins wrote for a unit's topics. Optional: [] (also before the topic_quizzes SQL is run) keeps the AI-only Quiz tab. */
+export const getCustomQuizzes = async (unitId: number): Promise<CustomQuiz[]> => {
+  const { data, error } = await supabase.from("topic_quizzes").select("id, topic_id, title, questions, topics!inner(unit_id)").eq("topics.unit_id", unitId).order("id");
+  if (error) return [];
+  return (data ?? []) as unknown as CustomQuiz[];
+};
+
+/** Saves a finished custom quiz; returns the best percentage from earlier attempts (null on the first). */
+export const recordCustomQuiz = async (userId: string, quizId: number, correct: number, total: number): Promise<number | null> => {
+  const { data: before } = await supabase.from("topic_quiz_attempts").select("correct, total").eq("user_uuid", userId).eq("quiz_id", quizId);
+  const previous = (before ?? []).reduce<number | null>((m, a) => (a.total ? Math.max(m ?? 0, Math.round((a.correct / a.total) * 100)) : m), null);
+  const { error } = await supabase.from("topic_quiz_attempts").insert({ user_uuid: userId, quiz_id: quizId, correct, total });
+  if (error) throw error;
+  return previous;
+};
+
 export const recordOpen = async (userId: string, resourceId: number) => {
   const { error } = await supabase.from("resource_opens")
     .upsert({ user_uuid: userId, resource_id: resourceId, last_opened_at: new Date().toISOString() }, { onConflict: "user_uuid,resource_id" });

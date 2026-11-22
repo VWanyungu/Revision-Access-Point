@@ -94,7 +94,10 @@ const PredictionsPanel = ({ unitId, onViewAnswers, onUpgradeAi }: { unitId: numb
       )}
 
       {data?.status === "not_enough" && (
-        <p className="max-w-[560px] text-base text-ink-muted">Not enough past papers yet to forecast this. It needs {data.need}.</p>
+        <div role="status" className="flex items-start gap-3 rounded-2xl bg-brand/10 p-4 text-base">
+          <Info size={20} className="mt-0.5 shrink-0 text-brand" />
+          <p>Not enough past papers yet to forecast this. It needs {data.need}.</p>
+        </div>
       )}
 
       {data?.status === "no_syllabus" && (

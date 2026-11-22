@@ -14,7 +14,7 @@ import { useTimer } from "@/context/TimerContext";
 import PredictionsPanel from "./PredictionsPanel";
 import type { AnswersData } from "@/pages/AnswersPage";
 import unitHero from "@/assets/study/unit-hero.png";
-import { getProgress, getTopics, recordOpen, type Progress } from "@/database/progress";
+import { getCustomQuizzes, getProgress, getTopics, recordOpen, type Progress } from "@/database/progress";
 import { toast } from "sonner";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import ResourceSearch from "./ResourceSearch";
@@ -39,6 +39,8 @@ interface Props {
   unitId: number;
   onNavigate: (page: string) => void;
   onGenerateQuiz: (resourceUrl: string, resourceTitle: string) => void;
+  /** Opens a quiz an admin wrote for a topic. */
+  onCustomQuiz?: (quizId: number, title: string) => void;
   onGenerateAnswers: (resourceUrl: string, resourceTitle: string) => void;
   onViewResource: (url: string, title?: string, resourceTypeId?: number) => void;
   /** Opens a practice paper's model answers in the past-paper answers screen. */
@@ -156,7 +158,7 @@ const Section = ({ id, title, bare, children }: { id: string; title: string; bar
   );
 };
 
-const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, onViewResource, onViewPracticeAnswers, onUpgradeAi, onChangeUnit }: Props) => {
+const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onCustomQuiz, onGenerateAnswers, onViewResource, onViewPracticeAnswers, onUpgradeAi, onChangeUnit }: Props) => {
   const { user } = useAuth();
   const reduce = useReducedMotion();
   const selection = useMemo(() => { try { return JSON.parse(localStorage.getItem("resourceSelection") || "null"); } catch { return null; } }, []);
@@ -211,6 +213,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
   const { data: progress, isError: progressFailed } = useQuery({ queryKey: ["progress", user?.id], queryFn: () => getProgress(user!.id), enabled: !!user, retry: false });
   useEffect(() => { if (progressFailed) toast.error("Couldn't load your reading progress.", { id: "progress-load" }); }, [progressFailed]);
   const { data: topicRows = [], isFetched: topicsFetched } = useQuery({ queryKey: ["topics", unitId], queryFn: () => getTopics(unitId), enabled: !!unitId, retry: false });
+  const { data: customQuizzes = [] } = useQuery({ queryKey: ["custom-quizzes", unitId], queryFn: () => getCustomQuizzes(unitId), enabled: !!unitId, retry: false });
   const read = useMemo(() => Object.keys(progress?.opens ?? {}).map(Number), [progress]);
   const [picked, setPicked] = useState<number | null>(null);
   const [tab, setTab] = useState<"notes" | "tutorials" | "quiz">("notes");
@@ -629,8 +632,16 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
                             : <p className="text-base text-ink-muted">No tutorials for this unit yet.</p>)}
                           {tab === "quiz" && (
                             <div className="max-w-[480px]">
-                              <p className="text-base">Ten questions are made from a note by AI. You choose the length and difficulty first.</p>
-                              <div className="mt-4 flex flex-col items-start gap-2">
+                              <div className="flex flex-col items-start gap-2">
+                                {/* Quizzes written by the course team; with none, only the AI quiz buttons below show. */}
+                                {onCustomQuiz && customQuizzes.filter((c) => `t${c.topic_id}` === topic.id).map((c) => (
+                                  <button
+                                    key={c.id}
+                                    onClick={() => onCustomQuiz(c.id, c.title)}
+                                    title={c.title}
+                                    className="flex h-11 min-w-0 max-w-full items-center rounded-full bg-primary px-5 text-left text-base font-medium text-primary-foreground transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-primary-dark active:scale-[0.98]"
+                                  ><span className="truncate">{c.title}</span><span className="ml-2 shrink-0 text-sm font-normal opacity-80">{c.questions.length} questions</span></button>
+                                ))}
                                 {topic.notes.map((n) => (
                                   <button
                                     key={n.id}
@@ -661,7 +672,7 @@ const UnitDashboard = ({ unitId, onNavigate, onGenerateQuiz, onGenerateAnswers, 
             ) : (
               <>
               {/* One row per academic year that has papers; opening it lists them. */}
-              <div className="max-w-[720px]">
+              <div>
                 {byYear.filter(([, c]) => c.cat1 || c.cat2 || c.exam || c.supp).map(([year, cells]) => (
                   <details key={year} className="group border-b border-line">
                     <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 font-literata text-lg [&::-webkit-details-marker]:hidden">

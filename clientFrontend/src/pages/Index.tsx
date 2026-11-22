@@ -243,6 +243,7 @@ const Index = () => {
     go("pdf", link(url, title, resourceTypeId != null ? { k: String(resourceTypeId) } : {}));
   };
 
+  const handleCustomQuiz = (id: number, title: string) => go("quiz", link("", title, { c: String(id) }));
   const handleGenerateQuiz = (publicAccessUrl: string, title: string) => go("quiz", link(publicAccessUrl, title));
 
   /**
@@ -397,6 +398,7 @@ const Index = () => {
             unitId={Number(studyContext?.unit)}
             onNavigate={setCurrentPage}
             onGenerateQuiz={handleGenerateQuiz}
+            onCustomQuiz={handleCustomQuiz}
             onGenerateAnswers={handleGenerateAnswers}
             onViewResource={openPaper}
             onChangeUnit={handleSearch}
@@ -411,6 +413,7 @@ const Index = () => {
             onClose={goBack}
             resourcePublicAccessUrl={selectedResourceUrl}
             resourceTitle={selectedResourceTitle}
+            customId={Number(params.get("c")) || undefined}
             onNeedAi={() => setUpgrade({ fileUrl: selectedResourceUrl, retry: () => setQuizRun((n) => n + 1) })}
           />
         );
@@ -421,6 +424,7 @@ const Index = () => {
             unitId={Number(studyContext?.unit)}
             onNavigate={setCurrentPage}
             onGenerateQuiz={handleGenerateQuiz}
+            onCustomQuiz={handleCustomQuiz}
             onGenerateAnswers={handleGenerateAnswers}
             onViewResource={openPaper}
             onChangeUnit={handleSearch}

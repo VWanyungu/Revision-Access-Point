@@ -3,7 +3,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, CaretDown, Info, X as XIcon } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
-import { recordQuiz } from "@/database/progress";
+import { recordCustomQuiz, recordQuiz } from "@/database/progress";
+import { supabase } from "@/database/supabase";
 import PageCrumbs from "@/components/layout/PageCrumbs";
 import ResultFigure from "@/components/study/ResultFigure";
 import { EASE, InkButton, PayBottomBar, QuietButton, trayShell } from "@/components/pay/PayKit";
@@ -15,6 +16,8 @@ interface QuizSystemProps {
   resourceTitle: string;
   /** Called when the student's pass does not include the AI add-on. */
   onNeedAi?: () => void;
+  /** Set to play a quiz an admin wrote (topic_quizzes) instead of generating one from the note. */
+  customId?: number;
 }
 
 type Stage = "setup" | "playing" | "results" | "error";
@@ -57,7 +60,7 @@ const Switch = ({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
   </button>
 );
 
-const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi }: QuizSystemProps) => {
+const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi, customId }: QuizSystemProps) => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const reduce = useReducedMotion();
@@ -82,11 +85,19 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
     return () => clearTimeout(t);
   });
 
-  const title = `Quiz on ${resourceTitle || "this note"}`;
+  const title = customId ? resourceTitle || "Quiz" : `Quiz on ${resourceTitle || "this note"}`;
 
   const generate = async () => {
     setLoading(true);
     try {
+      if (customId) {
+        const { data, error } = await supabase.from("topic_quizzes").select("questions").eq("id", customId).maybeSingle();
+        if (error || !data?.questions?.length) { setErrorText("This quiz could not be loaded."); setStage("error"); return; }
+        setQuestions(data.questions.map((q: Omit<Question, "id" | "topic">, i: number) => ({ ...q, id: i + 1, topic: "" })));
+        setAnswers({}); setCurrent(0); setLeft(EXAM_SECONDS);
+        setStage("playing");
+        return;
+      }
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-quiz`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
@@ -127,7 +138,7 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
   useEffect(() => {
     const userId = session?.user?.id;
     if (stage !== "results" || !questions.length || !userId) return;
-    recordQuiz(userId, resourcePublicAccessUrl, correct, questions.length)
+    (customId ? recordCustomQuiz(userId, customId, correct, questions.length) : recordQuiz(userId, resourcePublicAccessUrl, correct, questions.length))
       .then((prev) => { setPrevBest(prev); queryClient.invalidateQueries({ queryKey: ["progress"] }); })
       .catch((e) => console.error("Could not save quiz score", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- record once per results screen
@@ -156,13 +167,17 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
         {bar("Quiz")}
         <Frame>
           <h1 className="font-literata text-xl md:text-2xl">{title}</h1>
-          <p className="mt-2 text-sm text-ink-muted">Made from this note by AI.</p>
+          <p className="mt-2 text-sm text-ink-muted">{customId ? "Written by your course team." : "Made from this note by AI."}</p>
 
-          <p className="mt-8 text-base font-medium">Questions</p>
-          <div className="mt-3 flex gap-1">{COUNTS.map((n) => <Chip key={n} active={count === n} onClick={() => setCount(n)}>{n}</Chip>)}</div>
+          {!customId && (
+            <>
+              <p className="mt-8 text-base font-medium">Questions</p>
+              <div className="mt-3 flex gap-1">{COUNTS.map((n) => <Chip key={n} active={count === n} onClick={() => setCount(n)}>{n}</Chip>)}</div>
 
-          <p className="mt-8 text-base font-medium">Difficulty</p>
-          <div className="mt-3 flex gap-1">{LEVELS.map((l) => <Chip key={l} active={level === l} onClick={() => setLevel(l)}>{l}</Chip>)}</div>
+              <p className="mt-8 text-base font-medium">Difficulty</p>
+              <div className="mt-3 flex gap-1">{LEVELS.map((l) => <Chip key={l} active={level === l} onClick={() => setLevel(l)}>{l}</Chip>)}</div>
+            </>
+          )}
 
           <div className="mt-8 flex items-start justify-between gap-4 border-t border-line pt-6">
             <div>
@@ -174,9 +189,9 @@ const QuizSystem = ({ onClose, resourcePublicAccessUrl, resourceTitle, onNeedAi 
 
           <PayBottomBar>
             <InkButton className="w-full" disabled={loading} onClick={generate}>
-              {loading ? "Making your quiz…" : `Generate ${count} questions`}
+              {loading ? (customId ? "Loading…" : "Making your quiz…") : customId ? "Start quiz" : `Generate ${count} questions`}
             </InkButton>
-            <p className="text-sm text-ink-muted">Questions are AI-generated from this note.</p>
+            {!customId && <p className="text-sm text-ink-muted">Questions are AI-generated from this note.</p>}
           </PayBottomBar>
         </Frame>
       </>

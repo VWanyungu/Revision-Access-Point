@@ -259,6 +259,16 @@ export const getTopics = async (unitId: number): Promise<Topic[]> => {
     return data ?? []
 }
 
+export interface QuizQuestion { question: string; options: string[]; correctAnswer: number; explanation?: string }
+export interface TopicQuiz { id: number; topic_id: number; title: string; questions: QuizQuestion[] }
+
+/** The custom quizzes written for a topic. Throws, so callers can tell "none" from "table missing". */
+export const getTopicQuizzes = async (topicId: number): Promise<TopicQuiz[]> => {
+    const { data, error } = await supabase.from('topic_quizzes').select('*').eq('topic_id', topicId).order('id')
+    if (error) throw error
+    return data ?? []
+}
+
 /** Uploads an image to the same bucket as resources and returns its public URL. */
 export const uploadImage = async (file: File): Promise<string> => {
     const res = await uploadFile(file)
